@@ -59,7 +59,7 @@ mindmapDiagram {
 
 
 title Extra Refund (in case of unrevealed raffle) - Transaction
-caption  This transaction allows the owner of a revealed ticker in an unrevealed raffle to get a full refund on ticket price + his share of the value of the unrevealed tickets and recover ticket collateral.\nThe "Accumulated Amount" may or may not be locked depeding if the raffle owner redeemed it or not.
+caption  This transaction allows the owner of a revealed ticket in an unrevealed raffle to get a full refund on ticket price + his share of the value of the unrevealed tickets and recover ticket collateral.\nThe "Accumulated Amount" may or may not be locked depeding if the raffle owner redeemed it or not.
 
 
 ' 🔥
