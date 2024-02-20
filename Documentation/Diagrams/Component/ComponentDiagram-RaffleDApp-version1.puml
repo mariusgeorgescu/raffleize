@@ -1,0 +1,52 @@
+@startuml ComponentDiagram-RaffleDApp-version1
+!theme toy
+
+title "Transactions are constructed and submitted through DApp BackEnd.\nDApp static content is hosted on centralized infra."
+
+skinparam component {
+  BackgroundColor<<DApp>> Orange
+  BackgroundColor<<3rdParty>> LightCoral
+}
+skinparam cloud {
+  BackgroundColor LightBlue
+}
+Actor User
+
+component WebBrowser {
+  component BrowserWallet as "Browser Wallet\neg. Nami,Eternl,Lace..." <<3rdParty>>
+  component UI <<DApp>>
+
+
+}
+
+component BackEnd <<DApp>> {
+  component OffChain as "DApp\nOffChain\n"
+  component WebServer as "WebServer"
+  node CardanoNode 
+
+}
+
+cloud BlockchainNetwork as "Cardano Blockchain\nNetwork" {
+  note as SmarContracts
+  Smart Contracts
+  ....
+  ....
+  ....
+  end note
+}
+
+WebBrowser --> WebServer : Get DApp static content
+
+User -> UI : "1. use"
+UI --> OffChain : "2. call endpoint\n"
+OffChain --> CardanoNode : "3. Query"
+OffChain -up-> UI : "4. constructed\ntx"
+UI -down-> BrowserWallet : "5. constructed\ntx"
+User -> BrowserWallet : "6. sign tx"
+BrowserWallet -up-> UI : "7. signed\ntx"
+UI --> OffChain : "8 signed\ntx"
+OffChain --> CardanoNode : "9 signed\ntx"
+CardanoNode --> BlockchainNetwork : "10. submit\n signed tx"
+
+@enduml
+

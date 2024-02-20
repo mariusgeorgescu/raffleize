@@ -1,0 +1,111 @@
+@startuml RaffleDApp-UseCase
+
+
+title Use Cases Diagram - Raffle DApp
+caption Diagram showing the usecases of the Raffle DApp \n Several use cases involve transaction signing (orange).
+
+!theme toy
+skinparam usecase {
+    BackgroundColor<<tx>> Orange
+}
+skinparam usecase {
+    BackgroundColor<<sign>> Yellow
+}
+
+
+
+Actor User as U
+Actor NonAuthenticated as NAU
+Actor Authenticated as AU
+Actor TicketOwner as P
+Actor RaffleOwner as O
+
+U  <|- AU
+U  <|- NAU
+AU <|- O
+AU <|- P
+
+left to right direction
+
+
+component  (DApp-UI) as DApp{
+    ' Any user
+    usecase (<b>U.1\n View active raffles) as viewActive
+    usecase (<b>NAU.1\n Connect to wallet) <<sign>> as connectToWallet
+    usecase (<b>NAU.1.1\n Choose wallet \nfrom available wallets) as chooseWallet
+
+    ' Authenticated user
+    usecase (<b>AU.0\n Change/Disconnect wallet) as disconnectWallet
+    usecase (<b>AU.1\n View my assets) as viewMyAssets
+    usecase (<b>AU.2\n Create raffle) <<tx>>  as createRaffle
+    usecase (<b>AU.3\nBuy tickets\n to raffle) <<tx>> as  buyTicket
+    usecase (<b>AU.3.1\n Commit secret hash) as commit
+
+
+
+
+    ' ' ' Organizer
+    usecase (<b>O.0\n View my raffles) as viewMyRaffles
+    usecase (<b>O.1\n Collect accumulated amount)  <<tx>>  as collectAmount
+    usecase (<b>O.2\n Update raffle)  <<tx>>  as update
+    usecase (<b>O.3\n Cancel) <<tx>>  as cancel
+    usecase (<b>O.4\n Close expired raffle) <<tx>>  as closeExpired
+    usecase (<b>O.5\n Close undefunded raffle) <<tx>>  as closeUnderfunded
+    usecase (<b>O.6\n Close unrevealed raffle) <<tx>>  as closeUnrevealed
+
+    ' ' ' Participants
+    usecase (<b>P.0\n View tickets to raffles) as viewJoinedRaffles
+    usecase (<b>P.1\n Reveal ticket secret) <<tx>> as reveal
+    usecase (<b>P.2\n Full refund\nin case of underfunded) <<tx>> as fullRefund
+    usecase (<b>P.3\n Extra refund\nin case of unrevealed) <<tx>> as extraRefund
+    usecase (<b>P.4\n Recover collateral\nof losing ticket) <<tx>> as recoverCollateral
+    usecase (<b>P.5\n Redeem stake\nwith winning ticket) <<tx>> as redeemWin
+ 
+    buyTicket ..> commit : inlcude
+    connectToWallet ..> chooseWallet : include
+    disconnectWallet ..> connectToWallet : extend
+    createRaffle ..> viewMyAssets : include
+
+
+    collectAmount ..>  viewMyRaffles: include
+    update ..> viewMyRaffles: include
+    cancel ..> viewMyRaffles: include
+    closeExpired ..> viewMyRaffles: include
+    closeUnderfunded ..> viewMyRaffles: include
+    closeUnrevealed ..> viewMyRaffles: include
+
+    reveal ..> viewJoinedRaffles  : include
+    fullRefund ..> viewJoinedRaffles  : include
+    extraRefund ..> viewJoinedRaffles  : include
+    recoverCollateral ..> viewJoinedRaffles  : include
+    redeemWin ..> viewJoinedRaffles  : include
+}
+
+
+U -> viewActive
+
+NAU -up-> connectToWallet
+
+AU -left-> disconnectWallet
+AU -left-> createRaffle
+AU -right-> buyTicket
+
+ 
+O -left-> collectAmount
+O --> update
+O --> cancel
+O --> closeExpired
+O --> closeUnderfunded
+O -right-> closeUnrevealed
+
+P --> reveal
+P --> fullRefund
+P --> extraRefund
+P --> recoverCollateral
+P --> redeemWin
+
+
+
+
+
+@enduml

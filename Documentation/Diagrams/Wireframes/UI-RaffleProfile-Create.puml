@@ -1,0 +1,45 @@
+
+@startsalt PROFILEASSETS
+title "Create Raffle"
+{
+    {
+        "<size:30><&magnifying-glass> <size:15><i>Search by asset name, policy id etc ................................. "  | {
+            ^<size:20><&key><size:13>  Connected  ^
+        }
+        {*
+            <size:20><b> <&briefcase> My Asssets | <size:20><b> <&box> My Raffles  |<size:20><b> <&tag> My Tickets  | <size:20><b> <&timer> My History
+            <size:20><b> <&briefcase> My Asssets | .
+        }
+        {#
+            {
+                {
+                    Policy ID | 40fa...1728
+                    Asset ID  | 40fa...3836
+                }
+                <size:600><color:darkgray><&image>
+                {
+
+                    <&dollar><b>Enter ticket price  :               | "5 ADA"
+                    <&tag><b>Enter total no. of tickets:            |  "1000"
+                    <&tag><b>Enter min. no. of tickets:             |  "500"
+                    <&timer><b>Select joining deadline:                      | "20.12.2023"
+                    <&timer><b>Select revealingd deadline:                   | "20.02.2024"
+                    ...
+                    <&dollar><b>Minimum Amount                  |  2500
+                    <&dollar><b>Maximum Amount                  |  5000
+                }
+                --
+                [Create Raffle]
+            }
+
+        }
+    }
+}
+
+@endsalt
+
+
+- minimum amount that needs to be collected for the raffle to be valid;
+- the ticket price value;
+- the deadline for participating in the raffle;
+- the deadline for revealing ticket secret hashes;

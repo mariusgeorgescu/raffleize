@@ -1,0 +1,96 @@
+
+@startsalt PROFILETICKETS
+title "My Profile - My Tickets"
+{
+    {
+        "<size:30><&magnifying-glass> <size:15><i>Search by asset name, policy id etc ................................. "  | {
+            ^<size:20><&key><size:13>  Connected  ^
+        }
+        {#
+            {
+                {*
+                   <size:20><b> <&briefcase> My Asssets | <size:20><b> <&box> My Raffles  |<size:20><b> <&tag> My Tickets  | <size:20><b> <&timer> My History
+                    <size:20><b> <&tag> My Tickets | .
+                }
+            }
+        }
+        {SI
+            {
+                <&script><b>Smart Contract              | 0xabcd...
+                <b> RAFFLE STATE:                       | COMMIT
+                <&dollar><b>Ticket Price:               | 5 ADA
+                <b>Join Deadline                        | 20.12.2023
+                <b>Reveal Deadline                      | 20.02.2024
+                <&dollar><b>Total Accumulated Amount    |  4500 ADA
+                <&timer><b> Time Left in current state: | 3h
+                <size:600><color:darkgray><&image>      | {
+
+                    {
+                        {-
+                            Ticket Id   |  1
+                            Ticket State | Commited
+                            Ticket Secret Hash | x234dfa..3836
+                            Ticket Secret  | [<&eye> Reveal ]
+                        }
+                        {-
+                            Ticket Id   |  2
+                            Ticket State | Revealed
+                            Ticket Secret Hash | x234dfa..3836
+                            Ticket Secret      | plaintext
+                        }
+                        {-
+                            Ticket Id   |  3
+                            Ticket State | Revealed
+                            Ticket Secret Hash | x234dfa..3836
+                            Ticket Secret      | plaintext
+                        }
+                        {-
+                            Ticket Id   |  4
+                            Ticket State | Revealed
+                            Ticket Secret Hash | x234dfa..3836
+                            Ticket Secret  | [<&eye> Reveal ]
+                        }
+
+
+                    }
+
+                }
+            }
+            ==
+            {
+                <&script><b>Smart Contract              | 0xabcd...
+                <b> RAFFLE STATE:                       | COMMIT
+                <&dollar><b>Ticket Price:               | 5 ADA
+                <b>Join Deadline                        | 20.12.2023
+                <b>Reveal Deadline                      | 20.02.2024
+                <&dollar><b>Total Accumulated Amount    |  4500 ADA
+                <&timer><b> Time Left in current state: | 3h
+                <size:00><color:darkgray><&image>      | {
+
+                    {
+                        {-
+                            Ticket Id   |  1
+                            Ticket State | Commited
+                            Ticket Secret Hash | x234dfa..3836
+                            Ticket Secret  | [<&eye> Reveal ]
+                        }
+                        {-
+                            Ticket Id   |  2
+                            Ticket State | Revealed
+                            Ticket Secret Hash | x234dfa..3836
+                            Ticket Secret      | plaintext
+                        }
+
+
+                    }
+
+                }
+            }
+        }
+
+    }
+}
+
+@endsalt
+
+

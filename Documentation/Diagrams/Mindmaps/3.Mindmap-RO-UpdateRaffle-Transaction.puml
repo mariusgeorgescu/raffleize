@@ -1,0 +1,140 @@
+@startmindmap Mindmap-Update
+
+
+<style>
+mindmapDiagram {
+    node   {
+        LineColor black
+        Padding 12
+        Margin 3
+        HorizontalAlignment center
+        .mandatory {
+            BackgroundColor darkorange
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .opt {
+            BackgroundColor orange
+            RoundCorner 60
+            LineThickness 0
+        }
+        .datum {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor lightgreen
+            Padding 3
+        }
+        .ref {
+            HorizontalAlignment left
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .value {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor gold
+            Padding 3
+        }
+        .minting {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor pink
+            Padding 3
+        }
+    }
+
+    rootNode {
+        Padding 30
+        Margin 20
+        LineColor blue
+        BackgroundColor lightgrey
+        LineThickness 1.0
+        RoundCorner 0
+        Shadowing 10.0
+    }
+}
+</style>
+
+
+title Update Raffle Transaction
+caption  This transaction allows the raffle owner to update raffle's configuration.
+
+' 🔥
+' 🎫
+' 🎟️
+'🏆
+'🔗
+' 
+
+*:
+TRANSACTION
+====
+;
+
+
+left side
+
+** Address with\n Raffle Validator\nRef. Script 
+***: REF. SCRIPT
+====
+🧾  Raffle Validator ; <<ref>>
+
+**_  **UPDATE RaffleConfig**
+*** Raffle Validator \nAddress <<mandatory>>
+****: VALUE
+====
+🎫🔗 Raffle Reference NFT
+🏆 Raffle Stake Value 
+💰 Raffle Collateral Value ; <<value>>
+****: INLINE DATUM
+====
+📝 Raffle State Data; <<datum>>
+
+** .. <<mandatory>>
+***: VALUE
+====
+🎫👦🏻 Raffle User NFT
+..;<<value>>
+
+** .. <<opt>>
+*** .. <<value>>
+
+right side
+
+** Raffle Validator \nAddress <<mandatory>>
+***: VALUE
+====
+🎫🔗 Raffle Reference NFT
+🏆 Raffle Stake Value 
+💰 Raffle Collateral Value ; <<value>>
+***: INLINE DATUM
+====
+📝 Raffle State Data 
+with updated RaffleConfig; <<datum>>
+
+** .. <<mandatory>>
+***: VALUE
+====
+🎫👦🏻 Raffle User NFT
+..; <<value>>
+
+** .. <<opt>>
+*** .. <<value>>
+
+' legend
+'  burning 🔥
+'  minting 🔨
+'  datum  📝
+'  ticket user NFT 🎫👦🏻
+'  ticket reference NFT 🎫🔗
+'  raffle user NFT 🎟️👦🏻
+'  raffle reference NFT 🎟️🔗
+'🏆💰🧾📜📃
+' end legend
+
+
+
+
+@endmindmap

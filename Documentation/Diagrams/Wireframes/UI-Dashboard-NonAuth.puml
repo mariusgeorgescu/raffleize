@@ -1,0 +1,71 @@
+
+@startsalt NONAUTH
+title "MAIN PAGE"
+header "Non-authenticated user"
+{ "<size:30><&magnifying-glass> <size:15><i>Search by asset name, policy id etc ................................. "  | {
+    ^<size:20><&briefcase><size:13>  Connect Wallet^ Nami Wallet^ Eternl Wallet^ Lace Wallet^ Gero Wallet^
+}
+{SI
+    {-
+        . | ASSETNAME1
+        <size:150><color:darkgray><&image>           |  {
+            <size:150><color:darkorange><&pie-chart>
+        }
+
+        <&dollar><b>Ticket Price:               | 5 ADA
+        <&timer><b> Time Left:                  | 3h
+        "1"                                       |[<&cart> Buy Tickets ]
+    } | .. |  {-
+        . |  ASSETNAME2
+        <size:150><&image>           |  {
+            <size:150><color:darkorange><&pie-chart>
+        }
+
+        <&dollar><b>Ticket Price:               | 10 ADA
+        <&timer><b> Time Left:                  | 12h
+        "1"                                       |[<&cart> Buy Tickets ]
+    } | .. |  {-
+        . |  ASSETNAME3
+        <size:150><color:darkgray><&image>           |  {
+            <size:150><color:darkorange><&pie-chart>
+        }
+
+        <&dollar><b>Ticket Price:               | 20 ADA
+        <&timer><b> Time Left:                  | 32h
+        "1"                                       |[<&cart> Buy Tickets ]
+    }
+    .
+    {-
+        . | ASSETNAME4
+        <size:150><color:darkgray><&image>           |  {
+            <size:150><color:darkorange><&pie-chart>
+        }
+
+        <&dollar><b>Ticket Price:               | 53 ADA
+        <&timer><b> Time Left:                  | 33h
+        "1"                                       |[<&cart> Buy Tickets ]
+    } | .. |  {-
+        . |  ASSETNAME5
+        <size:150><&image>           |  {
+            <size:150><color:darkorange><&pie-chart>
+        }
+
+        <&dollar><b>Ticket Price:               | 110 ADA
+        <&timer><b> Time Left:                  | 122h
+        "1"                                       |[<&cart> Buy Tickets ]
+    } | .. |  {-
+        . |  ASSETNAME6
+        <size:150><color:darkgray><&image>           |  {
+            <size:150><color:darkorange><&pie-chart>
+        }
+
+        <&dollar><b>Ticket Price:               | 220 ADA
+        <&timer><b> Time Left:                  | 322h
+        "1"                                       |[<&cart> Buy Tickets ]
+    }
+}
+| ..
+[Create Raffle] | [Help]
+}
+@endsalt
+

@@ -1,0 +1,87 @@
+
+
+The **Raffle State** is uniquely determined as a function of:
+- Raffle State Data  
+- Locked Value
+- Time
+
+```mermaid
+---
+ title: Finite State Diagram - Raffle State
+---
+stateDiagram-v2
+
+
+    [*] --> NEW : <b>USER</b>\n CreateRaffle (RaffleConfig)
+    NEW --> NEW : <b>RAFFLE OWNER</b>\n UpdateRaffle (RaffleConfig)
+    NEW --> [*] : <b>RAFFLE OWNER</b>\n Cancel 
+
+
+    NEW --> COMMITTING: <b>USER</b>\n BuyTicket (SecretHash)
+
+    NEW --> EXPIRED : <i>TIME</i>\nCommit deadline reached
+
+    state EXPIRED {
+     [*] --> EXPIRED_LOCKED_STAKE
+     EXPIRED_LOCKED_STAKE --> EXPIRED_EMPTY : <b>RAFFLE OWNER</b>\nRecover Stake
+     EXPIRED_EMPTY --> [*]: <b>ADMIN</b>\nPurge history
+    }
+
+    COMMITTING --> COMMITTING: <b>USER</b>\n BuyTicket (SecretHash)
+    state if_state <<choice>>
+
+    COMMITTING --> if_state: <i>TIME</i>\nCommit deadline reached
+    if_state --> UNDERFUNDED : Raffle config \nMinimum number of tickets not reached
+
+    state UNDERFUNDED {
+     [*] --> UNDERFUNDED_STAKE_AND_REFUNDS
+     state all_refunds <<choice>>
+     UNDERFUNDED_STAKE_AND_REFUNDS --> all_refunds:<b>TICKET OWNER</b>\n Full Refund
+     all_refunds --> UNDERFUNDED_STAKE_AND_REFUNDS : Not all tickets refunded
+     all_refunds --> UNDERFUNDED_LOCKED_STAKE: All tickets refunded
+     UNDERFUNDED_STAKE_AND_REFUNDS --> UNDERFUNDED_LOCKED_REFUNDS:<b>RAFFLE OWNER</b>\n Recover Stake
+     state all_refunds2 <<choice>>
+
+     UNDERFUNDED_LOCKED_REFUNDS --> all_refunds2: <b>TICKET OWNER</b>\n Full Refund
+     all_refunds2 --> UNDERFUNDED_LOCKED_REFUNDS : Not all tickets refunded
+     all_refunds2 --> UNDERFUNDED_EMPTY : All tickets refunded
+     UNDERFUNDED_LOCKED_STAKE --> UNDERFUNDED_EMPTY: <b>RAFFLE OWNER</b>\n Recover Stake
+     UNDERFUNDED_EMPTY --> [*]: <b>ADMIN</b>\nPurge history
+    }    
+    
+    if_state --> REVEALING : Raffle config \nMinimum number of tickets reached
+    state allrevealed <<choice>>
+    REVEALING --> allrevealed: <b>TICKET OWNER</b>\n RevealSecret (TicketID, Secret)
+    allrevealed --> REVEALING : Not all secrets revealed
+    REVEALING --> UNREVEALED : <i>TIME</i>\nReveal deadline reached 
+    
+    state UNREVEALED {
+     [*] --> UNREVEALED_STAKE_AND_REFUNDS: Revealed tickets > 0
+     [*] --> UNREVEALED_NO_REVEALS: Revealed tickets == 0
+     state all_extra_refunds <<choice>>
+     UNREVEALED_STAKE_AND_REFUNDS --> all_extra_refunds: <b>TICKET OWNER</b>\n Extra Refund
+     all_extra_refunds --> UNREVEALED_STAKE_AND_REFUNDS : Not all revealed tickets refunded
+     all_extra_refunds --> UNREVEALED_LOCKED_STAKE: All revealed tickets refunded
+     UNREVEALED_STAKE_AND_REFUNDS --> UNREVEALED_LOCKED_REFUNDS: <b>RAFFLE OWNER</b>\nRecover Stake
+     state all_extra_refunds2 <<choice>>
+     UNREVEALED_LOCKED_REFUNDS --> all_extra_refunds2: <b>TICKET OWNER</b>\n Full Refund
+     all_extra_refunds2 --> UNREVEALED_LOCKED_REFUNDS : Not all revealed tickets refunded
+     all_extra_refunds2 --> UNREVEALED_EMPTY : All revealed tickets refunded
+     UNREVEALED_LOCKED_STAKE --> UNREVEALED_EMPTY: <b>RAFFLE OWNER</b>\nRecover Stake
+     UNREVEALED_NO_REVEALS --> UNREVEALED_EMPTY: <b>RAFFLE OWNER</b>\nRecover Stake and Accumulated Amount
+     UNREVEALED_EMPTY --> [*]: <b>ADMIN</b>\nPurge history
+    }
+
+    allrevealed --> SUCCESS : All secrets revealed
+    state SUCCESS {
+     [*] --> SUCCESS_STAKE_AND_AMOUNT: All secrets revealed
+     SUCCESS_STAKE_AND_AMOUNT --> SUCCESS_LOCKED_AMOUNT: <b>TICKET OWNER</b>\nRedeem Stake
+     SUCCESS_STAKE_AND_AMOUNT --> SUCCESS_LOCKED_STAKE: <b>RAFFLE OWNER</b>\nCollect Accumulated Amount
+     SUCCESS_LOCKED_STAKE --> SUCCESS_EMPTY: <b>TICKET OWNER</b>\nRedeem Stake
+     SUCCESS_LOCKED_AMOUNT --> SUCCESS_EMPTY: <b>RAFFLE OWNER</b>\nCollect Accumulated Amount
+     SUCCESS_EMPTY --> [*]: <b>ADMIN</b>\nPurge history
+    }
+
+
+
+```

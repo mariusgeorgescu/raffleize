@@ -1,0 +1,151 @@
+@startmindmap Mindmap-RefundLosing
+
+
+<style>
+mindmapDiagram {
+    node   {
+        LineColor black
+        Padding 12
+        Margin 3
+        HorizontalAlignment center
+        .mandatory {
+            BackgroundColor darkorange
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .opt {
+            BackgroundColor orange
+            RoundCorner 60
+            LineThickness 0
+        }
+        .datum {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor lightgreen
+            Padding 3
+        }
+        .ref {
+            HorizontalAlignment left
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .value {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor gold
+            Padding 3
+        }
+        .minting {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor pink
+            Padding 3
+        }
+    }
+
+    rootNode {
+        Padding 30
+        Margin 20
+        LineColor blue
+        BackgroundColor lightgrey
+        LineThickness 1.0
+        RoundCorner 0
+        Shadowing 10.0
+    }
+}
+</style>
+
+
+title Get Collateral Of Losing Ticket - Transaction
+caption  This transaction allows the owner of a reavealed losing ticket to get back the collateral.
+
+
+' 🔥
+' 🎫
+' 🎟️
+'🏆
+'🔗
+' 
+
+*:
+TRANSACTION
+====
+🔥 Burns Ticket Reference NFT 🎟️🔗 
+🔥 Burns Ticket User NFT 🎟️👦🏻 
+;
+
+left side
+**_  **Burn TicketId **
+*** 📜Raffle Minting Policy <<minting>>
+**_  **Burn TicketId **
+*** 📜Raffle Minting Policy <<minting>>
+
+** Address with\n Ticket Validator\nRef. Script 
+***: REF. SCRIPT
+====
+🧾  Ticket Validator ; <<ref>>
+
+
+
+** Raffle Validator \nAddress <<ref>>
+***: VALUE
+====
+🎫🔗 Raffle Reference NFT
+💰 Raffle Collateral Value 
+🏆 Raffle Stake Value
+(₳) Accumulated Value ; <<value>>
+***: INLINE DATUM
+====
+📝 Raffle State Data ; <<datum>>
+
+**_ **RedeemPrize ticketID**
+*** Ticket Validator \nAddress <<mandatory>>
+****: VALUE
+====
+🎟️🔗 Ticket Reference NFT
+💰 Ticket Collateral Value ; <<value>>
+****: INLINE DATUM
+====
+📝 Ticket State Data ; <<datum>>
+
+** .. <<mandatory>>
+***: VALUE
+====
+🎟️👦🏻 Ticket User NFT; <<value>>
+
+** .. <<opt>>
+*** .. <<value>>
+
+right side
+
+** ..<<mandatory>>
+***: VALUE
+====
+💰 Ticket Collateral Value ; <<value>>
+
+
+
+** .. <<opt>>
+*** .. <<value>>
+
+
+
+
+
+' legend
+' orange   - UTxO
+' grey      - Reference UTxO
+' 🎫👦🏻    - Raffle User NFT 
+' 🎫🔗    - Raffle Reference NFT 
+' 🎟️👦🏻    - Ticket User NFT 
+' 🎟️🔗    - Ticket Reference NFT 
+'  🔥      - Burning 
+' 🔨      - Minting 
+'  📝     - Datum
+' 🧾       - Spending Validator
+' 📜       - Minting Policy
+' end legend
+
+@endmindmap

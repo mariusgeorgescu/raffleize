@@ -1,0 +1,52 @@
+@startuml ComponentDiagram-RaffleDApp-version3
+!theme toy
+title "Transactions constructed on user's browser and submitted through browser wallet (or user's) node.\nDApp static content is hosted on IPFS Network."
+
+skinparam component {
+  BackgroundColor<<DApp>> Orange
+  BackgroundColor<<3rdParty>> LightCoral
+}
+skinparam cloud {
+  BackgroundColor LightBlue
+}
+Actor User
+
+component WebBrowser {
+  component BrowserWallet as "Browser Wallet\neg. Nami,Eternl,Lace..." <<3rdParty>>
+  component UI as "FrontEnd" <<DApp>> 
+}
+
+database IPFS as "IPFS Network"
+component WalletBackEnd <<3rdParty>>
+component Provider as "Blockchain Services\nProvider" <<3rdParty>>
+cloud BlockchainNetwork as "Cardano Blockchain\nNetwork" {
+  note as SmarContracts
+  Smart Contracts
+  ....
+  ....
+  ....
+  end note
+}
+
+note as CustomNode  
+  certain wallets allow 
+  the configuration of a
+  custom endpoint for
+  submitting transactions
+end note
+
+
+User -> UI : "1. use"
+UI -> Provider : "2. query data"
+UI --> BrowserWallet : "3. constructed\ntx"
+User --> BrowserWallet : "4. sign tx"
+BrowserWallet --> WalletBackEnd : "5. submit\n signed tx"
+WalletBackEnd -- BlockchainNetwork : "6. submit\n signed tx"
+
+CustomNode .up. BrowserWallet
+
+WebBrowser -- IPFS : Get DApp static content
+Provider -- BlockchainNetwork
+
+
+@enduml

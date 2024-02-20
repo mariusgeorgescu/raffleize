@@ -1,0 +1,119 @@
+@startuml ClassDiagram-Raffle
+
+title: Class Diagram Raffleize Model
+
+enum RaffleState {
+    NEW
+    EXPIRED_LOCKED_STAKE
+    EXPIRED_FINAL
+    COMMITTING
+    UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+    UNDERFUNDED_LOCKED_REFUNDS
+    UNDERFUNDED_LOCKED_STAKE
+    UNDERFUNDED_FINAL
+    REVEALING
+    SUCCESS_LOCKED_STAKE_AND_AMOUNT
+    SUCCESS_LOCKED_AMOUNT
+    SUCCESS_LOCKED_STAKE
+    SUCCESS_FINAL
+    UNREVEALED_NO_REVEALS
+    UNREVEALED_LOCKED_STAKE_AND_REFUNDS
+    UNREVEALED_LOCKED_REFUNDS
+    UNREVEALED_LOCKED_STAKE
+    UNREVEALED_FINAL
+}
+
+
+
+
+
+class RaffleConfig {
+  +rCommitDDL: POSIXTime
+  +rRevealDDL: POSIXTime
+  +rTicketPrice: Integer
+  +rMinTickets: Integer
+  +rStake: Value
+}
+
+class RaffleParam {
+  +rMaxNoOfTickets: Integer
+  +rMinRevealingWindow: Integer
+  +rMinTicketPrice: Integer
+  +rRaffleValidatorHash: ScriptHash
+  +rTicketValidatorHash: ScriptHash
+  +rTicketCollateral: Integer
+  +rRaffleCollateral: Integer
+}
+
+class RaffleStateData {
+  +rRaffleID: AssetClass
+  +rParam: RaffleParam
+  +rConfig: RaffleConfig
+  +rSoldTickets: Integer
+  +rRevealedTickets: Integer
+  +rRefundedTickets: Integer
+  +rRandomSeed: Integer
+}
+
+RaffleStateData "1" -- "1" RaffleParam : contains
+RaffleStateData "1" -- "1" RaffleConfig : contains
+
+class RaffleDatum {
+  +metadata: Metadata
+  +version: Integer
+  +extra: RaffleStateData
+}
+
+RaffleDatum "1" -- "1" RaffleStateData : contains
+RaffleDatum "1" -- "1" Metadata : contains
+
+class TicketStateData {
+  +tNumber: Integer
+  +tSecretHash: SecretHash
+  +tSecret: Maybe Secret
+  +tRaffle: AssetClass
+  +tRaffleValidator: ScriptHash
+}
+
+class TicketDatum {
+  +metadata: Metadata
+  +version: Integer
+  +extra: TicketStateData
+}
+
+TicketDatum "1" -- "1" TicketStateData : contains
+TicketDatum "1" -- "1" Metadata : contains
+
+class Metadata {
+  +Map BuiltinByteString BuiltinByteString
+}
+
+
+class UTxO {
+  +address: Address
+  +value: Value
+  +datum: TicketStateData
+}
+
+class Datum
+
+class Value {
+     +Map CurrencySymbol  (Map TokenName Integer)
+}
+
+UTxO "1" -- "1" Datum : contains
+UTxO "1" -- "1" Value : contains
+
+UTxO "1" -left- "1" RaffleState : evaluates to
+
+
+TicketDatum -up-|> Datum
+RaffleDatum -up-|> Datum
+
+
+
+
+@enduml
+
+
+@enduml

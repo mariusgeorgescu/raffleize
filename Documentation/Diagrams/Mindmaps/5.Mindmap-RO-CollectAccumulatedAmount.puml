@@ -1,0 +1,144 @@
+@startmindmap Mindmap-CollectAccumulatedAmount
+
+
+<style>
+mindmapDiagram {
+    node   {
+        LineColor black
+        Padding 12
+        Margin 3
+        HorizontalAlignment center
+        .mandatory {
+            BackgroundColor darkorange
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .opt {
+            BackgroundColor orange
+            RoundCorner 60
+            LineThickness 0
+        }
+        .datum {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor lightgreen
+            Padding 3
+        }
+        .ref {
+            HorizontalAlignment left
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .value {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor gold
+            Padding 3
+        }
+        .minting {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor pink
+            Padding 3
+        }
+    }
+
+    rootNode {
+        Padding 30
+        Margin 20
+        LineColor blue
+        BackgroundColor lightgrey
+        LineThickness 1.0
+        RoundCorner 0
+        Shadowing 10.0
+    }
+}
+</style>
+
+
+title Collect Accumulated Amount from Finalized Raffle - Transaction
+caption  This transaction allows the raffle owner to collect the accumulated amount from a finalized raffle. \nThe "Raffle Stake" may or may not be locked depeding if the winner redeemed it or not.
+
+' 🔥
+' 🎫
+' 🎟️
+'🏆
+'🔗
+' 
+
+*:
+TRANSACTION
+====
+🔥 Burning Raffle User NFT 🎫👦🏻;
+
+
+
+left side
+
+** Address with\n Raffle Validator\nRef. Script 
+***: REF. SCRIPT
+====
+🧾  Raffle Validator ; <<ref>>
+
+**_  **CollectAmount**
+*** Raffle Validator \nAddress <<mandatory>>
+****: VALUE
+====
+🎫🔗 Raffle Reference NFT
+💰 Raffle Collateral Value 
+(₳) Accumulated Value 
+<i>🏆 Raffle Stake Value (optional)</i>; <<value>>
+****: INLINE DATUM
+====
+📝 Raffle State Data; <<datum>>
+
+** .. <<mandatory>>
+***: VALUE
+====
+🎫👦🏻 Raffle User NFT;<<value>>
+
+** .. <<opt>>
+*** .. <<value>>
+
+right side
+
+** Raffle Validator \nAddress <<mandatory>>
+***: VALUE
+====
+🎫🔗 Raffle Reference NFT
+💰 Raffle Collateral Value 
+<i>🏆 Raffle Stake Value (optional)</i> ; <<value>>
+***: INLINE DATUM
+====
+📝 Raffle State Data ; <<datum>>
+
+** .. <<mandatory>>
+***: VALUE
+====
+(₳) Accumulated Value ; <<value>>
+
+** .. <<opt>>
+*** .. <<value>>
+
+
+
+
+
+' legend
+'  burning 🔥
+'  minting 🔨
+'  datum  📝
+'  ticket user NFT 🎫👦🏻
+'  ticket reference NFT 🎫🔗
+'  raffle user NFT 🎟️👦🏻
+'  raffle reference NFT 🎟️🔗
+
+'🏆💰🧾📜📃
+' end legend
+
+
+
+
+@endmindmap

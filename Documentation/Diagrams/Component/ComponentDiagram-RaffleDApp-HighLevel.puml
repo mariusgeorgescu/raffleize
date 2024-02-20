@@ -1,0 +1,32 @@
+@startuml ComponentDiagram-RaffleDApp-HighLevel
+!theme toy
+
+skinparam component {
+  BackgroundColor<<DApp>> Orange
+  BackgroundColor<<DAppProvider>> DarkOrange
+  BackgroundColor<<3rdParty>> Salmon
+}
+skinparam cloud {
+  BackgroundColor LightBlue
+}
+Actor User
+
+component WebBrowser {
+  component BrowserWallet as "Browser Wallet" <<3rdParty>>
+  component UI <<DApp>>
+
+  UI -down-> BrowserWallet : "constructed\ntx"
+}
+
+component BackEnd <<DAppProvider>>
+
+
+cloud BlockchainNetwork as "Blockchain\nNetwork"
+
+User -> UI : use
+User -> BrowserWallet : sign tx
+
+WebBrowser -- BackEnd
+BackEnd -down- BlockchainNetwork
+
+@enduml

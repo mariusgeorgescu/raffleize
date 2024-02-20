@@ -1,0 +1,59 @@
+
+@startsalt REVEAL
+title "Raffle Details"
+header "Raffle in REVEAL state"
+    {
+        "<size:30><&magnifying-glass> <size:15><i>Search by asset name, policy id etc"  | {
+            ^<size:20><&key><size:13>  Connected  ^
+        }
+        {+
+            {-
+                <&script><b>Smart Contract              | 0xabcd...                
+                <b> RAFFLE STATE:                      | REVEAL
+                <b>Total No. of Tickets                | 1000
+                <&dollar><b>Ticket Price:              | 5 ADA
+                <b>Minimum Participation               | 50%
+                <b>Join Deadline                 | 20.12.2023
+                <b>Reveal Deadline               | 20.02.2024
+                == | ==
+                ASSETNAME1 | Participation
+                <size:200><color:darkgray><&image>   | <size:200><color:darkorange><&pie-chart> 
+                {# 
+                Owned by  | addr1..caapc
+                Policy ID | 40fa...1728
+                Asset ID  | 40fa...3836
+                }  
+                     {#
+                    Sold Tickets                  | 900
+                    Remaining Tickets             | 100
+                    My Tickets                    | 2
+                    Revealed Tickets              | 400
+                }
+                
+
+                <&dollar><b>Total Accumulated Amount               |  4500 ADA 
+                <&timer><b> Time Left in current state:                  | 3h
+
+            }
+
+        }  | {  <size:20><b> <&tag> My Tickets 
+            {#
+         {-
+            Ticket Id   |  1
+            Ticket State | Commited
+            Ticket Secret Hash | x234dfa..3836
+            Ticket Secret  | [<&eye> Reveal ]  
+        }
+        {-
+            Ticket Id   |  2
+            Ticket State | Revealed
+            Ticket Secret Hash | x234dfa..3836
+            Ticket Secret      | plaintext
+        } 
+        }
+        }
+
+    }
+    @endsalt
+
+

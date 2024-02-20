@@ -1,0 +1,22 @@
+@startuml RaffleDApp-SequenceDiagram
+!theme toy
+
+actor Organizer as O
+
+entity RaffleDApp as R
+entity "Raffle Minting Policy" as MP
+entity "Raffle State Validator" as RV
+' entity "Ticket State Validator" as TV
+
+O -> R ** : Create raffle (Raffle Config)
+par
+    R -> MP : mints raffle ref and user NFT
+    R -> RV : locks raffle state data and stake value and ref NFT
+    R -> O : sends raffle user NFT
+end
+
+
+
+
+
+

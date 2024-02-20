@@ -1,0 +1,36 @@
+
+@startsalt PROFILEASSETS
+title "My Profile - My Assets"
+{
+    {
+        "<size:30><&magnifying-glass> <size:15><i>Search by asset name, policy id etc ................................. "  | {
+            ^<size:20><&key><size:13>  Connected  ^
+        }
+        {#
+            {{*
+                <size:20><b> <&briefcase> My Asssets | <size:20><b> <&box> My Raffles  |<size:20><b> <&tag> My Tickets  | <size:20><b> <&timer> My History
+                <size:20><b> <&briefcase> My Asssets | .
+            }
+            {SI
+                {<size:200><color:darkgray><&image>
+                [Create Raffle] } | {<size:200><color:darkgray><&image>
+                [Create Raffle] } | {<size:200><color:darkgray><&image>
+                [Create Raffle] } | {<size:200><color:darkgray><&image>
+                [Create Raffle] } 
+                .
+                {<size:200><color:darkgray><&image>
+                [Create Raffle] } | {<size:200><color:darkgray><&image>
+                [Create Raffle] } | {<size:200><color:darkgray><&image>
+                [Create Raffle] } | {<size:200><color:darkgray><&image>
+                [Create Raffle] } 
+            }
+        }
+
+    }
+
+}}
+
+
+@endsalt
+
+

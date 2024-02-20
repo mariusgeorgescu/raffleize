@@ -1,0 +1,145 @@
+@startmindmap Mindmap-RecoverStakeAndAmount
+
+
+<style>
+mindmapDiagram {
+    node   {
+        LineColor black
+        Padding 12
+        Margin 3
+        HorizontalAlignment center
+        .mandatory {
+            BackgroundColor darkorange
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .opt {
+            BackgroundColor orange
+            RoundCorner 60
+            LineThickness 0
+        }
+        .datum {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor lightgreen
+            Padding 3
+        }
+        .ref {
+            HorizontalAlignment left
+            RoundCorner 60
+            MaximumWidth 100
+            LineThickness 1
+        }
+        .value {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor gold
+            Padding 3
+        }
+        .minting {
+            HorizontalAlignment left
+            RoundCorner 0
+            BackgroundColor pink
+            Padding 3
+        }
+    }
+
+    rootNode {
+        Padding 30
+        Margin 20
+        LineColor blue
+        BackgroundColor lightgrey
+        LineThickness 1.0
+        RoundCorner 0
+        Shadowing 10.0
+    }
+}
+</style>
+
+
+title Recover Stake And Amount for Completely Unrevealed Raffle - Transaction
+caption  This transaction allows the raffle owner to recover the raffle stake and accumulated amount in the case none of the ticket owners revealed the ticket secret.
+
+' 🔥
+' 🎫
+' 🎟️
+'🏆
+'🔗
+' 
+
+*:
+TRANSACTION
+====
+🔥 Burning Raffle User NFT 🎫👦🏻;
+
+
+
+left side
+
+** Address with\n Raffle Validator\nRef. Script 
+***: REF. SCRIPT
+====
+🧾  Raffle Validator ; <<ref>>
+
+**_  **RecoverStakeAndAmount**
+*** Raffle Validator \nAddress <<mandatory>>
+****: VALUE
+====
+🎫🔗 Raffle Reference NFT
+💰 Raffle Collateral Value 
+🏆 Raffle Stake Value
+(₳) Accumulated Value; <<value>>
+****: INLINE DATUM
+====
+📝 Raffle State Data; <<datum>>
+
+** .. <<mandatory>>
+***: VALUE
+====
+🎫👦🏻 Raffle User NFT;<<value>>
+
+** .. <<opt>>
+*** .. <<value>>
+
+
+right side
+
+** Raffle Validator \nAddress <<mandatory>>
+***: VALUE
+====
+🎫🔗 Raffle Reference NFT
+💰 Raffle Collateral Value ; <<value>>
+***: INLINE DATUM
+====
+📝 Raffle State Data ; <<datum>>
+
+** .. <<mandatory>>
+***: VALUE
+====
+🏆 Raffle Stake Value
+(₳) Accumulated Value  ; <<value>>
+
+** .. <<opt>>
+*** .. <<value>>
+
+
+
+
+
+' legend
+'  burning 🔥
+'  minting 🔨
+'  datum  📝
+'  ticket user NFT 🎫👦🏻
+'  ticket reference NFT 🎫🔗
+'  raffle user NFT 🎟️👦🏻
+'  raffle reference NFT 🎟️🔗
+
+'🏆💰🧾📜📃
+' end legend
+
+
+
+
+@endmindmap
