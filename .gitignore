@@ -2,6 +2,7 @@
 dist
 dist-*
 cabal-dev
+.cabal
 *.o
 *.hi
 *.hie
@@ -38,11 +39,11 @@ output
 # Other
 *.DS_STORE
 *.link
-*.vscode
-.vscode
+
 
 # Plantuml
 out
 
+.direnv
 
-idealog.txt
+result

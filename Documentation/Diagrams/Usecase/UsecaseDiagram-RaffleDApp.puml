@@ -52,6 +52,7 @@ component  (DApp-UI) as DApp{
     usecase (<b>O.4\n Close expired raffle) <<tx>>  as closeExpired
     usecase (<b>O.5\n Close undefunded raffle) <<tx>>  as closeUnderfunded
     usecase (<b>O.6\n Close unrevealed raffle) <<tx>>  as closeUnrevealed
+    usecase (<b>O.7\n Get collateral \nof unrevealed ticket) <<tx>>  as closeUnrevealedTicket
 
     ' ' ' Participants
     usecase (<b>P.0\n View tickets to raffles) as viewJoinedRaffles
@@ -73,6 +74,7 @@ component  (DApp-UI) as DApp{
     closeExpired ..> viewMyRaffles: include
     closeUnderfunded ..> viewMyRaffles: include
     closeUnrevealed ..> viewMyRaffles: include
+    closeUnrevealedTicket ..> viewMyRaffles: include
 
     reveal ..> viewJoinedRaffles  : include
     fullRefund ..> viewJoinedRaffles  : include
@@ -96,6 +98,7 @@ O --> update
 O --> cancel
 O --> closeExpired
 O --> closeUnderfunded
+O -right-> closeUnrevealedTicket
 O -right-> closeUnrevealed
 
 P --> reveal

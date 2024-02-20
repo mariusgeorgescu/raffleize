@@ -1,0 +1,141 @@
+cabal-version: 3.6
+name:          raffleize
+version:       0.2.0.0
+
+-- A short (one-line) description of the package.
+-- synopsis:
+
+-- A longer description of the package.
+-- description:
+
+-- license:       MIT
+-- license-file:  LICENSE
+author:        Marius Georgescu
+maintainer:    georgescumarius@live.com
+
+flag defer-plugin-errors
+  description:
+    Defer errors from the plugin, useful for things like Haddock that can't handle it.
+
+  default:     False
+  manual:      True
+
+common common
+  default-language: GHC2021
+  build-depends:    base
+  mixins:           base hiding (Prelude)
+  ghc-options:
+    -Wall -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
+    -fno-specialise -Wno-orphans -Wno-unused-local-binds
+
+  if flag(defer-plugin-errors)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+
+common plutus-ghc-options
+  -- so unfoldings are present even when compiled without optmizations
+  ghc-options:
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -Wno-partial-type-signatures
+
+  -- expose all unfoldings, so plutustx compiler can do its job
+  ghc-options:
+    -fexpose-all-unfoldings -fobject-code -fplugin-opt
+    PlutusTx.Plugin:defer-errors
+
+  -- set target plutus-core version
+  ghc-options: -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
+
+  -- Compiler flags
+  ghc-options: -fplugin-opt PlutusTx.Plugin:no-remove-trace
+  ghc-options: -fplugin-opt PlutusTx.Plugin:no-optimize
+
+library
+  import:             common, plutus-ghc-options
+  exposed-modules:
+    Prelude
+    RaffleizeDApp.Constants
+    RaffleizeDApp.CustomTypes.ActionTypes
+    RaffleizeDApp.CustomTypes.RaffleTypes
+    RaffleizeDApp.CustomTypes.TicketTypes
+    RaffleizeDApp.CustomTypes.Types
+    RaffleizeDApp.OnChain.RaffleizeLogic
+    RaffleizeDApp.OnChain.RaffleizeMintingPolicy
+    RaffleizeDApp.OnChain.RaffleizeTicketValidator
+    RaffleizeDApp.OnChain.RaffleizeValidator
+    RaffleizeDApp.OnChain.Utils
+    RaffleizeDApp.Tests.RaffleizeTests
+    RaffleizeDApp.TxBuilding.RaffleizeLookups
+    RaffleizeDApp.TxBuilding.RaffleizeOperations
+    RaffleizeDApp.TxBuilding.RaffleizeSkeletons
+    RaffleizeDApp.TxBuilding.Utils
+    RaffleizeDApp.TxBuilding.Validators
+
+  -- Add new contracts here, i.e.:
+  -- Contracts.MyContract
+  other-modules:
+
+  -- Sample contracts:
+  hs-source-dirs:     src
+  build-depends:
+    , aeson
+    , atlas-cardano
+    , base
+    , base16-bytestring
+    , bytestring
+    , cardano-api
+    , cardano-binary
+    , cardano-simple
+    , containers
+    , data-default
+    , extra
+    , foldl
+    , freer-simple
+    , megaparsec
+    , mtl
+    , optparse-applicative
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-simple-model
+    , plutus-tx
+    , plutus-tx-plugin
+    , row-types
+    , serialise
+    , tasty
+    , text
+    , time
+    , turtle
+
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DeriveGeneric
+    FlexibleInstances
+    ImportQualifiedPost
+    InstanceSigs
+    LambdaCase
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedStrings
+    RecordWildCards
+    ScopedTypeVariables
+    TemplateHaskell
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+
+executable cli
+  import:         common
+  main-is:        Main.hs
+  hs-source-dirs: rcli
+  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  build-depends:  raffleize
+
+test-suite tests
+  import:         common
+  main-is:        Main.hs
+  hs-source-dirs: src/RaffleizeDApp/Tests
+  type:           exitcode-stdio-1.0
+  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  build-depends:  raffleize
