@@ -59,17 +59,17 @@ library
     RaffleizeDApp.CustomTypes.RaffleTypes
     RaffleizeDApp.CustomTypes.TicketTypes
     RaffleizeDApp.CustomTypes.Types
-    RaffleizeDApp.TxBuilding.RaffleizeLookups
-    RaffleizeDApp.TxBuilding.RaffleizeOperations
-    RaffleizeDApp.TxBuilding.RaffleizeSkeletons
-    RaffleizeDApp.TxBuilding.Utils
-    RaffleizeDApp.TxBuilding.Validators
     RaffleizeDApp.OnChain.RaffleizeLogic
     RaffleizeDApp.OnChain.RaffleizeMintingPolicy
     RaffleizeDApp.OnChain.RaffleizeTicketValidator
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
     RaffleizeDApp.Tests.RaffleizeTests
+    RaffleizeDApp.TxBuilding.RaffleizeLookups
+    RaffleizeDApp.TxBuilding.RaffleizeOperations
+    RaffleizeDApp.TxBuilding.RaffleizeSkeletons
+    RaffleizeDApp.TxBuilding.Utils
+    RaffleizeDApp.TxBuilding.Validators
 
   -- Add new contracts here, i.e.:
   -- Contracts.MyContract
@@ -129,5 +129,13 @@ executable cli
   import:         common
   main-is:        Main.hs
   hs-source-dirs: rcli
+  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  build-depends:  raffleize
+
+test-suite tests
+  import:         common
+  main-is:        Main.hs
+  hs-source-dirs: src/RaffleizeDApp/Tests
+  type:           exitcode-stdio-1.0
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
   build-depends:  raffleize

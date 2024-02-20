@@ -31,19 +31,15 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 createRaffleTests :: TestTree
 createRaffleTests =
   testGroup
-    "RAFFLEIZE SUCCESS SCENATIOS"
-    [ testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
+    "RAFFLEIZE TESTNG SCENATIOS"
+    [ testRun "CREATE NEW" createNew
+    , testRun "CREATE NEW -> UPDATE" createUpdate
+    , testRun "CREATE NEW ->  EXPIRE" createExpired
+    , testRun "CREATE NEW ->  CANCEL" createCancel
+    , testRun "CREATE NEW -> UPDATE -> EXPIRE" createUpdateExpired
+    , testRun "CREATE NEW -> UPDATE -> CANCEL -> *" createUpdateCancel
+    , testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
     ]
-
--- testGroup
---   "RAFFLEIZE TESTNG SCENATIOS"
---   [ testRun "CREATE NEW" createNew
---   -- , testRun "CREATE NEW -> UPDATE" createUpdate
---   -- , testRun "CREATE NEW ->  EXPIRE" createExpired
---   , testRun "CREATE NEW ->  CANCEL" createCancel
---   -- , testRun "CREATE NEW -> UPDATE -> EXPIRE" createUpdateExpired
---   -- , testRun "CREATE NEW -> UPDATE -> CANCEL -> *" createUpdateCancel
---   ]
 
 ------------------------------------------------------------------------------------------------
 
@@ -292,7 +288,7 @@ createExpired wallets@Wallets {..} = do
 createCancel :: Wallets -> Run ()
 createCancel wallets@Wallets {..} = do
   (raffleValidatorTxOutRef, raffleId) <- createNew wallets
-  waitNSlots 18 -- Slot 31 - EXPIRED
+
   --   Cancel the raffle
   cancelRaffleRUN w1 raffleValidatorTxOutRef raffleId
 
