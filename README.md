@@ -6,7 +6,7 @@ IEEE System Requirements Specification Template
 
 
 This project is part of
-[F10-developer-ecosystem-the-evolution - Project Catalyst Idea #105248 ](https://projectcatalyst.io/funds/10/f10-developer-ecosystem-the-evolution/development-of-a-cardano-dapp-and-extensive-documentation-of-each-step-along-the-way)
+[F10-developer-ecosystem-t  -evolution - Project Catalyst Idea #105248 ](https://projectcatalyst.io/funds/10/f10-developer-ecosystem-the-evolution/development-of-a-cardano-dapp-and-extensive-documentation-of-each-step-along-the-way)
 
 Table of Contents
 =================
@@ -710,3 +710,8 @@ direnv allow
 nix build
 
 nix run #cli
+
+nix run #tests
+
+nix run #cli
+
