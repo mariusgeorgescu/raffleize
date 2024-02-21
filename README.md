@@ -80,7 +80,7 @@ Table of Contents
   - [Appendix A: Glossary](#appendix-a-glossary)
       - [Definitions, Acronyms and Abbreviations](#definitions-acronyms-and-abbreviations)
         - [Acronyms and Abbreviations](#acronyms-and-abbreviations)
-  - [4. Introduction](#4-introduction)
+  - [4. Installation](#4-installation)
 
 
 
@@ -701,10 +701,10 @@ List the user documentation components (such as user manuals, on-line help, and 
  
 
 
-## 4. Introduction
+## 4. Installation
 
 This project uses the Nix package manager to build
-
+```
 direnv allow
 
 nix build
@@ -712,3 +712,4 @@ nix build
 nix run #tests
 
 nix run #cli
+```
