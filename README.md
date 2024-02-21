@@ -709,9 +709,6 @@ direnv allow
 
 nix build
 
-nix run #cli
-
 nix run #tests
 
 nix run #cli
-
