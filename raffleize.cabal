@@ -70,6 +70,7 @@ library
     RaffleizeDApp.TxBuilding.RaffleizeSkeletons
     RaffleizeDApp.TxBuilding.Utils
     RaffleizeDApp.TxBuilding.Validators
+    RaffleizeDApp.TxBuilding.Context
 
   -- Add new contracts here, i.e.:
   -- Contracts.MyContract

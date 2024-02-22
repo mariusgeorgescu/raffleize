@@ -23,3 +23,6 @@ ticketDescription = "Ticket NFT Description"
 
 ticketName :: BuiltinString
 ticketName = "Ticket NFT Description"
+
+atlasCoreConfig :: FilePath
+atlasCoreConfig = "atlas_config.json"
