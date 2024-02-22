@@ -3,6 +3,7 @@ module RaffleizeDApp.CustomTypes.RaffleTypes where
 import Data.Aeson hiding (Value)
 import Data.Aeson qualified (Value)
 import Data.Aeson.Types qualified as Data.Aeson.Types.Internal
+import Data.String
 import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import PlutusTx
@@ -46,19 +47,19 @@ instance FromJSON POSIXTime where
 
 instance ToJSON TokenName where
   toJSON :: TokenName -> Data.Aeson.Value
-  toJSON (TokenName bs) = object ["TokenName" .= bs]
+  toJSON tn = object ["TokenName" .= toString tn]
 
 instance FromJSON TokenName where
   parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser TokenName
-  parseJSON = withObject "TokenName" $ \v -> TokenName <$> v .: "TokenName"
+  parseJSON = withObject "TokenName" $ \v -> fromString @TokenName <$> v .: "TokenName"
 
 instance ToJSON CurrencySymbol where
   toJSON :: CurrencySymbol -> Data.Aeson.Value
-  toJSON (CurrencySymbol bs) = object ["CurrencySymbol" .= bs]
+  toJSON cs = object ["CurrencySymbol" .= show cs]
 
 instance FromJSON CurrencySymbol where
   parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser CurrencySymbol
-  parseJSON = withObject "CurrencySymbol" $ \v -> CurrencySymbol <$> v .: "CurrencySymbol"
+  parseJSON = withObject "CurrencySymbol" $ \v -> fromString @CurrencySymbol <$> v .: "CurrencySymbol"
 
 instance ToJSON Value where
   toJSON :: Value -> Data.Aeson.Value

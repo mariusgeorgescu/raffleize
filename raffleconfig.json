@@ -1,0 +1,17 @@
+{
+    "rCommitDDL": 100,
+    "rMinTickets": 5,
+    "rRevealDDL": 1000,
+    "rStake": [
+        [
+            {
+                "CurrencySymbol": "01f0ef87e344b733286dfce55cfd7e10c90b57a3b1825c984454ce6a"
+            },
+            {
+                "TokenName": "Iron"
+            },
+            100000
+        ]
+    ],
+    "rTicketPrice": 15000000
+}
