@@ -626,12 +626,12 @@ List the user documentation components (such as user manuals, on-line help, and 
   - **Interaction:** Easy access to join raffles or view more details with minimal clicks/taps.  
 --- 
  
-![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-Dashboard-NonAuth.puml)
+![UI-Dashboard-NonAuth Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-Dashboard-NonAuth.puml)
 
 
 ---
  
-![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-Dashboard-Auth.puml)
+![UI-Dashboard-Auth Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-Dashboard-Auth.puml)
 --- 
 
 - **Raffle Detail Page**
@@ -639,9 +639,9 @@ List the user documentation components (such as user manuals, on-line help, and 
   - **Interaction:**: A clear and secure way to purchase tickets for raffle.
 
 --- 
-![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleDetails-Commit.puml) 
+![UI-RaffleDetails-Commit Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleDetails-Commit.puml) 
 ---
-![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleDetails-Reveal.puml) 
+![UI-RaffleDetails-Reveal Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleDetails-Reveal.puml) 
 --- 
 
 - **User Profile/Account Management**
@@ -654,8 +654,8 @@ List the user documentation components (such as user manuals, on-line help, and 
     - Create raffle: Possibility to create a raffle for a selected asset.
     - 
  
-![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-MyAssets.puml) 
-![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-MyTickets.puml) 
+![UI-RaffleProfile-MyAssets Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-MyAssets.puml) 
+![UI-RaffleProfile-MyTickets Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-MyTickets.puml) 
 
  
 
@@ -668,7 +668,7 @@ List the user documentation components (such as user manuals, on-line help, and 
     - Preview and Confirmation: Before submission, a preview of the raffle for review and confirmation.
 
  
-![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-Create.puml) 
+![UI-RaffleProfile-Create Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-Create.puml) 
 
 
 --- 
@@ -713,3 +713,5 @@ nix run #tests
 
 nix run #cli
 ```
+
+

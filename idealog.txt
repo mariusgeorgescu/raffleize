@@ -37,3 +37,14 @@ convert state machine to atlas
 idee fractionalize nft -> make catalyst
 
 nft collateral is dependent by the max size of the datum
+
+
+
+TODOs
+
+Documentation :
+ - explain contracts and parameters (inspire from indigo)
+
+
+
+Backlog (Features, Optimizations, Deliverables)
