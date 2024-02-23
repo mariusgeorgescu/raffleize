@@ -3,7 +3,7 @@ module RaffleizeDApp.OnChain.RaffleizeLogic where
 import PlutusTx.Builtins (
   blake2b_256,
   divideInteger,
-  modInteger,
+  modInteger, serialiseData,
  )
 
 import GHC.Err (error)
@@ -35,7 +35,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
   raffleStateData,
  )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateLabel, ticketStateData)
-import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs, isTxOutWith, noConstraint)
+import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude hiding (error)
 
 raffleStakeValue :: RaffleStateData -> Value
@@ -186,7 +186,7 @@ evaluateRaffleState :: (POSIXTimeRange, RaffleStateData, Value) -> RaffleStateLa
 evaluateRaffleState (time_range, rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets, rRefundedTickets}, svalue) =
   let isBeforeCommitDDL = after (rCommitDDL rConfig) time_range
       isBetweenCommitAndRevealDDL = before (rCommitDDL rConfig) time_range && after (rRevealDDL rConfig) time_range
-      isStakeLocked = svalue `geq` rStake rConfig 
+      isStakeLocked = svalue `geq` rStake rConfig
       isCollectedAmmoutLocked = svalue `geq` raffleAccumulatedValue rsd
       outstandingFullRefunds = rRefundedTickets #< rSoldTickets
       outstandingExtraRefunds = rRefundedTickets #< rRevealedTickets
@@ -311,7 +311,7 @@ refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefunded
 {-# INLINEABLE refundTicketToRaffle #-}
 
 generateTicketTN :: Integer -> TokenName -> TokenName
-generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> integerToBs i))
+generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData )i)) -- TODO integerTOBS
 {-# INLINEABLE generateTicketTN #-}
 
 generateTicketAC :: Integer -> AssetClass -> AssetClass
@@ -352,11 +352,11 @@ isOneOutputTo _ _ = traceIfFalse "More than one ouput found" False
 {-# INLINEABLE isOneOutputTo #-}
 
 refTokenPrefxBS :: BuiltinByteString
-refTokenPrefxBS = integerToBs (0x000643b0 :: Integer)
+refTokenPrefxBS = integerToBs24 (0x000643b0 :: Integer)
 {-# INLINEABLE refTokenPrefxBS #-}
 
 userTokenPrefixBS :: BuiltinByteString
-userTokenPrefixBS = integerToBs (0x000de140 :: Integer)
+userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer)
 {-# INLINEABLE userTokenPrefixBS #-}
 
 hasRaffleDatumWithValue :: RaffleDatum -> Value -> Address -> [TxOut] -> Bool

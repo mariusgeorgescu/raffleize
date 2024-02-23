@@ -69,6 +69,7 @@ library
     RaffleizeDApp.TxBuilding.RaffleizeLookups
     RaffleizeDApp.TxBuilding.RaffleizeOperations
     RaffleizeDApp.TxBuilding.RaffleizeSkeletons
+    RaffleizeDApp.TxBuilding.Transactions
     RaffleizeDApp.TxBuilding.Utils
     RaffleizeDApp.TxBuilding.Validators
 
@@ -135,6 +136,7 @@ executable cli
     , aeson
     , bytestring
     , raffleize
+    , atlas-cardano
 
 test-suite tests
   import:         common

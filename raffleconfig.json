@@ -1,16 +1,16 @@
 {
-    "rCommitDDL": 100,
+    "rCommitDDL": 1708812438720,
     "rMinTickets": 5,
-    "rRevealDDL": 1000,
+    "rRevealDDL": 1708912438720,
     "rStake": [
         [
             {
-                "CurrencySymbol": "01f0ef87e344b733286dfce55cfd7e10c90b57a3b1825c984454ce6a"
+                "CurrencySymbol": "639b4fd69125a0dc2b64b2c406a206a920667d506a88643b58216b3f"
             },
             {
-                "TokenName": "Iron"
+                "TokenName": "teststake"
             },
-            100000
+            1
         ]
     ],
     "rTicketPrice": 15000000

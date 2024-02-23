@@ -1,10 +1,15 @@
 module RaffleizeDApp.TxBuilding.Context where
 
+import Control.Monad
+import Control.Monad.Reader
 import GeniusYield.GYConfig
 import GeniusYield.Imports
 import GeniusYield.Transaction
 import GeniusYield.TxBuilder
 import GeniusYield.Types
+import GeniusYield.Types.Key.Class
+import RaffleizeDApp.Constants
+import System.Environment
 
 -- | Our Context.
 data Ctx = Ctx
@@ -13,15 +18,15 @@ data Ctx = Ctx
   }
 
 -- | To run for simple queries, the one which don't requiring building for transaction skeleton.
-runQuery :: Ctx -> GYTxQueryMonadNode a -> IO a
-runQuery ctx q = do
+runQuery :: GYTxQueryMonadNode a -> ReaderT Ctx IO a
+runQuery q = do
+  ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
       providers = ctxProviders ctx
-  runGYTxQueryMonadNode nid providers q
+  liftIO $ runGYTxQueryMonadNode nid providers q
 
 -- | Wraps our skeleton under `Identity` and calls `runTxF`.
 runTxI ::
-  Ctx ->
   -- | User's used addresses.
   [GYAddress] ->
   -- | User's change address.
@@ -29,13 +34,12 @@ runTxI ::
   -- | Browser wallet's reserved collateral (if set).
   Maybe GYTxOutRefCbor ->
   GYTxMonadNode (GYTxSkeleton v) ->
-  IO GYTxBody
+  ReaderT Ctx IO GYTxBody
 runTxI = coerce (runTxF @Identity)
 
 -- | Tries to build for given skeletons wrapped under traversable structure.
 runTxF ::
   Traversable t =>
-  Ctx ->
   -- | User's used addresses.
   [GYAddress] ->
   -- | User's change address.
@@ -43,22 +47,56 @@ runTxF ::
   -- | Browser wallet's reserved collateral (if set).
   Maybe GYTxOutRefCbor ->
   GYTxMonadNode (t (GYTxSkeleton v)) ->
-  IO (t GYTxBody)
-runTxF ctx addrs addr collateral skeleton = do
+  ReaderT Ctx IO (t GYTxBody)
+runTxF addrs addr collateral skeleton = do
+  ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
       providers = ctxProviders ctx
-  runGYTxMonadNodeF
-    GYRandomImproveMultiAsset
-    nid
-    providers
-    addrs
-    addr
-    ( collateral
-        >>= ( \c ->
-                Just
-                  ( getTxOutRefHex c
-                  , False -- Make this as `False` to not do 5-ada-only check for value in this given UTxO to be used as collateral.
-                  )
-            )
-    )
-    skeleton
+  liftIO $
+    runGYTxMonadNodeF
+      GYRandomImproveMultiAsset
+      nid
+      providers
+      addrs
+      addr
+      ( collateral
+          >>= ( \c ->
+                  Just
+                    ( getTxOutRefHex c
+                    , False -- Make this as `False` to not do 5-ada-only check for value in this given UTxO to be used as collateral.
+                    )
+              )
+      )
+      skeleton
+
+-- | Getting path for our core configuration.
+parseArgs :: IO FilePath
+parseArgs = do
+  args <- getArgs
+  case args of
+    coreCfg : _ -> return coreCfg
+    _invalidArgument -> fail "Error: wrong arguments, needed a path to the CoreConfig JSON configuration file\n"
+
+-- | Getting path for our core configuration.
+getCoreConfiguration :: IO GYCoreConfig
+getCoreConfiguration = do
+  coreCfgPath <- parseArgs
+  coreConfigIO coreCfgPath
+
+-- | Getting path for our core configuration.
+readCoreConfiguration :: IO GYCoreConfig
+readCoreConfiguration = coreConfigIO atlasCoreConfig -- Parsing our core configuration.
+
+runContextWithCfgProviders :: GYLogNamespace -> ReaderT Ctx IO b -> IO b
+runContextWithCfgProviders s m = do
+  coreConfig <- readCoreConfiguration
+  withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
+    let ctx = Ctx coreConfig providers
+    runReaderT m ctx
+
+submitTxBody' :: (ToShelleyWitnessSigningKey a) => a -> ReaderT Ctx IO GYTxBody -> ReaderT Ctx IO ()
+submitTxBody' skey m = do
+  txBody <- m
+  ctxProviders <- asks ctxProviders
+  tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
+  liftIO $ printf "submitted tx: %s\n" tid
