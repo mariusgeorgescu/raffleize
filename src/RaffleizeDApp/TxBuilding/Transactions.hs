@@ -4,9 +4,17 @@ import Control.Monad.Reader
 import GeniusYield.Api.TestTokens (mintTestTokens)
 import GeniusYield.GYConfig
 import GeniusYield.Types
+import GeniusYield.Types.Key.Class
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.RaffleizeOperations (createRaffleTX)
+
+submitTxBody :: (ToShelleyWitnessSigningKey a) => a -> ReaderT Ctx IO GYTxBody -> ReaderT Ctx IO ()
+submitTxBody skey m = do
+  txBody <- m
+  ctxProviders <- asks ctxProviders
+  tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
+  liftIO $ printf "submitted tx: %s\n" tid
 
 queryGetAddressFromSkey :: GYPaymentSigningKey -> ReaderT Ctx IO GYAddress
 queryGetAddressFromSkey skey = do
@@ -37,11 +45,11 @@ buildMintTestTokensTx skey = do
 createRaffleTransaction :: FilePath -> RaffleConfig -> ReaderT Ctx IO ()
 createRaffleTransaction skey_file raffle_config = do
   skey <- liftIO $ readPaymentSigningKey skey_file
-  submitTxBody' skey $ buildCreateRaffleTx skey raffle_config
+  submitTxBody skey $ buildCreateRaffleTx skey raffle_config
 
 mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT Ctx IO ()
 mintTestTokensTransaction skey = do
-  submitTxBody' skey $ buildMintTestTokensTx skey
+  submitTxBody skey $ buildMintTestTokensTx skey
 
 -----------------------
 -----------------------

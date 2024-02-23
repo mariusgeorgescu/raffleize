@@ -7,7 +7,7 @@ import GeniusYield.Imports
 import GeniusYield.Transaction
 import GeniusYield.TxBuilder
 import GeniusYield.Types
-import GeniusYield.Types.Key.Class
+
 import RaffleizeDApp.Constants
 import System.Environment
 
@@ -93,10 +93,3 @@ runContextWithCfgProviders s m = do
   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
     let ctx = Ctx coreConfig providers
     runReaderT m ctx
-
-submitTxBody' :: (ToShelleyWitnessSigningKey a) => a -> ReaderT Ctx IO GYTxBody -> ReaderT Ctx IO ()
-submitTxBody' skey m = do
-  txBody <- m
-  ctxProviders <- asks ctxProviders
-  tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
-  liftIO $ printf "submitted tx: %s\n" tid
