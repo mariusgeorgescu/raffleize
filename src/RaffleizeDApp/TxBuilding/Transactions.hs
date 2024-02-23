@@ -25,10 +25,11 @@ queryGetAddressFromSkey skey = do
         address = addressFromPubKeyHash nid pub_key_hash
     return address
 
-queryGetAddressFromSkeyFile :: FilePath -> ReaderT Ctx IO GYAddress
+queryGetAddressFromSkeyFile :: FilePath -> ReaderT Ctx IO ()
 queryGetAddressFromSkeyFile skey_file = do
   skey <- liftIO $ readPaymentSigningKey skey_file
-  queryGetAddressFromSkey skey
+  addr <- queryGetAddressFromSkey skey
+  liftIO $ printf "Address: %s" (show addr)
 
 -- | Build a transaction for creating a new raffle.
 buildCreateRaffleTx :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO GYTxBody
