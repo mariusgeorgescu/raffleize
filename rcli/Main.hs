@@ -5,34 +5,28 @@ module Main where
 import Data.Aeson
 import Data.ByteString.Lazy qualified as B
 
+import GeniusYield.Types
 import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleConfig)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Transactions
-
-jsonFile :: FilePath
-jsonFile = "raffleconfig.json"
-
-getJSON :: IO B.ByteString
-getJSON = B.readFile jsonFile
+import System.Environment
 
 main :: IO () -- TODO (develop cli)
 main = do
-  bs <- getJSON
-  let raffle_config = fromJust $ decode @RaffleConfig bs
-  print raffle_config
-  skey_file <- parseArgs
-  void $ runContextWithCfgProviders "query address" $ queryGetAddressFromSkeyFile skey_file
+  args <- getArgs
+  case args of
+    [skey_file] -> do
+      skey <- readPaymentSigningKey skey_file
 
--- skey <- readPaymentSigningKey skey_file
-
--- -- withCfgProviders coreConfig ("mint" :: GYLogNamespace) $ \providers ->
--- --   do
--- --     let ctx = Ctx coreConfig providers
--- --     mintTestTokensTransaction ctx skey_file
--- withCfgProviders coreConfig ("Create" :: GYLogNamespace) $ \providers ->
---   do
---     let ctx = Ctx coreConfig providers
---     createRaffleTransaction ctx skey_file raffle_config
-
--- print addr
--- return ()
+      -- MINT TEST TOKENS
+      void $ runContextWithCfgProviders "mint test tokens" $ mintTestTokensTransaction skey
+      print ("TEST TOKENS MINTED" :: String)
+    [skey_file, raffle_config_file] -> do
+      -- CREATE RAFFLE
+      skey <- readPaymentSigningKey skey_file
+      bs <- B.readFile raffle_config_file
+      let raffle_config = fromJust $ decode @RaffleConfig bs
+      print raffle_config
+      void $ runContextWithCfgProviders "create raffle" $ createRaffleTransaction skey raffle_config
+      print ("RAFFLE CREATED" :: String)
+    _ -> error "cabal run cli <skey_file> <raffle_config_file>"

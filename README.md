@@ -790,7 +790,51 @@ cabal build
 
 cabal test
 
-cabal run cli
+```
+
+## 5. Try on Preview
+
+Create an account and obtain a preview token from : https://www.gomaestro.org/  
+On project root add "atlas_config.json"  with the following content:
+
+```
+{
+    "coreProvider": { "maestroToken": "YOUR PREVIEW TOKEN" },
+    "networkId": "testnet-preview",
+    "logging": [{ "type": { "tag": "stderr" }, "severity": "Debug", "verbosity": "V2" }],
+    "utxoCacheEnable": false
+  }
 ```
 
 
+On project root directory run:
+```
+cardano-cli address key-gen --signing-key-file marius.skey   --verification-key-file marius.vkey
+
+cardano-cli address build --payment-verification-key-file marius.vkey --testnet-magic 2 --out-file marius.addr
+
+cat marius.addr
+```
+
+Go to https://docs.cardano.org/cardano-testnet/tools/faucet/  and request funds for the previously created address.
+
+run the following command in project root directory -- this will mint some test tokens to the address
+```
+ cabal run cli -- marius.skey 
+
+```
+
+Go to https://preview.cexplorer.io/  get the newly minted tokens policy id and replace it the "CurrencySymbol" field of the raffleconfig.json
+Go to https://www.timestamp-converter.com/ and get a posix time within the next 36 hours and replace it in "rCommitDDL" field of the raffleconfig.json
+
+
+run the following command in project root directory -- this will create a new raffle
+```
+ cabal run cli -- marius.skey raffleconfig.json
+``` 
+
+Go to https://preview.cexplorer.io/ and check the Raffle NFT (referance and user NFTs metadata)
+
+
+
+example: https://preview.cexplorer.io/asset/asset1lkvgvd0ggh854t3vguvtdyealenx53jeh08xkn 

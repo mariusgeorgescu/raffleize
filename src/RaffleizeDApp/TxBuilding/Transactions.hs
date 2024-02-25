@@ -43,9 +43,12 @@ buildMintTestTokensTx skey = do
   my_addr <- queryGetAddressFromSkey skey
   runTxI [my_addr] my_addr Nothing $ snd <$> mintTestTokens "teststake" 100
 
-createRaffleTransaction :: FilePath -> RaffleConfig -> ReaderT Ctx IO ()
-createRaffleTransaction skey_file raffle_config = do
-  skey <- liftIO $ readPaymentSigningKey skey_file
+--------------------------
+--------------------------
+--------------------------
+
+createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO ()
+createRaffleTransaction skey raffle_config = do
   submitTxBody skey $ buildCreateRaffleTx skey raffle_config
 
 mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT Ctx IO ()

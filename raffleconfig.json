@@ -1,11 +1,11 @@
 {
-    "rCommitDDL": 1708812438720,
+    "rCommitDDL": 1708879814000,
     "rMinTickets": 5,
-    "rRevealDDL": 1708912438720,
+    "rRevealDDL": 2708912438720,
     "rStake": [
         [
             {
-                "CurrencySymbol": "639b4fd69125a0dc2b64b2c406a206a920667d506a88643b58216b3f"
+                "CurrencySymbol": "d39be1afd6270c6e0c56d384f30752d2b7157ac8b0bb7b47220cda33"
             },
             {
                 "TokenName": "teststake"
