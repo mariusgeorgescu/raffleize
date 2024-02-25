@@ -5,9 +5,8 @@ module RaffleizeDApp.OnChain.RaffleizeMintingPolicy where
 
 import PlutusCore.Version (plcVersion100)
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
-import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, geq)
+import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue)
 import PlutusLedgerApi.V2 (
-  Address,
   ScriptPurpose (Minting),
   TxOutRef,
  )
@@ -37,7 +36,6 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
 import RaffleizeDApp.OnChain.Utils (
   adaValueFromLovelaces,
   hasTxInWithRef,
-  hasTxOutWith,
   hasTxOutWithInlineDatumAnd,
   isBurningNFT,
   isMintingNFT,
@@ -47,7 +45,7 @@ import RaffleizeDApp.OnChain.Utils (
 
 -- | Custom redeemer type to indicate minting mode.
 data RaffleizeMintingReedemer
-  = MintRaffle RaffleConfig TxOutRef Address
+  = MintRaffle RaffleConfig TxOutRef
   | MintTicket AssetClass
   | Burn AssetClass
   deriving (Generic)
@@ -58,7 +56,7 @@ raffleizePolicyLambda :: RaffleParam -> RaffleizeMintingReedemer -> AScriptConte
 raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral} redeemer (AScriptContext ATxInfo {..} (Minting cs)) =
   let raffleValidatorAddress = scriptHashAddress rRaffleValidatorHash
    in case redeemer of
-        MintRaffle config@RaffleConfig {rStake} seedTxOutRef receiveAddr ->
+        MintRaffle config@RaffleConfig {rStake} seedTxOutRef ->
           let (raffleRefAC, raffleUserAC) = generateRefAndUserAC $ AssetClass (cs, tokenNameFromTxOutRef seedTxOutRef)
               raffleRefTokenValue = assetClassValue raffleRefAC 1
               raffleUserTokenValue = assetClassValue raffleUserAC 1
@@ -74,8 +72,6 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
                     isMintingNFT raffleUserAC txInfoMint
                 , traceIfFalse "Must lock new raffle state at Raffle Validator (with correct value and datum)" $
                     hasTxOutWithInlineDatumAnd newRaffleDatum (#== (raffleRefTokenValue #+ rStake #+ adaValueFromLovelaces rRaffleCollateral)) (#== raffleValidatorAddress) txInfoOutputs
-                , traceIfFalse "Must pay raffle user NFT to the user receiving address" $
-                    hasTxOutWith (`geq` raffleUserTokenValue) (#== receiveAddr) txInfoOutputs
                 ]
         MintTicket raffleID ->
           let raffleRefToken = assetClassValue raffleID 1

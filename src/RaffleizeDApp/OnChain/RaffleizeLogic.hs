@@ -3,7 +3,8 @@ module RaffleizeDApp.OnChain.RaffleizeLogic where
 import PlutusTx.Builtins (
   blake2b_256,
   divideInteger,
-  modInteger, serialiseData,
+  modInteger,
+  serialiseData,
  )
 
 import GHC.Err (error)
@@ -86,6 +87,7 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake `geq` mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
@@ -234,24 +236,19 @@ evaluateRaffleState (time_range, rsd@RaffleStateData {rConfig, rSoldTickets, rRe
 {-# INLINEABLE evaluateRaffleState #-}
 
 evalTicketState :: TicketStateData -> RaffleStateLabel -> TicketStateLabel
-evalTicketState tsd rs
-  | rs #== 3 -- REVEALING
-    =
-      5 -- ==> REVEALABLE
+evalTicketState TicketStateData {tSecret = Just _} _ = 6 --  ==> BURNABLE_BY_TICKET_OWNER
+evalTicketState TicketStateData {tSecret = Nothing} rs
+  | rs #== 3 = 5 -- ticket is unrevealed & raffle is in revealing ==> REVEALABLE
   | rs
       `pelem` [ 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
               , 21 -- UNDERFUNDED_LOCKED_REFUNDS
-              , 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-              , 42 -- SUCCESS_LOCKED_STAKE
               ] =
-      6 --  ==> BURNABLE_BY_TICKET_OWNER
+      6 -- -ticket is unrevealed & raffle is underfunded  ==> BURNABLE_BY_TICKET_OWNER
   | rs
       `pelem` [ 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
               , 31 -- UNREVEALED_LOCKED_REFUNDS
               ] =
-      if isJust (tSecret tsd) --- revealed ticket
-        then 6 -- ==> BURNABLE_BY_TICKET_OWNER
-        else 7 -- ==> BURNABLE_BY_RAFFLE_OWNER
+      7 -- ticket is unrevealed & raffle is unrevealed  ==> BURNABLE_BY_RAFFLE_OWNER
   | otherwise = 0 -- LOCKED ==> UNSPENDABLE
 {-# INLINEABLE evalTicketState #-}
 
@@ -311,7 +308,7 @@ refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefunded
 {-# INLINEABLE refundTicketToRaffle #-}
 
 generateTicketTN :: Integer -> TokenName -> TokenName
-generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData )i)) -- TODO integerTOBS
+generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData) i)) -- TODO integerTOBS
 {-# INLINEABLE generateTicketTN #-}
 
 generateTicketAC :: Integer -> AssetClass -> AssetClass
