@@ -1,0 +1,17 @@
+{
+    "rCommitDDL": 1708879814000,
+    "rMinTickets": 5,
+    "rRevealDDL": 2708912438720,
+    "rStake": [
+        [
+            {
+                "CurrencySymbol": "d39be1afd6270c6e0c56d384f30752d2b7157ac8b0bb7b47220cda33"
+            },
+            {
+                "TokenName": "teststake"
+            },
+            1
+        ]
+    ],
+    "rTicketPrice": 15000000
+}

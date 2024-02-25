@@ -1,0 +1,50 @@
+tokenomics
+swagger 
+browser client + terminal client
+...
+
+CRS/ oracle / crs with oracle fallback
+collateral for CRS
+different currencies for ticket price
+single secret for multiple tickets
+
+
+
+...
+ticket state diagram
+steal expired, underfunded, unrevealed
+validCollections :: [CurrencySymbol]
+updatable smart ctr parameters - ref inputs
+
+raffleTokenAssetClass must be an AssetClass of an NFT -> whitelist datum of ref inputs
+
+see nebula example.. think of a watcher
+
+
+De gasit solutie la UTXO Value size spam AKA Token Dust attack in donation. -> LIMITARE TRREBUIE PUSA LA BUY TICKETS / optional la create raffle
+	-> plus alte vurnerabilitati
+
+LIMITARE SECRET --- 256 biti
+
+
+policy pentru bilete... rez problema concurenta la buy and reveal + posibilitate de transfer ownership bilet
+
+token de rewards la reveal + fixed supply .. issue based on ticketprice and no of tickets.
+
+use state machine plutus
+convert state machine to atlas
+
+idee fractionalize nft -> make catalyst
+
+nft collateral is dependent by the max size of the datum
+
+
+
+TODOs
+
+Documentation :
+ - explain contracts and parameters (inspire from indigo)
+
+
+
+Backlog (Features, Optimizations, Deliverables)

@@ -24,23 +24,27 @@ import RaffleizeDApp.TxBuilding.Validators
 createRaffleTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => GYAddress -> RaffleConfig -> m (GYTxSkeleton 'PlutusV2, AssetClass)
 createRaffleTX recipient config@RaffleConfig {rCommitDDL, rStake} = do
   isValidByCommitDDL <- txIsValidByDDL rCommitDDL
-  let recipientPlutus = addressToPlutus recipient
   seedTxOutRef <- someUTxOWithoutRefScript
   let seedTxOutRefPlutus = txOutRefToPlutus seedTxOutRef
-  isMintingRaffleNFTs <- txNFTAction (MintRaffle config seedTxOutRefPlutus recipientPlutus)
+  isMintingRaffleNFTs <- txNFTAction (MintRaffle config seedTxOutRefPlutus)
   let (raffleRefTN, raffleUserTN) = generateRefAndUserTN $ tokenNameFromTxOutRef seedTxOutRefPlutus
-  let raffleRefAC = AssetClass (mintingPolicyCurrencySymbol raffleizeMintingPolicyGY, raffleRefTN)
+  let cs = mintingPolicyCurrencySymbol raffleizeMintingPolicyGY
+  let (raffleRefAC, raffleUserAC) = (AssetClass (cs, raffleRefTN), AssetClass (cs, raffleUserTN))
   let rsd = mkNewRaffle raffleRefAC mockRaffleParam config
   isLockingRaffleState <-
     txMustLockStateWithInlineDatumAndValue
       raffleizeValidatorGY
       (mkRaffleDatum rsd)
       (rStake #+ lovelaceValueOf (rRaffleCollateral mockRaffleParam) #+ assetClassValue raffleRefAC 1)
+  let raffleUserNFTp = assetClassValue raffleUserAC 1
+  raffleUserNFT <- valueFromPlutus' raffleUserNFTp
+  isGettingRaffleUserNFT <- txIsPayingValueToAddress recipient raffleUserNFT
   return
     ( mconcat
         [ isValidByCommitDDL
         , isMintingRaffleNFTs
         , isLockingRaffleState
+        , isGettingRaffleUserNFT
         ]
     , raffleRefAC
     )

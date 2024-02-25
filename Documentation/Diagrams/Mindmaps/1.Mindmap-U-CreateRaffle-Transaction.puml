@@ -76,7 +76,7 @@ TRANSACTION
 
 
 left side
-**_  **MintRaffle RaffleConfig TxOutRef Address**
+**_  **MintRaffle RaffleConfig TxOutRef**
 *** 📜Raffle Minting Policy <<minting>>
 
 
@@ -100,7 +100,7 @@ right side
 ====
 📝 Raffle State Data; <<datum>>
 
-** Address <<mandatory>>
+** 1  <<mandatory>>
 ***: VALUE
 ====
 🎫👦🏻 Raffle User NFT; <<value>>

@@ -36,9 +36,6 @@ node_modules
 .psci
 output
 
-# Other
-*.DS_STORE
-*.link
 
 
 # Plantuml
@@ -46,4 +43,11 @@ out
 
 .direnv
 
+# Other
+*.DS_STORE
+*.link
+
+idealog.txt
 result
+
+atlas_config.json

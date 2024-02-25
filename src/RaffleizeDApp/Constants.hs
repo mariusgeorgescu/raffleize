@@ -7,19 +7,22 @@ metadataVersion :: Integer
 metadataVersion = 1
 
 raffleImageURI :: BuiltinString
-raffleImageURI = "https://github.com/mariusgeorgescu.png"
+raffleImageURI = "ipfs://QmTmZCrE6PCCn1cUrxjEzcZEE73PEUh7eqCCCPhs1KwMH6"
 
 raffleDescription :: BuiltinString
-raffleDescription = "RAFFLE NFT Description"
+raffleDescription = "This is a tokenized raffle"
 
 raffleName :: BuiltinString
-raffleName = "RAFFLE NFT Description"
+raffleName = "RAFFLEIZE: RAFFLE OWNER NFT"
 
 ticketImageURI :: BuiltinString
-ticketImageURI = "https://github.com/mariusgeorgescu.png"
+ticketImageURI = "ipfs://QmYWtPVSDCfZp2KAtqZCfLP21WDSUrLB6rfmvByTcDqPJf"
 
 ticketDescription :: BuiltinString
-ticketDescription = "Ticket NFT Description"
+ticketDescription =  "This is a tokenized raffle ticket"
 
 ticketName :: BuiltinString
-ticketName = "Ticket NFT Description"
+ticketName = "RAFFLEIZE: TICKET OWNER NFT"
+
+atlasCoreConfig :: FilePath
+atlasCoreConfig = "atlas_config.json"

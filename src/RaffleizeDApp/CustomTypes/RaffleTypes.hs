@@ -1,5 +1,9 @@
 module RaffleizeDApp.CustomTypes.RaffleTypes where
 
+import Data.Aeson hiding (Value)
+import Data.Aeson qualified (Value)
+import Data.Aeson.Types qualified as Data.Aeson.Types.Internal
+import Data.String
 import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import PlutusTx
@@ -23,7 +27,49 @@ data RaffleConfig = RaffleConfig
   , rMinTickets :: Integer --- ^ The minimum number of tickets that must be sold for the raffle.
   , rStake :: Value --- ^ The raffle stake value.
   }
-  deriving (Generic, Eq)
+  deriving (Generic, Eq, ToJSON, FromJSON)
+
+instance ToJSON BuiltinByteString where
+  toJSON :: BuiltinByteString -> Data.Aeson.Value
+  toJSON bs = toJSON $ fromBuiltin (decodeUtf8 bs)
+
+instance FromJSON BuiltinByteString where
+  parseJSON :: Data.Aeson.Value -> Data.Aeson.Types.Internal.Parser BuiltinByteString
+  parseJSON v = encodeUtf8 . (toBuiltin @Text @BuiltinString) <$> parseJSON @Text v
+
+instance ToJSON POSIXTime where
+  toJSON :: POSIXTime -> Data.Aeson.Value
+  toJSON (POSIXTime i) = toJSON i
+
+instance FromJSON POSIXTime where
+  parseJSON :: Data.Aeson.Value -> Data.Aeson.Types.Internal.Parser POSIXTime
+  parseJSON v = POSIXTime <$> parseJSON @Integer v
+
+instance ToJSON TokenName where
+  toJSON :: TokenName -> Data.Aeson.Value
+  toJSON tn = object ["TokenName" .= toString tn]
+
+instance FromJSON TokenName where
+  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser TokenName
+  parseJSON = withObject "TokenName" $ \v -> fromString @TokenName <$> v .: "TokenName"
+
+instance ToJSON CurrencySymbol where
+  toJSON :: CurrencySymbol -> Data.Aeson.Value
+  toJSON cs = object ["CurrencySymbol" .= show cs]
+
+instance FromJSON CurrencySymbol where
+  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser CurrencySymbol
+  parseJSON = withObject "CurrencySymbol" $ \v -> fromString @CurrencySymbol <$> v .: "CurrencySymbol"
+
+instance ToJSON Value where
+  toJSON :: Value -> Data.Aeson.Value
+  toJSON value = toJSON $ flattenValue value
+
+instance FromJSON Value where
+  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser Value
+  parseJSON v =
+    let flattenedValue = parseJSON @[(CurrencySymbol, TokenName, Integer)] v
+     in unFlattenValue <$> flattenedValue
 
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 

@@ -91,7 +91,7 @@ txNFTAction :: (HasCallStack, GYTxMonad m) => RaffleizeMintingReedemer -> m (GYT
 txNFTAction redeemer = do
   let gyRedeemer = redeemerFromPlutus' . toBuiltinData $ redeemer
   case redeemer of
-    MintRaffle _ tor _ -> do
+    MintRaffle _ tor  -> do
       let (raffleRefTN, raffleUserTN) = generateRefAndUserTN $ tokenNameFromTxOutRef tor
       let raffleRefAC = AssetClass (mintingPolicyCurrencySymbol raffleizeMintingPolicyGY, raffleRefTN)
       let raffleUserAC = AssetClass (mintingPolicyCurrencySymbol raffleizeMintingPolicyGY, raffleUserTN)

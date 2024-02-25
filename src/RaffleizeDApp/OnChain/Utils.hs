@@ -2,7 +2,8 @@ module RaffleizeDApp.OnChain.Utils where
 
 import Data.List.Extra (intercalate)
 import PlutusLedgerApi.V1.Value (
-  AssetClass (unAssetClass),
+  AssetClass (AssetClass, unAssetClass),
+  CurrencySymbol,
   TokenName (..),
   Value,
   adaSymbol,
@@ -199,9 +200,9 @@ isBurningNFT ac txInfoMint = traceIfFalse "NFT not burned" $ assetClassValueOf t
 --     digitToBS d = consByteString (48 #+ fromInteger d) emptyByteString -- 48 is ASCII code for '0'
 -- {-# INLINEABLE integerToBs #-}
 
-integerToBs :: Integer -> BuiltinByteString
-integerToBs i = let i' = i #+ 24 in (dropByteString 1 . serialiseData . toBuiltinData) i' -- Removing First Byte and add 24 offset
-{-# INLINEABLE integerToBs #-}
+integerToBs24 :: Integer -> BuiltinByteString
+integerToBs24 = dropByteString 1 . serialiseData . toBuiltinData -- Removing First Byte  (works for value > 24)
+{-# INLINEABLE integerToBs24 #-}
 
 -- Convert a BuiltinByteString to an Integer, optimizing for memory usage
 bsToInteger :: BuiltinByteString -> Integer
@@ -281,7 +282,7 @@ spendsToken proofToken sc =
 {-# INLINEABLE spendsToken #-}
 
 tokenNameFromTxOutRef :: TxOutRef -> TokenName
-tokenNameFromTxOutRef (TxOutRef (TxId txIdbs) txIdx) = TokenName (takeByteString 28 $ blake2b_256 (txIdbs #<> integerToBs txIdx))
+tokenNameFromTxOutRef (TxOutRef (TxId txIdbs) txIdx) = TokenName (takeByteString 28 $ blake2b_256 (txIdbs #<> (serialiseData . toBuiltinData) txIdx))
 {-# INLINEABLE tokenNameFromTxOutRef #-}
 
 getOwnInput :: AScriptContext -> TxOut
@@ -300,3 +301,7 @@ findOwnInputA _ = Nothing
 adaValueFromLovelaces :: Integer -> Value
 adaValueFromLovelaces = singleton adaSymbol adaToken
 {-# INLINEABLE adaValueFromLovelaces #-}
+
+unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
+unFlattenValue [] = mempty
+unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
