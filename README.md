@@ -71,9 +71,6 @@ Table of Contents
     - [3.1 User Interfaces](#31-user-interfaces)
       - [General User Interface Characteristics:](#general-user-interface-characteristics)
       - [Key Components of the User Interface:](#key-components-of-the-user-interface)
-  - [](#)
-  - [](#-1)
-  - [](#-2)
     - [3.2 Software Interfaces](#32-software-interfaces)
   - [Appendix A: Glossary](#appendix-a-glossary)
       - [Definitions, Acronyms and Abbreviations](#definitions-acronyms-and-abbreviations)
@@ -739,7 +736,6 @@ List the user documentation components (such as user manuals, on-line help, and 
 
 
 ![UI-RaffleProfile-MyTickets Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-MyTickets.puml) 
-
  
 
 --- 
