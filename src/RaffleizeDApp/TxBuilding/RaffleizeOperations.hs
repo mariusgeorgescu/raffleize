@@ -50,25 +50,25 @@ createRaffleTX recipient config@RaffleConfig {rCommitDDL, rStake} = do
     )
 
 -- |  Buy Ticket Transaction
-buyTicketTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => GYTxOutRef -> SecretHash -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV2, AssetClass)
-buyTicketTX raffleScriptRef secretHash ownAddr raffleRefAC = do
+buyTicketTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => SecretHash -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV2, AssetClass)
+buyTicketTX secretHash raffleScriptRef ownAddr raffleRefAC = do
   (rsd, rValue) <- lookupRaffleStateDataAndValue raffleRefAC
   isValidByCommitDDL <- txIsValidByDDL (rCommitDDL . rConfig $ rsd)
   let buyRedeemer = User (BuyTicket secretHash)
-  spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC buyRedeemer raffleizeValidatorGY
+  spendsRaffleassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC buyRedeemer raffleizeValidatorGY
   let (new_rsd, new_tsd) = buyTicketToRaffle secretHash rsd (rRaffleValidatorHash . rParam $ rsd)
   isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) (rValue #+ raffleTicketPriceValue rsd)
   isMintingTicketRefAnUserNFTs <- txNFTAction (MintTicket raffleRefAC)
   let (ticketRefAC, ticketUserAC) = getNextTicketToMintAssetClasses rsd -- Generate ticket tokens based on no. of tickets sold.
-  let ticketRefNFTp = assetClassValue ticketRefAC 1
+  let ticketassetClassContextNFTp = assetClassValue ticketRefAC 1
   let ticketUserNFTp = assetClassValue ticketUserAC 1
   ticketUserNFT <- valueFromPlutus' ticketUserNFTp
-  isTicketStateLocked <- txMustLockStateWithInlineDatumAndValue ticketValidatorGY (mkTicketDatum new_tsd) (ticketRefNFTp #+ raffleTicketCollateralValue rsd)
+  isTicketStateLocked <- txMustLockStateWithInlineDatumAndValue ticketValidatorGY (mkTicketDatum new_tsd) (ticketassetClassContextNFTp #+ raffleTicketCollateralValue rsd)
   isGettingTicketUserNFT <- txIsPayingValueToAddress ownAddr ticketUserNFT
   return
     ( mconcat
         [ isValidByCommitDDL
-        , spendsRaffleRefNFT
+        , spendsRaffleassetClassContextNFT
         , isRaffleStateUpdated
         , isMintingTicketRefAnUserNFTs
         , isTicketStateLocked
@@ -84,13 +84,13 @@ buyTicketTX raffleScriptRef secretHash ownAddr raffleRefAC = do
 ------------------------------------------------------------------------------------------------
 
 -- |  Update Raffle Transaction
-updateRaffleTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> RaffleConfig -> m (GYTxSkeleton 'PlutusV2)
-updateRaffleTX raffleScriptRef ownAddr raffleRefAC newConfig = do
+updateRaffleTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => RaffleConfig -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV2)
+updateRaffleTX newConfig raffleScriptRef ownAddr raffleRefAC = do
   (rsd, rValue) <- lookupRaffleStateDataAndValue raffleRefAC
   let ddl = min (rCommitDDL . rConfig $ rsd) (rCommitDDL newConfig) -- minimum between initial and new commit deadline
   isValidByCommitDDL <- txIsValidByDDL ddl
   let updateRedeemer = RaffleOwner (Update newConfig)
-  spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC updateRedeemer raffleizeValidatorGY
+  spendsRaffleassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC updateRedeemer raffleizeValidatorGY
   let new_rsd = rsd {rConfig = newConfig}
   isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) rValue
   let raffleUserAC = deriveUserFromRefAC raffleRefAC
@@ -99,7 +99,7 @@ updateRaffleTX raffleScriptRef ownAddr raffleRefAC newConfig = do
   return $
     mconcat
       [ isValidByCommitDDL
-      , spendsRaffleRefNFT
+      , spendsRaffleassetClassContextNFT
       , spendsRaffleUserNFT
       , isRaffleStateUpdated
       ]
@@ -110,8 +110,8 @@ cancelRaffleTX raffleScriptRef ownAddr raffleRefAC = do
   (rsd, _rValue) <- lookupRaffleStateDataAndValue raffleRefAC
   isValidByCommitDDL <- txIsValidByDDL (rCommitDDL . rConfig $ rsd)
   let cancelRedeemer = RaffleOwner Cancel
-  spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC cancelRedeemer raffleizeValidatorGY
-  isBurningRaffleRefNFT <- txNFTAction (Burn raffleRefAC)
+  spendsRaffleassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC cancelRedeemer raffleizeValidatorGY
+  isBurningRaffleassetClassContextNFT <- txNFTAction (Burn raffleRefAC)
   let raffleUserAC = deriveUserFromRefAC raffleRefAC
   spendsRaffleUserNFT <- txMustSpendFromAddress raffleUserAC ownAddr
   isBurningRaffleUserNFT <- txNFTAction (Burn raffleUserAC)
@@ -121,9 +121,9 @@ cancelRaffleTX raffleScriptRef ownAddr raffleRefAC = do
   return $
     mconcat
       [ isValidByCommitDDL
-      , spendsRaffleRefNFT
+      , spendsRaffleassetClassContextNFT
       , spendsRaffleUserNFT
-      , isBurningRaffleRefNFT
+      , isBurningRaffleassetClassContextNFT
       , isBurningRaffleUserNFT
       , isGettingStakeValue
       ]
@@ -147,7 +147,7 @@ raffleOwnerClosingTX roa raffleScriptRef ownAddr raffleRefAC
       let redeemerAction = RaffleOwner roa
       (rsd, rValue) <- lookupRaffleStateDataAndValue raffleRefAC
       let newValue = updateRaffleStateValue redeemerAction rsd rValue
-      spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC redeemerAction raffleizeValidatorGY
+      spendsRaffleassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC redeemerAction raffleizeValidatorGY
       let raffleUserAC = deriveUserFromRefAC raffleRefAC
       isBurningRaffleUserNFT <- txNFTAction (Burn raffleUserAC)
       isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum rsd) newValue
@@ -155,7 +155,7 @@ raffleOwnerClosingTX roa raffleScriptRef ownAddr raffleRefAC
       isGettingTheDifference <- txIsPayingValueToAddress ownAddr diffValue
       return $
         mconcat
-          [ spendsRaffleRefNFT
+          [ spendsRaffleassetClassContextNFT
           , isRaffleStateUpdated
           , isBurningRaffleUserNFT
           , isGettingTheDifference
@@ -170,21 +170,21 @@ getCollateralOfExpiredTicketTX ticketScriptRef ownAddr ticketRefAC = do
   let raffleUserAC = deriveUserFromRefAC raffleRefAC
   spendsRaffleUserNFT <- txMustSpendFromAddress raffleUserAC ownAddr
   hasRaffleStateAsReferenceInput <- txMustHaveStateAsRefInput raffleRefAC raffleizeValidatorGY
-  spendsTicketRefNFT <-
+  spendsTicketassetClassContextNFT <-
     txMustSpendStateFromRefScriptWithRedeemer
       ticketScriptRef
       ticketRefAC
       (RaffleOwner GetCollateraOfExpiredTicket)
       ticketValidatorGY
-  isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)
+  isBurningTicketassetClassContextNFT <- txNFTAction (Burn ticketRefAC)
   ticketCollateralValue <- valueFromPlutus' tValue
   isGettingCollateralValue <- txIsPayingValueToAddress ownAddr ticketCollateralValue
   return $
     mconcat
       [ spendsRaffleUserNFT
       , hasRaffleStateAsReferenceInput
-      , spendsTicketRefNFT
-      , isBurningTicketRefNFT
+      , spendsTicketassetClassContextNFT
+      , isBurningTicketassetClassContextNFT
       , isGettingCollateralValue
       ]
 
@@ -195,15 +195,15 @@ getCollateralOfExpiredTicketTX ticketScriptRef ownAddr ticketRefAC = do
 ------------------------------------------------------------------------------------------------
 
 -- | Reveal Ticket Transaction
-revealTicketTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYTxOutRef -> Secret -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV2)
-revealTicketTX raffleScriptRef ticketScriptRef secret ownAddr ticketRefAC = do
+revealTicketTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => Secret -> GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV2)
+revealTicketTX secret raffleScriptRef ticketScriptRef ownAddr ticketRefAC = do
   (tsd, tValue) <- lookupTicketStateDataAndValue ticketRefAC
   let raffleRefAC = tRaffle tsd
   (rsd, rValue) <- lookupRaffleStateDataAndValue raffleRefAC
   isValidByRevealDDL <- txIsValidByDDL (rRevealDDL . rConfig $ rsd)
   let revealRedeemer = TicketOwner (RevealTicketSecret secret) ticketRefAC
-  spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC revealRedeemer raffleizeValidatorGY
-  spendsTicketRefNFT <- txMustSpendStateFromRefScriptWithRedeemer ticketScriptRef ticketRefAC revealRedeemer ticketValidatorGY
+  spendsRaffleassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC revealRedeemer raffleizeValidatorGY
+  spendsTicketassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer ticketScriptRef ticketRefAC revealRedeemer ticketValidatorGY
   let (new_rsd, new_tsd) = revealTicketToRaffleRT secret tsd rsd
   isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) rValue
   isTicketStateUpdated <- txMustLockStateWithInlineDatumAndValue ticketValidatorGY (mkTicketDatum new_tsd) tValue
@@ -214,9 +214,9 @@ revealTicketTX raffleScriptRef ticketScriptRef secret ownAddr ticketRefAC = do
   return
     ( mconcat
         [ isValidByRevealDDL
-        , spendsRaffleRefNFT
+        , spendsRaffleassetClassContextNFT
         , isRaffleStateUpdated
-        , spendsTicketRefNFT
+        , spendsTicketassetClassContextNFT
         , isTicketStateUpdated
         , isGettingTicketUserNFT
         ]
@@ -242,21 +242,21 @@ ticketOwnerClosingTX toa raffleScriptRef ticketScriptRef ownAddr ticketRefAC = d
   (tsd, _tValue) <- lookupTicketStateDataAndValue ticketRefAC
   let raffleRefAC = tRaffle tsd
   (rsd, rValue) <- lookupRaffleStateDataAndValue raffleRefAC
-  spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC redeemerAction raffleizeValidatorGY
-  spendsTicketRefNFT <- txMustSpendStateFromRefScriptWithRedeemer ticketScriptRef ticketRefAC redeemerAction ticketValidatorGY
+  spendsRaffleassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC redeemerAction raffleizeValidatorGY
+  spendsTicketassetClassContextNFT <- txMustSpendStateFromRefScriptWithRedeemer ticketScriptRef ticketRefAC redeemerAction ticketValidatorGY
   let newValue = updateRaffleStateValue redeemerAction rsd rValue
   isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum rsd) newValue
   let ticketUserAC = deriveUserFromRefAC ticketRefAC
   isBurningTicketUserNFT <- txNFTAction (Burn ticketUserAC)
-  isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)
+  isBurningTicketassetClassContextNFT <- txNFTAction (Burn ticketRefAC)
   diffValue <- valueFromPlutus' (rValue #- newValue)
   isGettingStakeAndTicketCollateral <- txIsPayingValueToAddress ownAddr diffValue
   return
     ( mconcat
-        [ spendsRaffleRefNFT
-        , spendsTicketRefNFT
+        [ spendsRaffleassetClassContextNFT
+        , spendsTicketassetClassContextNFT
         , isRaffleStateUpdated
-        , isBurningTicketRefNFT
+        , isBurningTicketassetClassContextNFT
         , isBurningTicketUserNFT
         , isGettingStakeAndTicketCollateral
         ]
@@ -269,21 +269,21 @@ refundCollateralOfLosingTicketTX ticketScriptRef ownAddr ticketRefAC = do
   let raffleRefAC = tRaffle tsd
   let ticketUserAC = deriveUserFromRefAC ticketRefAC
   hasRaffleStateAsReferenceInput <- txMustHaveStateAsRefInput raffleRefAC raffleizeValidatorGY
-  spendsTicketRefNFT <-
+  spendsTicketassetClassContextNFT <-
     txMustSpendStateFromRefScriptWithRedeemer
       ticketScriptRef
       ticketRefAC
       (TicketOwner RefundCollateralLosing ticketRefAC)
       ticketValidatorGY
-  isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)
+  isBurningTicketassetClassContextNFT <- txNFTAction (Burn ticketRefAC)
   isBurningTicketUserNFT <- txNFTAction (Burn ticketUserAC)
   ticketCollateralValue <- valueFromPlutus' tValue
   isGettingCollateralValue <- txIsPayingValueToAddress ownAddr ticketCollateralValue
   return $
     mconcat
       [ hasRaffleStateAsReferenceInput
-      , spendsTicketRefNFT
-      , isBurningTicketRefNFT
+      , spendsTicketassetClassContextNFT
+      , isBurningTicketassetClassContextNFT
       , isBurningTicketUserNFT
       , isGettingCollateralValue
       ]
@@ -293,3 +293,38 @@ refundCollateralOfLosingTicketTX ticketScriptRef ownAddr ticketRefAC = do
 -- * Admin  Actions
 
 ------------------------------------------------------------------------------------------------
+
+data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
+  { raffleValidatorRef :: GYTxOutRef
+  , ticketValidatorRef :: GYTxOutRef
+  , userOwnAddress :: GYAddress
+  , assetClassContextNFT :: AssetClass
+  -- ^ either ticket or raffle ref
+  }
+
+actionToTxSkeleton :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => RaffleizeTxBuildingContext -> RaffleizeAction -> m (GYTxSkeleton 'PlutusV2)
+actionToTxSkeleton RaffleizeTxBuildingContext {raffleValidatorRef, userOwnAddress, ticketValidatorRef, assetClassContextNFT} action = do
+  let withTicket f = f ticketValidatorRef userOwnAddress assetClassContextNFT
+  let withRaffle f = f raffleValidatorRef userOwnAddress assetClassContextNFT
+  let withRaffleAndTicket f = f raffleValidatorRef ticketValidatorRef userOwnAddress assetClassContextNFT
+  case action of
+    User userAction -> case userAction of
+      CreateRaffle raffleConfig -> fst <$> createRaffleTX userOwnAddress raffleConfig
+      BuyTicket secretHash -> fst <$> buyTicketTX secretHash raffleValidatorRef userOwnAddress assetClassContextNFT
+    TicketOwner ticketOwnerAction tid -> do
+      if tid == assetClassContextNFT
+        then case ticketOwnerAction of
+          RevealTicketSecret secret -> withRaffleAndTicket (revealTicketTX secret)
+          CollectStake -> withRaffleAndTicket winnerCollectStakeTX
+          RefundTicket -> withRaffleAndTicket fullRefundTicketTX
+          RefundTicketExtra -> withRaffleAndTicket extraRefundTicketTX
+          RefundCollateralLosing -> withTicket refundCollateralOfLosingTicketTX
+        else error "nvalid"
+    RaffleOwner raffleOwnerAction -> case raffleOwnerAction of
+      Update newRaffleConfig -> withRaffle (updateRaffleTX newRaffleConfig)
+      Cancel -> withRaffle cancelRaffleTX
+      RecoverStake -> withRaffle recoverStakeTX
+      RecoverStakeAndAmount -> withRaffle recoverStakeAndAmountTX
+      CollectAmount -> withRaffle collectAmountTX
+      GetCollateraOfExpiredTicket -> withTicket getCollateralOfExpiredTicketTX
+    Admin CloseRaffle -> undefined -- TODO

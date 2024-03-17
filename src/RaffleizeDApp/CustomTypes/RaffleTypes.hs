@@ -4,6 +4,7 @@ import Data.Aeson hiding (Value)
 import Data.Aeson qualified (Value)
 import Data.Aeson.Types qualified as Data.Aeson.Types.Internal
 import Data.String
+
 import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import PlutusTx
@@ -70,6 +71,16 @@ instance FromJSON Value where
   parseJSON v =
     let flattenedValue = parseJSON @[(CurrencySymbol, TokenName, Integer)] v
      in unFlattenValue <$> flattenedValue
+
+instance ToJSON AssetClass where
+  toJSON :: AssetClass -> Data.Aeson.Value
+  toJSON (AssetClass ac) = toJSON ac
+
+instance FromJSON AssetClass where
+  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser AssetClass
+  parseJSON v =
+    let ac = parseJSON @(CurrencySymbol, TokenName) v
+     in AssetClass <$> ac
 
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 

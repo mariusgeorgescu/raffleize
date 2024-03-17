@@ -63,7 +63,7 @@ createRaffleTXRun config = do
 buyTicketTXRun :: GYTxOutRef -> SecretHash -> AssetClass -> GYTxMonadRun AssetClass
 buyTicketTXRun scriptRef secretHash raffleRefAC = do
   ownAddr <- ownAddress
-  (skeleton, ticketRefAC) <- buyTicketTX scriptRef secretHash ownAddr raffleRefAC
+  (skeleton, ticketRefAC) <- buyTicketTX secretHash scriptRef ownAddr raffleRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
   return ticketRefAC
 
@@ -76,7 +76,7 @@ buyTicketTXRun scriptRef secretHash raffleRefAC = do
 updateRaffleTXRun :: GYTxOutRef -> AssetClass -> RaffleConfig -> GYTxMonadRun ()
 updateRaffleTXRun scriptRef raffleRefAC newConfig = do
   ownAddr <- ownAddress
-  skeleton <- updateRaffleTX scriptRef ownAddr raffleRefAC newConfig
+  skeleton <- updateRaffleTX newConfig scriptRef ownAddr raffleRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 cancelRaffleTXRun :: GYTxOutRef -> AssetClass -> GYTxMonadRun ()
@@ -94,7 +94,7 @@ cancelRaffleTXRun scriptRef raffleRefAC = do
 revealTicketTXRun :: GYTxOutRef -> GYTxOutRef -> Secret -> AssetClass -> GYTxMonadRun ()
 revealTicketTXRun raffleScriptRef ticketScriptRef secret ticketRefAC = do
   ownAddr <- ownAddress
-  skeleton <- revealTicketTX raffleScriptRef ticketScriptRef secret ownAddr ticketRefAC
+  skeleton <- revealTicketTX secret raffleScriptRef ticketScriptRef ownAddr ticketRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 collectAmountTXRun :: GYTxOutRef -> AssetClass -> GYTxMonadRun ()

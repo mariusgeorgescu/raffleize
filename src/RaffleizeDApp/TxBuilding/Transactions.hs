@@ -1,15 +1,34 @@
 module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
+
 import GeniusYield.Api.TestTokens (mintTestTokens)
 import GeniusYield.GYConfig
 import GeniusYield.Types
 import GeniusYield.Types.Key.Class
+
+import RaffleizeDApp.CustomTypes.ActionTypes (RaffleizeAction)
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.TxBuilding.Context
-import RaffleizeDApp.TxBuilding.RaffleizeOperations (createRaffleTX)
+import RaffleizeDApp.TxBuilding.RaffleizeOperations
 
-submitTxBody :: (ToShelleyWitnessSigningKey a) => a -> ReaderT Ctx IO GYTxBody -> ReaderT Ctx IO ()
+actionToTxBody :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTxBody
+actionToTxBody raffleizeTxContext usecase = do
+  let addr = userOwnAddress raffleizeTxContext
+  runTxI [addr] addr Nothing (actionToTxSkeleton raffleizeTxContext usecase)
+
+actionToUnsignedTx :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTx
+actionToUnsignedTx  raffleizeTxContext usecase  = unsignedTx <$> actionToTxBody raffleizeTxContext usecase 
+
+actionToHexEncodedCBOR :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO String
+actionToHexEncodedCBOR  raffleizeTxContext usecase  = txToHex <$> actionToUnsignedTx raffleizeTxContext usecase 
+
+
+
+-----------------
+
+
+submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader Ctx m) => a -> m GYTxBody -> m ()
 submitTxBody skey m = do
   txBody <- m
   ctxProviders <- asks ctxProviders

@@ -92,6 +92,7 @@ raffleizeValidatorLamba
                 hasTxOutWithInlineDatumAnd (mkTicketDatum newStateData) (#== newValue) (#== ticketValidatorAddr) txInfoOutputs
          in validateRaffleAction redeemer currentStateLabel -- Must be a valid action for the raffle state.
               && case redeemer of
+                User (CreateRaffle _) -> traceIfFalse "invalid redemeer" False
                 User (BuyTicket secret) ->
                   let (ticketRefAC, ticketUserAC) = getNextTicketToMintAssetClasses rsd -- Generate tickets  based on no. of tickets sold.
                       ticketRefNFT = assetClassValue ticketRefAC 1

@@ -141,6 +141,7 @@ validateRaffleAction action currentStateLabel =
   let invalidActionError = "invalid action for validator"
    in traceIfFalse "Action not permited in this raffle state" $
         currentStateLabel `pelem` case action of
+          User (CreateRaffle _) -> traceError invalidActionError
           User (BuyTicket _) ->
             [ 1 -- NEW
             , 2 -- COMMIT
