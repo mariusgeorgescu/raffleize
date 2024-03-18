@@ -11,6 +11,15 @@ import GeniusYield.Types
 import RaffleizeDApp.Constants
 import System.Environment
 
+data UserAddresses = UserAddresses
+  { usedAddresses :: [GYAddress]
+  -- ^ User's used addresses.
+  , changeAddress :: GYAddress
+  -- ^ User's change address.
+  , reservedCollateral :: Maybe GYTxOutRefCbor
+  -- ^ Browser wallet's reserved collateral (if set).
+  }
+
 -- | Our Context.
 data Ctx = Ctx
   { ctxCoreCfg :: !GYCoreConfig
@@ -27,12 +36,7 @@ runQuery q = do
 
 -- | Wraps our skeleton under `Identity` and calls `runTxF`.
 runTxI ::
-  -- | User's used addresses.
-  [GYAddress] ->
-  -- | User's change address.
-  GYAddress ->
-  -- | Browser wallet's reserved collateral (if set).
-  Maybe GYTxOutRefCbor ->
+  UserAddresses ->
   GYTxMonadNode (GYTxSkeleton v) ->
   ReaderT Ctx IO GYTxBody
 runTxI = coerce (runTxF @Identity)
@@ -40,15 +44,10 @@ runTxI = coerce (runTxF @Identity)
 -- | Tries to build for given skeletons wrapped under traversable structure.
 runTxF ::
   Traversable t =>
-  -- | User's used addresses.
-  [GYAddress] ->
-  -- | User's change address.
-  GYAddress ->
-  -- | Browser wallet's reserved collateral (if set).
-  Maybe GYTxOutRefCbor ->
+  UserAddresses ->
   GYTxMonadNode (t (GYTxSkeleton v)) ->
   ReaderT Ctx IO (t GYTxBody)
-runTxF addrs addr collateral skeleton = do
+runTxF UserAddresses {usedAddresses, changeAddress, reservedCollateral} skeleton = do
   ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
       providers = ctxProviders ctx
@@ -57,9 +56,9 @@ runTxF addrs addr collateral skeleton = do
       GYRandomImproveMultiAsset
       nid
       providers
-      addrs
-      addr
-      ( collateral
+      usedAddresses
+      changeAddress
+      ( reservedCollateral
           >>= ( \c ->
                   Just
                     ( getTxOutRefHex c

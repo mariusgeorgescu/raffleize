@@ -54,16 +54,16 @@ mintTestsTokenRun tn i = do
 
 createRaffleTXRun :: RaffleConfig -> GYTxMonadRun AssetClass
 createRaffleTXRun config = do
-  ownAddr <- ownAddress
-  (skeleton, raflleId) <- createRaffleTX ownAddr config
+  recipient <- ownAddress
+  (skeleton, raflleId) <- createRaffleTX recipient config
   void $
     sendSkeleton skeleton `catchError` (error . show)
   return raflleId
 
 buyTicketTXRun :: GYTxOutRef -> SecretHash -> AssetClass -> GYTxMonadRun AssetClass
 buyTicketTXRun scriptRef secretHash raffleRefAC = do
-  ownAddr <- ownAddress
-  (skeleton, ticketRefAC) <- buyTicketTX secretHash scriptRef ownAddr raffleRefAC
+  recipient <- ownAddress
+  (skeleton, ticketRefAC) <- buyTicketTX secretHash scriptRef recipient raffleRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
   return ticketRefAC
 
@@ -75,14 +75,15 @@ buyTicketTXRun scriptRef secretHash raffleRefAC = do
 
 updateRaffleTXRun :: GYTxOutRef -> AssetClass -> RaffleConfig -> GYTxMonadRun ()
 updateRaffleTXRun scriptRef raffleRefAC newConfig = do
-  ownAddr <- ownAddress
-  skeleton <- updateRaffleTX newConfig scriptRef ownAddr raffleRefAC
+  ownAddrs <- ownAddresses
+  skeleton <- updateRaffleTX newConfig scriptRef ownAddrs raffleRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 cancelRaffleTXRun :: GYTxOutRef -> AssetClass -> GYTxMonadRun ()
 cancelRaffleTXRun scriptRef raffleRefAC = do
-  ownAddr <- ownAddress
-  skeleton <- cancelRaffleTX scriptRef ownAddr raffleRefAC `catchError` (error . show)
+  recipient <- ownAddress
+  ownAddrs <- ownAddresses
+  skeleton <- cancelRaffleTX scriptRef ownAddrs recipient raffleRefAC `catchError` (error . show)
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 ------------------------------------------------------------------------------------------------
@@ -93,20 +94,20 @@ cancelRaffleTXRun scriptRef raffleRefAC = do
 
 revealTicketTXRun :: GYTxOutRef -> GYTxOutRef -> Secret -> AssetClass -> GYTxMonadRun ()
 revealTicketTXRun raffleScriptRef ticketScriptRef secret ticketRefAC = do
-  ownAddr <- ownAddress
-  skeleton <- revealTicketTX secret raffleScriptRef ticketScriptRef ownAddr ticketRefAC
+  recipient <- ownAddress
+  skeleton <- revealTicketTX secret raffleScriptRef ticketScriptRef recipient ticketRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 collectAmountTXRun :: GYTxOutRef -> AssetClass -> GYTxMonadRun ()
 collectAmountTXRun scriptRef raffleRefAC = do
-  ownAddr <- ownAddress
-  skeleton <- collectAmountTX scriptRef ownAddr raffleRefAC
+  recipient <- ownAddress
+  skeleton <- collectAmountTX scriptRef recipient  raffleRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 winnerCollectStakeTXRun :: GYTxOutRef -> GYTxOutRef -> AssetClass -> GYTxMonadRun ()
 winnerCollectStakeTXRun raffleScriptRef ticketScriptRef ticketRefAC = do
-  ownAddr <- ownAddress
-  skeleton <- winnerCollectStakeTX raffleScriptRef ticketScriptRef ownAddr ticketRefAC
+  recipient <- ownAddress
+  skeleton <- winnerCollectStakeTX raffleScriptRef ticketScriptRef recipient ticketRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 ----------------------

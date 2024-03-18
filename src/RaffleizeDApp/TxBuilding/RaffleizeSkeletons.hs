@@ -62,10 +62,10 @@ txMustHaveStateAsRefInput stateTokenId gyValidator = do
   stateUTxO <- lookuptUTxOWithStateToken stateTokenId gyValidator
   return $ mustHaveRefInput (utxoRef stateUTxO)
 
-txMustSpendFromAddress :: (HasCallStack, GYTxMonad m) => AssetClass -> GYAddress -> m (GYTxSkeleton 'PlutusV2)
-txMustSpendFromAddress tokenId addr = do
+txMustSpendFromAddress :: (HasCallStack, GYTxMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV2)
+txMustSpendFromAddress tokenId addrs = do
   do
-    tokenUtxo <- lookupTxOWithTokenAtAddress tokenId addr
+    tokenUtxo <- lookupTxOWithTokenAtAddresses tokenId addrs
     return $
       mustHaveInput
         GYTxIn

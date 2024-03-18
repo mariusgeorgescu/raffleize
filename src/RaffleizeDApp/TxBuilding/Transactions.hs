@@ -7,26 +7,71 @@ import GeniusYield.GYConfig
 import GeniusYield.Types
 import GeniusYield.Types.Key.Class
 
-import RaffleizeDApp.CustomTypes.ActionTypes (RaffleizeAction)
+import GHC.Stack
+import GeniusYield.TxBuilder
+import PlutusLedgerApi.V1.Value
+import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.RaffleizeOperations
 
-actionToTxBody :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTxBody
-actionToTxBody raffleizeTxContext usecase = do
-  let addr = userOwnAddress raffleizeTxContext
-  runTxI [addr] addr Nothing (actionToTxSkeleton raffleizeTxContext usecase)
+data RaffleizeInteraction = RaffleizeInteraction
+  { interactionContextNFT :: Maybe AssetClass
+  -- ^ The @AssetClass@ of the Raffle or Ticket the ticket which are in scope of the interaction (if set).
+  , raffleizeAction :: RaffleizeAction
+  -- ^ The @RaffleizeAction@ is the intented action to perfrom.
+  , userAddresses :: UserAddresses
+  -- ^ The user addresses to be used as input for transaction building.
+  }
 
-actionToUnsignedTx :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTx
-actionToUnsignedTx  raffleizeTxContext usecase  = unsignedTx <$> actionToTxBody raffleizeTxContext usecase 
+data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
+  { raffleValidatorRef :: GYTxOutRef
+  , ticketValidatorRef :: GYTxOutRef
+  }
 
-actionToHexEncodedCBOR :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO String
-actionToHexEncodedCBOR  raffleizeTxContext usecase  = txToHex <$> actionToUnsignedTx raffleizeTxContext usecase 
+actionToTxSkeleton :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => RaffleizeTxBuildingContext -> RaffleizeInteraction -> m (GYTxSkeleton 'PlutusV2)
+actionToTxSkeleton
+  RaffleizeTxBuildingContext {raffleValidatorRef, ticketValidatorRef}
+  RaffleizeInteraction {interactionContextNFT, raffleizeAction, userAddresses} = do
+    let contextNFT = fromJust interactionContextNFT
+    let userUsedAddresses = usedAddresses userAddresses
+    let userChangeAddress = changeAddress userAddresses
+    let withTicket f = f ticketValidatorRef userUsedAddresses userChangeAddress contextNFT
+    let withTicket' f = f ticketValidatorRef userChangeAddress contextNFT
+    let withRaffle f = f raffleValidatorRef userUsedAddresses userChangeAddress contextNFT
+    let withRaffle'' f = f raffleValidatorRef userUsedAddresses contextNFT
+    let withRaffle' f = f raffleValidatorRef userChangeAddress contextNFT
+    let withRaffleAndTicket f = f raffleValidatorRef ticketValidatorRef userChangeAddress contextNFT
+    case raffleizeAction of
+      User userAction -> case userAction of
+        CreateRaffle raffleConfig -> fst <$> createRaffleTX userChangeAddress raffleConfig
+        BuyTicket secretHash -> fst <$> buyTicketTX secretHash raffleValidatorRef userChangeAddress contextNFT
+      TicketOwner ticketOwnerAction _tid -> case ticketOwnerAction of
+        RevealTicketSecret secret -> withRaffleAndTicket (revealTicketTX secret)
+        CollectStake -> withRaffleAndTicket winnerCollectStakeTX
+        RefundTicket -> withRaffleAndTicket fullRefundTicketTX
+        RefundTicketExtra -> withRaffleAndTicket extraRefundTicketTX
+        RefundCollateralLosing -> withTicket' refundCollateralOfLosingTicketTX
+      RaffleOwner raffleOwnerAction -> case raffleOwnerAction of
+        Update newRaffleConfig -> withRaffle'' (updateRaffleTX newRaffleConfig)
+        Cancel -> withRaffle cancelRaffleTX
+        RecoverStake -> withRaffle' recoverStakeTX
+        RecoverStakeAndAmount -> withRaffle' recoverStakeAndAmountTX
+        CollectAmount -> withRaffle' collectAmountTX
+        GetCollateraOfExpiredTicket -> withTicket getCollateralOfExpiredTicketTX
+      Admin CloseRaffle -> undefined -- TODO
 
+-- actionToTxBody :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTxBody
+-- actionToTxBody txCtx@RaffleizeTxBuildingContext {userUsedAddresses, userChangeAddress} usecase = do
+--   runTxI userUsedAddresses userChangeAddress Nothing (actionToTxSkeleton txCtx usecase)
 
+-- actionToUnsignedTx :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTx
+-- actionToUnsignedTx raffleizeTxContext usecase = unsignedTx <$> actionToTxBody raffleizeTxContext usecase
+
+-- actionToHexEncodedCBOR :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO String
+-- actionToHexEncodedCBOR raffleizeTxContext usecase = txToHex <$> actionToUnsignedTx raffleizeTxContext usecase
 
 -----------------
-
 
 submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader Ctx m) => a -> m GYTxBody -> m ()
 submitTxBody skey m = do
@@ -54,13 +99,13 @@ queryGetAddressFromSkeyFile skey_file = do
 buildCreateRaffleTx :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO GYTxBody
 buildCreateRaffleTx skey raffleConfiguration = do
   my_addr <- queryGetAddressFromSkey skey
-  runTxI [my_addr] my_addr Nothing (fst <$> createRaffleTX my_addr raffleConfiguration)
+  runTxI (UserAddresses [my_addr] my_addr Nothing) (fst <$> createRaffleTX my_addr raffleConfiguration)
 
 -- | Build a transaction for creating a new raffle.
 buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT Ctx IO GYTxBody
 buildMintTestTokensTx skey = do
   my_addr <- queryGetAddressFromSkey skey
-  runTxI [my_addr] my_addr Nothing $ snd <$> mintTestTokens "teststake" 100
+  runTxI (UserAddresses [my_addr] my_addr Nothing) $ snd <$> mintTestTokens "teststake" 100
 
 --------------------------
 --------------------------
