@@ -22,6 +22,8 @@ data RaffleizeInteraction = RaffleizeInteraction
   -- ^ The @RaffleizeAction@ is the intented action to perfrom.
   , userAddresses :: UserAddresses
   -- ^ The user addresses to be used as input for transaction building.
+  , recipient :: Maybe GYAddress
+  -- ^ If the interaction unlocks some funds, the funds will be sent to this address (if set, otherwise to the change address).
   }
 
 data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
