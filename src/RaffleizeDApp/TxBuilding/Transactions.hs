@@ -46,7 +46,7 @@ actionToTxSkeleton
       User userAction -> case userAction of
         CreateRaffle raffleConfig -> fst <$> createRaffleTX userChangeAddress raffleConfig
         BuyTicket secretHash -> fst <$> buyTicketTX secretHash raffleValidatorRef userChangeAddress contextNFT
-      TicketOwner ticketOwnerAction _tid -> case ticketOwnerAction of
+      TicketOwner ticketOwnerAction  -> case ticketOwnerAction of
         RevealTicketSecret secret -> withRaffleAndTicket (revealTicketTX secret)
         CollectStake -> withRaffleAndTicket winnerCollectStakeTX
         RefundTicket -> withRaffleAndTicket fullRefundTicketTX

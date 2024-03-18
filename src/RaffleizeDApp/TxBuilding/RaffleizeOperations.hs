@@ -7,7 +7,7 @@ import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, revealTicketToRaffleRT, updateRaffleStateValue)
+import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, revealTicketToRaffleRT, updateRaffleStateValue, redeemerToAction)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.RaffleizeLookups
@@ -201,7 +201,7 @@ revealTicketTX secret raffleScriptRef ticketScriptRef ownAddr ticketRefAC = do
   let raffleRefAC = tRaffle tsd
   (rsd, rValue) <- lookupRaffleStateDataAndValue raffleRefAC
   isValidByRevealDDL <- txIsValidByDDL (rRevealDDL . rConfig $ rsd)
-  let revealRedeemer = TicketOwner (RevealTicketSecret secret) ticketRefAC
+  let revealRedeemer = TicketOwnerRedeemer (RevealTicketSecret secret) ticketRefAC
   spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC revealRedeemer raffleizeValidatorGY
   spendsTicketRefNFT <- txMustSpendStateFromRefScriptWithRedeemer ticketScriptRef ticketRefAC revealRedeemer ticketValidatorGY
   let (new_rsd, new_tsd) = revealTicketToRaffleRT secret tsd rsd
@@ -238,13 +238,13 @@ extraRefundTicketTX = ticketOwnerClosingTX RefundTicketExtra
 ticketOwnerClosingTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => TicketOwnerAction -> GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV2)
 ticketOwnerClosingTX toa raffleScriptRef ticketScriptRef ownAddr ticketRefAC = do
   unless (toa `elem` [CollectStake, RefundTicket, RefundTicketExtra]) $ error "Invalid Ticket Owner Action"
-  let redeemerAction = TicketOwner toa ticketRefAC
+  let redeemerAction = TicketOwnerRedeemer toa ticketRefAC
   (tsd, _tValue) <- lookupTicketStateDataAndValue ticketRefAC
   let raffleRefAC = tRaffle tsd
   (rsd, rValue) <- lookupRaffleStateDataAndValue raffleRefAC
   spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC redeemerAction raffleizeValidatorGY
   spendsTicketRefNFT <- txMustSpendStateFromRefScriptWithRedeemer ticketScriptRef ticketRefAC redeemerAction ticketValidatorGY
-  let newValue = updateRaffleStateValue redeemerAction rsd rValue
+  let newValue = updateRaffleStateValue (redeemerToAction redeemerAction) rsd rValue
   isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum rsd) newValue
   let ticketUserAC = deriveUserFromRefAC ticketRefAC
   isBurningTicketUserNFT <- txNFTAction (Burn ticketUserAC)
@@ -273,7 +273,7 @@ refundCollateralOfLosingTicketTX ticketScriptRef ownAddr ticketRefAC = do
     txMustSpendStateFromRefScriptWithRedeemer
       ticketScriptRef
       ticketRefAC
-      (TicketOwner RefundCollateralLosing ticketRefAC)
+      (TicketOwnerRedeemer RefundCollateralLosing ticketRefAC)
       ticketValidatorGY
   isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)
   isBurningTicketUserNFT <- txNFTAction (Burn ticketUserAC)

@@ -6,6 +6,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 
 
+
 -------------------------------------------------------------------------------
 
 -- * Action Type  Declarations
@@ -60,7 +61,7 @@ data RaffleizeAction
       UserAction --- ^ Action that can be peformed by any user.
   | TicketOwner
       TicketOwnerAction --- ^ Action that can be peformed by Ticket Owner.
-      AssetClass --- ^ The ticket id (ticket ref. NFT @AssetClass@).
+      -- AssetClass --- ^ The ticket id (ticket ref. NFT @AssetClass@).
   | RaffleOwner
       RaffleOwnerAction --- ^ Action that can be peformed by Raffle Owner.
   | Admin
@@ -68,3 +69,20 @@ data RaffleizeAction
   deriving (Generic, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''RaffleizeAction --- TODO must be changed with stable version
+
+{- | Datatype representng the actions supported by the Raffleize DApp.
+This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
+-}
+data RaffleizeRedeemer
+  = UserRedeemer
+      UserAction --- ^ Action that can be peformed by any user.
+  | TicketOwnerRedeemer
+      TicketOwnerAction --- ^ Action that can be peformed by Ticket Owner.
+      AssetClass --- ^ The ticket id (ticket ref. NFT @AssetClass@).
+  | RaffleOwnerRedeemer
+      RaffleOwnerAction --- ^ Action that can be peformed by Raffle Owner.
+  | AdminRedeemer
+      AdminAction --- ^ Action that can be peformed by Admin.
+  deriving (Generic, Eq, ToJSON, FromJSON)
+
+unstableMakeIsData ''RaffleizeRedeemer --- TODO must be changed with stable version
