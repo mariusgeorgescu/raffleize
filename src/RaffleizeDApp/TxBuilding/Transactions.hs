@@ -1,7 +1,7 @@
 module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
-
+import Data.Bifunctor (Bifunctor (second))
 import GeniusYield.Api.TestTokens (mintTestTokens)
 import GeniusYield.GYConfig
 import GeniusYield.Types
@@ -9,6 +9,11 @@ import GeniusYield.Types.Key.Class
 
 import GHC.Stack
 import GeniusYield.TxBuilder
+
+import Control.Exception
+import Control.Monad.Error.Class
+import Data.Either.Extra (maybeToEither)
+import GeniusYield.HTTP.Errors
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
@@ -31,48 +36,59 @@ data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
   , ticketValidatorRef :: GYTxOutRef
   }
 
-actionToTxSkeleton :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => RaffleizeTxBuildingContext -> RaffleizeInteraction -> m (GYTxSkeleton 'PlutusV2)
-actionToTxSkeleton
-  RaffleizeTxBuildingContext {raffleValidatorRef, ticketValidatorRef}
-  RaffleizeInteraction {interactionContextNFT, raffleizeAction, userAddresses} = do
-    let contextNFT = fromJust interactionContextNFT
-    let userUsedAddresses = usedAddresses userAddresses
-    let userChangeAddress = changeAddress userAddresses
-    let withTicket f = f ticketValidatorRef userUsedAddresses userChangeAddress contextNFT
-    let withTicket' f = f ticketValidatorRef userChangeAddress contextNFT
-    let withRaffle f = f raffleValidatorRef userUsedAddresses userChangeAddress contextNFT
-    let withRaffle'' f = f raffleValidatorRef userUsedAddresses contextNFT
-    let withRaffle' f = f raffleValidatorRef userChangeAddress contextNFT
-    let withRaffleAndTicket f = f raffleValidatorRef ticketValidatorRef userChangeAddress contextNFT
+data MissingContextNFT = MissingContextNFT deriving (Show, Typeable)
+instance Exception MissingContextNFT
+instance IsGYApiError MissingContextNFT
+
+interactionToTxSkeleton ::
+  (HasCallStack, GYTxMonad m, GYTxQueryMonad m) =>
+  RaffleizeTxBuildingContext ->
+  RaffleizeInteraction ->
+  m (GYTxSkeleton 'PlutusV2, Maybe AssetClass)
+interactionToTxSkeleton
+  RaffleizeTxBuildingContext {..}
+  RaffleizeInteraction {..} = do
+    let changeAddr = changeAddress userAddresses
+    let usedAddrs = usedAddresses userAddresses
+    let receiveAddr = fromMaybe changeAddr recipient
     case raffleizeAction of
-      User userAction -> case userAction of
-        CreateRaffle raffleConfig -> fst <$> createRaffleTX userChangeAddress raffleConfig
-        BuyTicket secretHash -> fst <$> buyTicketTX secretHash raffleValidatorRef userChangeAddress contextNFT
-      TicketOwner ticketOwnerAction  -> case ticketOwnerAction of
-        RevealTicketSecret secret -> withRaffleAndTicket (revealTicketTX secret)
-        CollectStake -> withRaffleAndTicket winnerCollectStakeTX
-        RefundTicket -> withRaffleAndTicket fullRefundTicketTX
-        RefundTicketExtra -> withRaffleAndTicket extraRefundTicketTX
-        RefundCollateralLosing -> withTicket' refundCollateralOfLosingTicketTX
-      RaffleOwner raffleOwnerAction -> case raffleOwnerAction of
-        Update newRaffleConfig -> withRaffle'' (updateRaffleTX newRaffleConfig)
-        Cancel -> withRaffle cancelRaffleTX
-        RecoverStake -> withRaffle' recoverStakeTX
-        RecoverStakeAndAmount -> withRaffle' recoverStakeAndAmountTX
-        CollectAmount -> withRaffle' collectAmountTX
-        GetCollateraOfExpiredTicket -> withTicket getCollateralOfExpiredTicketTX
-      Admin CloseRaffle -> undefined -- TODO
+      User userAction ->
+        second Just <$> case userAction of
+          CreateRaffle raffleConfig -> createRaffleTX receiveAddr raffleConfig
+          BuyTicket secretHash -> do
+            contextNFT <- liftEither $ maybeToEither (GYApplicationException MissingContextNFT) interactionContextNFT
+            buyTicketTX secretHash raffleValidatorRef receiveAddr contextNFT
+      other -> do
+        contextNFT <- liftEither $ maybeToEither (GYApplicationException MissingContextNFT) interactionContextNFT
+        (,Nothing) <$> case other of
+          TicketOwner ticketOwnerAction -> case ticketOwnerAction of
+            RevealTicketSecret secret -> revealTicketTX secret raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
+            CollectStake -> winnerCollectStakeTX raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
+            RefundTicket -> fullRefundTicketTX raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
+            RefundTicketExtra -> extraRefundTicketTX raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
+            RefundCollateralLosing -> refundCollateralOfLosingTicketTX raffleValidatorRef receiveAddr contextNFT
+          RaffleOwner raffleOwnerAction -> case raffleOwnerAction of
+            Update newRaffleConfig -> updateRaffleTX newRaffleConfig raffleValidatorRef usedAddrs contextNFT
+            Cancel -> cancelRaffleTX raffleValidatorRef usedAddrs receiveAddr contextNFT
+            RecoverStake -> recoverStakeTX raffleValidatorRef receiveAddr contextNFT
+            RecoverStakeAndAmount -> recoverStakeAndAmountTX raffleValidatorRef receiveAddr contextNFT
+            CollectAmount -> collectAmountTX raffleValidatorRef receiveAddr contextNFT
+            GetCollateraOfExpiredTicket -> getCollateralOfExpiredTicketTX ticketValidatorRef usedAddrs receiveAddr contextNFT
+          Admin CloseRaffle -> undefined -- TODO
 
--- actionToTxBody :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTxBody
--- actionToTxBody txCtx@RaffleizeTxBuildingContext {userUsedAddresses, userChangeAddress} usecase = do
---   runTxI userUsedAddresses userChangeAddress Nothing (actionToTxSkeleton txCtx usecase)
+interactionToTxBody :: RaffleizeTxBuildingContext -> RaffleizeInteraction -> ReaderT Ctx IO GYTxBody
+interactionToTxBody txCtx interaction@RaffleizeInteraction {userAddresses} = runTxI userAddresses (fst <$> interactionToTxSkeleton txCtx interaction)
 
--- actionToUnsignedTx :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO GYTx
--- actionToUnsignedTx raffleizeTxContext usecase = unsignedTx <$> actionToTxBody raffleizeTxContext usecase
+interactionToUnsignedTx :: RaffleizeTxBuildingContext -> RaffleizeInteraction -> ReaderT Ctx IO GYTx
+interactionToUnsignedTx = ((unsignedTx <$>) .) . interactionToTxBody
 
--- actionToHexEncodedCBOR :: RaffleizeTxBuildingContext -> RaffleizeAction -> ReaderT Ctx IO String
--- actionToHexEncodedCBOR raffleizeTxContext usecase = txToHex <$> actionToUnsignedTx raffleizeTxContext usecase
+interactionToHexEncodedCBOR :: RaffleizeTxBuildingContext -> RaffleizeInteraction -> ReaderT Ctx IO String
+interactionToHexEncodedCBOR = ((txToHex <$>) .) . interactionToUnsignedTx
 
+-----------------
+-----------------
+-----------------
+-----------------
 -----------------
 
 submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader Ctx m) => a -> m GYTxBody -> m ()
