@@ -41,17 +41,17 @@ instance Exception MissingContextNFT
 instance IsGYApiError MissingContextNFT
 
 interactionToTxSkeleton ::
-  (HasCallStack, GYTxMonad m, GYTxQueryMonad m) =>
-  RaffleizeTxBuildingContext ->
+  (HasCallStack, GYTxMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
   RaffleizeInteraction ->
-  m (GYTxSkeleton 'PlutusV2, Maybe AssetClass)
+  r (m (GYTxSkeleton 'PlutusV2, Maybe AssetClass))
 interactionToTxSkeleton
-  RaffleizeTxBuildingContext {..}
   RaffleizeInteraction {..} = do
+    raffleValidatorRef <- asks raffleValidatorRef
+    ticketValidatorRef <- asks ticketValidatorRef
     let changeAddr = changeAddress userAddresses
     let usedAddrs = usedAddresses userAddresses
     let receiveAddr = fromMaybe changeAddr recipient
-    case raffleizeAction of
+    return $ case raffleizeAction of
       User userAction ->
         second Just <$> case userAction of
           CreateRaffle raffleConfig -> createRaffleTX receiveAddr raffleConfig
@@ -76,14 +76,17 @@ interactionToTxSkeleton
             GetCollateraOfExpiredTicket -> getCollateralOfExpiredTicketTX ticketValidatorRef usedAddrs receiveAddr contextNFT
           Admin CloseRaffle -> undefined -- TODO
 
-interactionToTxBody :: RaffleizeTxBuildingContext -> RaffleizeInteraction -> ReaderT Ctx IO GYTxBody
-interactionToTxBody txCtx interaction@RaffleizeInteraction {userAddresses} = runTxI userAddresses (fst <$> interactionToTxSkeleton txCtx interaction)
+interactionToTxBody :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT Ctx IO GYTxBody)
+interactionToTxBody interaction@RaffleizeInteraction {userAddresses} = do
+  raffleizeTxBuildingContext <- ask
+  let skeleton = runReader (interactionToTxSkeleton interaction) raffleizeTxBuildingContext
+  return $ runTxI userAddresses (fst <$> skeleton)
 
-interactionToUnsignedTx :: RaffleizeTxBuildingContext -> RaffleizeInteraction -> ReaderT Ctx IO GYTx
-interactionToUnsignedTx = ((unsignedTx <$>) .) . interactionToTxBody
+interactionToUnsignedTx :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT Ctx IO GYTx)
+interactionToUnsignedTx = (fmap unsignedTx <$>) . interactionToTxBody
 
-interactionToHexEncodedCBOR :: RaffleizeTxBuildingContext -> RaffleizeInteraction -> ReaderT Ctx IO String
-interactionToHexEncodedCBOR = ((txToHex <$>) .) . interactionToUnsignedTx
+interactionToHexEncodedCBOR :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT Ctx IO String)
+interactionToHexEncodedCBOR = (fmap txToHex <$>) . interactionToUnsignedTx
 
 -----------------
 -----------------
@@ -114,12 +117,6 @@ queryGetAddressFromSkeyFile skey_file = do
   liftIO $ printf "Address: %s" (show addr)
 
 -- | Build a transaction for creating a new raffle.
-buildCreateRaffleTx :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO GYTxBody
-buildCreateRaffleTx skey raffleConfiguration = do
-  my_addr <- queryGetAddressFromSkey skey
-  runTxI (UserAddresses [my_addr] my_addr Nothing) (fst <$> createRaffleTX my_addr raffleConfiguration)
-
--- | Build a transaction for creating a new raffle.
 buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT Ctx IO GYTxBody
 buildMintTestTokensTx skey = do
   my_addr <- queryGetAddressFromSkey skey
@@ -128,6 +125,14 @@ buildMintTestTokensTx skey = do
 --------------------------
 --------------------------
 --------------------------
+
+-- | Build a transaction for creating a new raffle.
+buildCreateRaffleTx :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO GYTxBody
+buildCreateRaffleTx skey raffleConfiguration = do
+  my_addr <- queryGetAddressFromSkey skey
+  let useraddrs = UserAddresses [my_addr] my_addr Nothing
+  let createRaffleInteraction = RaffleizeInteraction Nothing (User (CreateRaffle raffleConfiguration)) useraddrs Nothing
+  runReader (interactionToTxBody createRaffleInteraction) undefined
 
 createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO ()
 createRaffleTransaction skey raffle_config = do

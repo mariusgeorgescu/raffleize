@@ -76,11 +76,11 @@ parseArgs = do
     coreCfg : _ -> return coreCfg
     _invalidArgument -> fail "Error: wrong arguments, needed a path to the CoreConfig JSON configuration file\n"
 
--- | Getting path for our core configuration.
-getCoreConfiguration :: IO GYCoreConfig
-getCoreConfiguration = do
-  coreCfgPath <- parseArgs
-  coreConfigIO coreCfgPath
+-- -- | Getting path for our core configuration.
+-- getCoreConfiguration :: IO GYCoreConfig
+-- getCoreConfiguration = do
+--   coreCfgPath <- parseArgs
+--   coreConfigIO coreCfgPath
 
 -- | Getting path for our core configuration.
 readCoreConfiguration :: IO GYCoreConfig
