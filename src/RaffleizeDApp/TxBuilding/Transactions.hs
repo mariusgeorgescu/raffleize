@@ -2,17 +2,17 @@ module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
 import Data.Bifunctor (Bifunctor (second))
+import GHC.Stack
 import GeniusYield.Api.TestTokens (mintTestTokens)
 import GeniusYield.GYConfig
+import GeniusYield.TxBuilder
 import GeniusYield.Types
 import GeniusYield.Types.Key.Class
-
-import GHC.Stack
-import GeniusYield.TxBuilder
 
 import Control.Exception
 import Control.Monad.Error.Class
 import Data.Either.Extra (maybeToEither)
+import GeniusYield.Examples.Limbo (addRefScript')
 import GeniusYield.HTTP.Errors
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
@@ -35,6 +35,7 @@ data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
   { raffleValidatorRef :: GYTxOutRef
   , ticketValidatorRef :: GYTxOutRef
   }
+  deriving (Show)
 
 data MissingContextNFT = MissingContextNFT deriving (Show, Typeable)
 instance Exception MissingContextNFT
@@ -101,6 +102,14 @@ submitTxBody skey m = do
   tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
   liftIO $ printf "submitted tx: %s\n" tid
 
+submitTxBody' :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader Ctx m) => a -> m GYTxBody -> m GYTxId
+submitTxBody' skey m = do
+  txBody <- m
+  ctxProviders <- asks ctxProviders
+  tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
+  liftIO $ printf "submitted tx: %s\n" tid
+  return tid
+
 queryGetAddressFromSkey :: GYPaymentSigningKey -> ReaderT Ctx IO GYAddress
 queryGetAddressFromSkey skey = do
   nid <- asks (cfgNetworkId . ctxCoreCfg)
@@ -141,6 +150,18 @@ createRaffleTransaction skey raffle_config = do
 mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT Ctx IO ()
 mintTestTokensTransaction skey = do
   submitTxBody skey $ buildMintTestTokensTx skey
+
+deployReferenceScriptTransaction :: GYPaymentSigningKey -> GYScript 'PlutusV2 -> ReaderT Ctx IO GYTxOutRef
+deployReferenceScriptTransaction skey script = do
+  gyTxId <- submitTxBody' skey $ do
+    my_addr <- queryGetAddressFromSkey skey
+    runTxI (UserAddresses [my_addr] my_addr Nothing) $ addRefScript' script
+  let txId = txIdToApi gyTxId
+  ctxProviders <- asks ctxProviders
+  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 10 20000000 1) gyTxId
+  let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
+  liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
+  return txOutRef
 
 -----------------------
 -----------------------

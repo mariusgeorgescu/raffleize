@@ -72,6 +72,7 @@ library
     RaffleizeDApp.TxBuilding.Transactions
     RaffleizeDApp.TxBuilding.Utils
     RaffleizeDApp.TxBuilding.Validators
+    TUI.UI
 
   -- Add new contracts here, i.e.:
   -- Contracts.MyContract
@@ -84,6 +85,7 @@ library
     , atlas-cardano
     , base
     , base16-bytestring
+    , brick
     , bytestring
     , cardano-api
     , cardano-binary
@@ -107,6 +109,7 @@ library
     , text
     , time
     , turtle
+    , vty
 
   default-extensions:
     DataKinds
@@ -134,9 +137,9 @@ executable cli
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
   build-depends:
     , aeson
+    , atlas-cardano
     , bytestring
     , raffleize
-    , atlas-cardano
 
 test-suite tests
   import:         common
