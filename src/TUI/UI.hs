@@ -10,9 +10,15 @@ import Graphics.Vty.Input.Events
 import GeniusYield.GYConfig (GYCoreConfig)
 import GeniusYield.Types (GYPaymentSigningKey)
 
-import Brick.Widgets.Core (str, vBox)
+import Brick.Widgets.Core
 
-import Graphics.Vty (defAttr)
+import Brick.Util
+import Brick.Widgets.Border.Style
+import Graphics.Vty
+
+import Brick.Widgets.Border
+import Brick.Widgets.Center
+import Data.List.Extra (intersperse)
 import RaffleizeDApp.Constants (raffleizeLogoPath)
 import RaffleizeDApp.TxBuilding.Transactions
 import System.IO.Extra (readFile)
@@ -45,14 +51,14 @@ app =
     , appChooseCursor = neverShowCursor
     , appHandleEvent = handleEvent
     , appStartEvent = return
-    , appAttrMap = const $ attrMap defAttr []
+    , appAttrMap = const theMap
     }
 
 tui :: IO ()
 tui = do
   initialState <- buildInitialState
-  endState <- defaultMain app initialState
-  print endState
+  _endState <- defaultMain app initialState
+  return ()
 
 -- Building the initial state
 
@@ -73,4 +79,25 @@ handleEvent s e = case e of
 -- Drawing
 
 drawUI :: RaffleizeUI -> [Widget Name]
-drawUI s = [vBox [str (logo s), str "TODO"]]
+drawUI s =
+  joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
+    <$> [ vBox
+            [ center $ withAttr "highlight" $ str (logo s)
+            , hBorder
+            , vBox $
+                intersperse hBorder $
+                  str
+                    <$> [ "[D] - Deploy Raffleize Validators"
+                        , "[Q] - Quit"
+                        ]
+            ]
+        ]
+
+theMap :: AttrMap
+theMap =
+  attrMap
+    (white `on` black)
+    [ ("highlight", fg magenta)
+    , ("warning", bg magenta)
+    , ("good", white `on` green)
+    ]
