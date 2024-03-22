@@ -1,5 +1,5 @@
 module Main where
-  
+
 import TUI.UI (tui)
 
 -- import Data.Aeson

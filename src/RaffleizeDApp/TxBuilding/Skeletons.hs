@@ -1,4 +1,4 @@
-module RaffleizeDApp.TxBuilding.RaffleizeSkeletons where
+module RaffleizeDApp.TxBuilding.Skeletons where
 
 import GHC.Stack
 import GeniusYield.TxBuilder
@@ -8,7 +8,7 @@ import PlutusLedgerApi.V2
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
-import RaffleizeDApp.TxBuilding.RaffleizeLookups
+import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 

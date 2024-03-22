@@ -1,6 +1,6 @@
 module Main where
 
-import RaffleizeDApp.Tests.RaffleizeTests
+import RaffleizeDApp.Tests.UnitTests
 
 
 

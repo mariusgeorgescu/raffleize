@@ -1,4 +1,4 @@
-module RaffleizeDApp.Tests.RaffleizeTests where
+module RaffleizeDApp.Tests.UnitTests where
 
 import Cardano.Simple.Ledger.Slot (Slot (..))
 import Cardano.Simple.Ledger.TimeSlot
@@ -22,8 +22,8 @@ import GHC.Stack (HasCallStack)
 
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.Utils
-import RaffleizeDApp.TxBuilding.RaffleizeLookups
-import RaffleizeDApp.TxBuilding.RaffleizeOperations
+import RaffleizeDApp.TxBuilding.Lookups
+import RaffleizeDApp.TxBuilding.Operations
 import RaffleizeDApp.TxBuilding.Validators
 import Test.Tasty (TestTree, defaultMain, testGroup)
 

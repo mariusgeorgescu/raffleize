@@ -64,14 +64,17 @@ library
     RaffleizeDApp.OnChain.RaffleizeTicketValidator
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
-    RaffleizeDApp.Tests.RaffleizeTests
+    RaffleizeDApp.Tests.UnitTests
     RaffleizeDApp.TxBuilding.Context
-    RaffleizeDApp.TxBuilding.RaffleizeLookups
-    RaffleizeDApp.TxBuilding.RaffleizeOperations
-    RaffleizeDApp.TxBuilding.RaffleizeSkeletons
+    RaffleizeDApp.TxBuilding.Exceptions
+    RaffleizeDApp.TxBuilding.Interactions
+    RaffleizeDApp.TxBuilding.Lookups
+    RaffleizeDApp.TxBuilding.Operations
+    RaffleizeDApp.TxBuilding.Skeletons
     RaffleizeDApp.TxBuilding.Transactions
     RaffleizeDApp.TxBuilding.Utils
     RaffleizeDApp.TxBuilding.Validators
+    TUI.Actions
     TUI.UI
 
   -- Add new contracts here, i.e.:

@@ -1,4 +1,4 @@
-module RaffleizeDApp.TxBuilding.RaffleizeLookups where
+module RaffleizeDApp.TxBuilding.Lookups where
 
 
 import GHC.Stack

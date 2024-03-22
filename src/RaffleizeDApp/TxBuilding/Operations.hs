@@ -1,4 +1,4 @@
-module RaffleizeDApp.TxBuilding.RaffleizeOperations where
+module RaffleizeDApp.TxBuilding.Operations where
 
 import GeniusYield.Imports hiding (fromMaybe)
 import GeniusYield.TxBuilder
@@ -10,8 +10,8 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, revealTicketToRaffleRT, updateRaffleStateValue, redeemerToAction)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
-import RaffleizeDApp.TxBuilding.RaffleizeLookups
-import RaffleizeDApp.TxBuilding.RaffleizeSkeletons
+import RaffleizeDApp.TxBuilding.Lookups
+import RaffleizeDApp.TxBuilding.Skeletons
 import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------

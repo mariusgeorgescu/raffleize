@@ -20,7 +20,7 @@ import Brick.Widgets.Border
 import Brick.Widgets.Center
 import Data.List.Extra (intersperse)
 import RaffleizeDApp.Constants (raffleizeLogoPath)
-import RaffleizeDApp.TxBuilding.Transactions
+import RaffleizeDApp.TxBuilding.Interactions
 import System.IO.Extra (readFile)
 
 -- Types
