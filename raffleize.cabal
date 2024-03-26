@@ -84,7 +84,7 @@ library
   -- Sample contracts:
   hs-source-dirs:     src
   build-depends:
-    , aeson
+    , aeson 
     , atlas-cardano
     , base
     , base16-bytestring

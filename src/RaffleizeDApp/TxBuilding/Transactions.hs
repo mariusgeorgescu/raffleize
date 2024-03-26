@@ -1,17 +1,18 @@
 module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
+
 import GeniusYield.Api.TestTokens (mintTestTokens)
+import GeniusYield.Examples.Limbo (addRefScript')
 import GeniusYield.GYConfig
 import GeniusYield.Types
 import GeniusYield.Types.Key.Class
 
-import GeniusYield.Examples.Limbo (addRefScript')
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
-import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY)
+import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
 
 -----------------
 -----------------
@@ -93,13 +94,11 @@ deployReferenceScriptTransaction skey script = do
   liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
   return txOutRef
 
-deployRaffleizeValidatorsAndWriteRefToFile :: GYPaymentSigningKey -> ReaderT Ctx IO RaffleizeTxBuildingContext
-deployRaffleizeValidatorsAndWriteRefToFile skey = do
+deployRaffleizeValidators :: GYPaymentSigningKey -> ReaderT Ctx IO RaffleizeTxBuildingContext
+deployRaffleizeValidators skey = do
   raffleValidatorRef <- deployReferenceScriptTransaction skey (validatorToScript raffleizeValidatorGY)
-  ticketValidatoRef <- deployReferenceScriptTransaction skey (validatorToScript raffleizeValidatorGY)
-  let txBuildingContext = RaffleizeTxBuildingContext raffleValidatorRef ticketValidatoRef
-  
-  return undefined
+  ticketValidatoRef <- deployReferenceScriptTransaction skey (validatorToScript ticketValidatorGY)
+  return $ RaffleizeTxBuildingContext raffleValidatorRef ticketValidatoRef
 
 -----------------------
 -----------------------

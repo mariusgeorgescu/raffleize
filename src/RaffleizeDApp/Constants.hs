@@ -26,14 +26,21 @@ ticketName = "RAFFLEIZE: TICKET OWNER NFT"
 
 
 
-raffleizeLogoPath :: FilePath
-raffleizeLogoPath = "raffleize.logo"
+
+
 
 --- Configuration FilePaths  ---
+
+raffleizeLogoPath :: FilePath
+raffleizeLogoPath = "raffleize.logo"
 
 
 atlasCoreConfig :: FilePath
 atlasCoreConfig = "atlas_config.json"
+
+raffleizeValidatorsConfig :: FilePath
+raffleizeValidatorsConfig = "raffleize_validators_config.json"
+
 
 operationSkeyFilePath :: FilePath
 operationSkeyFilePath = "operation.skey"

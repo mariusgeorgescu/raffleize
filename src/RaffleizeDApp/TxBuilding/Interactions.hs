@@ -4,6 +4,7 @@ import Control.Monad.Error.Class
 import Control.Monad.Reader
 import Data.Either.Extra
 
+import Data.Bifunctor (second)
 import GHC.Stack
 import GeniusYield.TxBuilder
 import GeniusYield.Types
@@ -12,7 +13,6 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Operations
-import Data.Bifunctor (second)
 
 data RaffleizeInteraction = RaffleizeInteraction
   { interactionContextNFT :: Maybe AssetClass
@@ -29,7 +29,7 @@ data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
   { raffleValidatorRef :: GYTxOutRef
   , ticketValidatorRef :: GYTxOutRef
   }
-  deriving (Show)
+  deriving (Show, Generic, ToJSON, FromJSON)
 
 interactionToTxSkeleton ::
   (HasCallStack, GYTxMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
