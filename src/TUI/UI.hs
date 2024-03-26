@@ -98,7 +98,7 @@ handleEvent s e = case e of
     EvKey (KChar 'd') [] -> do
       liftIO deployValidators
       s' <- liftIO $ updateFromConfigFiles s
-      continue s' {message = "DONE"}
+      continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
     _ -> continue s
   _ -> continue s
 
@@ -107,7 +107,7 @@ handleEvent s e = case e of
 drawUI :: RaffleizeUI -> [Widget Name]
 drawUI s =
   joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
-    <$> [ if null (message s) then emptyWidget else center (str (logo s)) <=> str "[B] - Back"
+    <$> [ if null (message s) then emptyWidget else center (str (message s)) <=> str "[B] - Back"
         , if refreshed s then emptyWidget else mainMenu s
         , mainMenu s
         ]

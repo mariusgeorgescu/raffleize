@@ -89,7 +89,7 @@ deployReferenceScriptTransaction skey script = do
     runTxI (UserAddresses [my_addr] my_addr Nothing) $ addRefScript' script
   let txId = txIdToApi gyTxId
   ctxProviders <- asks ctxProviders
-  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 10 20000000 1) gyTxId
+  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 3 50000000 1) gyTxId
   let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
   liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
   return txOutRef
