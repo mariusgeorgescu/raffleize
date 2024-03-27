@@ -14,6 +14,32 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
 
+------------------------------------------------------------------------------------------------
+
+-- *  Queries
+
+------------------------------------------------------------------------------------------------
+
+queryGetAddressFromSkey :: GYPaymentSigningKey -> ReaderT Ctx IO GYAddress
+queryGetAddressFromSkey skey = do
+  nid <- asks (cfgNetworkId . ctxCoreCfg)
+  runQuery $ do
+    let pub_key = paymentVerificationKey skey
+        pub_key_hash = pubKeyHash pub_key
+        address = addressFromPubKeyHash nid pub_key_hash
+    return address
+
+queryGetAddressFromSkeyFile :: FilePath -> ReaderT Ctx IO ()
+queryGetAddressFromSkeyFile skey_file = do
+  skey <- liftIO $ readPaymentSigningKey skey_file
+  addr <- queryGetAddressFromSkey skey
+  liftIO $ printf "Address: %s" (show addr)
+
+queryGetUTxOs :: GYAddress -> ReaderT Ctx IO GYUTxOs
+queryGetUTxOs addr = do
+  providers <- asks ctxProviders
+  liftIO $ gyQueryUtxosAtAddress providers addr Nothing
+
 -----------------
 -----------------
 -----------------
@@ -34,21 +60,6 @@ submitTxBody' skey m = do
   tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
   liftIO $ printf "submitted tx: %s\n" tid
   return tid
-
-queryGetAddressFromSkey :: GYPaymentSigningKey -> ReaderT Ctx IO GYAddress
-queryGetAddressFromSkey skey = do
-  nid <- asks (cfgNetworkId . ctxCoreCfg)
-  runQuery $ do
-    let pub_key = paymentVerificationKey skey
-        pub_key_hash = pubKeyHash pub_key
-        address = addressFromPubKeyHash nid pub_key_hash
-    return address
-
-queryGetAddressFromSkeyFile :: FilePath -> ReaderT Ctx IO ()
-queryGetAddressFromSkeyFile skey_file = do
-  skey <- liftIO $ readPaymentSigningKey skey_file
-  addr <- queryGetAddressFromSkey skey
-  liftIO $ printf "Address: %s" (show addr)
 
 -- | Build a transaction for creating a new raffle.
 buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT Ctx IO GYTxBody

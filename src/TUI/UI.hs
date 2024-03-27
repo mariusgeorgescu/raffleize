@@ -8,7 +8,7 @@ import Brick.Types
 import Graphics.Vty.Input.Events
 
 import GeniusYield.GYConfig (GYCoreConfig (cfgCoreProvider, cfgNetworkId), GYCoreProviderInfo (..))
-import GeniusYield.Types (GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, showTxOutRef)
+import GeniusYield.Types (GYAddress, GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, GYValue, showTxOutRef)
 
 import Brick.Widgets.Core
 
@@ -39,6 +39,8 @@ data RaffleizeUI = RaffleizeUI
   { atlasConfig :: Maybe GYCoreConfig
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
   , adminSkey :: Maybe GYPaymentSigningKey
+  , adminAddress :: Maybe GYAddress
+  , adminBalance :: Maybe GYValue
   , logo :: String
   , message :: String
   }
@@ -86,7 +88,7 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  pure (RaffleizeUI atlasConfig validatorsConfig skey logo mempty)
+  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty)
 
 ------------------------------------------------------------------------------------------------
 
@@ -97,9 +99,15 @@ buildInitialState = do
 handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Next RaffleizeUI)
 handleEvent s e = case e of
   VtyEvent vtye -> case vtye of
+    EvKey (KChar 'q') [] -> halt s
+    EvKey (KChar 'l') [] -> do
+      let (Just skey) = adminSkey s
+      (addr, val) <- liftIO $ getAddressAndValue skey
+      liftIO $ print addr
+      liftIO $ print val
+      continue s {adminAddress = Just addr, adminBalance = Just val}
     EvKey (KChar 'b') [] -> continue s {message = ""}
     EvKey (KChar 'r') [] -> continue s {message = "Refresh Screen"}
-    EvKey (KChar 'q') [] -> halt s
     EvKey (KChar 'g') [] -> do
       liftIO $ generateNewAdminSkey operationSkeyFilePath
       s' <- liftIO $ updateFromConfigFiles s
@@ -162,11 +170,12 @@ mainMenu s =
 configFilesWidget :: RaffleizeUI -> Widget n
 configFilesWidget s =
   borderWithLabel (str "CONFIGURATION FILES") $
-    hBox $ padAll 1 <$>
-      [ showProviderWidget (atlasConfig s)
-      , showValidatorsWidget (validatorsConfig s)
-      , showSymbol (isJust . adminSkey $ s) <+> str " Admin Secret Key"
-      ]
+    hBox $
+      padAll 1
+        <$> [ showProviderWidget (atlasConfig s)
+            , showValidatorsWidget (validatorsConfig s)
+            , showSymbol (isJust . adminSkey $ s) <+> str " Admin Secret Key"
+            ]
 
 showSymbol :: Bool -> Widget n
 showSymbol True = withAttr "good" $ str "✔"
@@ -202,14 +211,14 @@ showProviderWidget mp =
               , [str "Network: ", printNetwork cfg]
               ]
 
-printNetwork :: GYCoreConfig -> Widget n
-printNetwork cfg = withAttr "good" . str $ case cfgCoreProvider cfg of
+printProvider :: GYCoreConfig -> Widget n
+printProvider cfg = withAttr "good" . str $ case cfgCoreProvider cfg of
   (GYNodeKupo {}) -> "KUPO"
   (GYMaestro {}) -> "MAESTRO"
   (GYBlockfrost {}) -> "BLOCKFROST"
 
-printProvider :: GYCoreConfig -> Widget n
-printProvider cfg = withAttr "good" . str $ case cfgNetworkId cfg of
+printNetwork :: GYCoreConfig -> Widget n
+printNetwork cfg = withAttr "good" . str $ case cfgNetworkId cfg of
   GYMainnet -> "MAINNET"
   GYTestnetPreprod -> "PREPROD"
   GYTestnetPreview -> "PREVIEW"
