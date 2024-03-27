@@ -35,7 +35,6 @@ data RaffleizeUI = RaffleizeUI
   , adminSkey :: Maybe GYPaymentSigningKey
   , logo :: String
   , message :: String
-  , refreshed :: Bool
   }
   deriving (Show)
 
@@ -74,7 +73,7 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  pure (RaffleizeUI atlasConfig validatorsConfig skey logo mempty False)
+  pure (RaffleizeUI atlasConfig validatorsConfig skey logo mempty)
 
 updateFromConfigFiles :: RaffleizeUI -> IO RaffleizeUI
 updateFromConfigFiles s = do
@@ -89,16 +88,21 @@ handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Nex
 handleEvent s e = case e of
   VtyEvent vtye -> case vtye of
     EvKey (KChar 'b') [] -> continue s {message = ""}
-    EvKey (KChar 'r') [] -> continue s {refreshed = not (refreshed s)}
+    EvKey (KChar 'r') [] -> continue s {message = "Refresh Screen"}
     EvKey (KChar 'q') [] -> halt s
     EvKey (KChar 'g') [] -> do
       liftIO $ generateNewAdminSkey operationSkeyFilePath
       s' <- liftIO $ updateFromConfigFiles s
       continue s'
     EvKey (KChar 'd') [] -> do
+      liftIO $ print ("Deploying validators ...." :: String)
+      liftIO $ print ("Building, signing and submiting transactions and waiting for confirmations.." :: String)
       liftIO deployValidators
       s' <- liftIO $ updateFromConfigFiles s
       continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
+    EvKey (KChar 'x') [] -> do
+      liftIO $ print ("marius" :: String)
+      continue s
     _ -> continue s
   _ -> continue s
 
@@ -107,8 +111,7 @@ handleEvent s e = case e of
 drawUI :: RaffleizeUI -> [Widget Name]
 drawUI s =
   joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
-    <$> [ if null (message s) then emptyWidget else center (str (message s)) <=> str "[B] - Back"
-        , if refreshed s then emptyWidget else mainMenu s
+    <$> [ if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[B] - Back"
         , mainMenu s
         ]
 

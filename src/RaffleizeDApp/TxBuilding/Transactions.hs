@@ -91,7 +91,7 @@ deployReferenceScriptTransaction skey script = do
   ctxProviders <- asks ctxProviders
   liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 3 50000000 1) gyTxId
   let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
-  liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
+  -- liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
   return txOutRef
 
 deployRaffleizeValidators :: GYPaymentSigningKey -> ReaderT Ctx IO RaffleizeTxBuildingContext
