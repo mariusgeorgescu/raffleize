@@ -76,6 +76,7 @@ library
     RaffleizeDApp.TxBuilding.Validators
     TUI.Actions
     TUI.UI
+    TUI.Utils
 
   -- Add new contracts here, i.e.:
   -- Contracts.MyContract
@@ -84,7 +85,7 @@ library
   -- Sample contracts:
   hs-source-dirs:     src
   build-depends:
-    , aeson 
+    , aeson
     , atlas-cardano
     , base
     , base16-bytestring

@@ -7,8 +7,8 @@ import Brick.Main
 import Brick.Types
 import Graphics.Vty.Input.Events
 
-import GeniusYield.GYConfig (GYCoreConfig)
-import GeniusYield.Types (GYPaymentSigningKey)
+import GeniusYield.GYConfig (GYCoreConfig (cfgCoreProvider, cfgNetworkId), GYCoreProviderInfo (..))
+import GeniusYield.Types (GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, showTxOutRef)
 
 import Brick.Widgets.Core
 
@@ -19,15 +19,21 @@ import Graphics.Vty
 import Brick.Widgets.Border
 import Brick.Widgets.Center
 import Control.Monad.IO.Class
-import Data.List.Extra (intersperse)
 
 import RaffleizeDApp.Constants (atlasCoreConfig, operationSkeyFilePath, raffleizeLogoPath, raffleizeValidatorsConfig)
 import RaffleizeDApp.TxBuilding.Interactions
 
+import Brick.Widgets.Table (renderTable, table)
+import Data.Text (unpack)
 import System.IO.Extra (readFile)
 import TUI.Actions
+import TUI.Utils
 
--- Types
+------------------------------------------------------------------------------------------------
+
+-- *   Types
+
+------------------------------------------------------------------------------------------------
 
 data RaffleizeUI = RaffleizeUI
   { atlasConfig :: Maybe GYCoreConfig
@@ -47,7 +53,11 @@ if we call this "Name" now.
 -}
 type Name = ()
 
--- App definition
+------------------------------------------------------------------------------------------------
+
+-- *   App definitionF
+
+------------------------------------------------------------------------------------------------
 
 app :: App RaffleizeUI RaffleizeEvent Name
 app =
@@ -65,8 +75,11 @@ tui = do
   _endState <- defaultMain app initialState
   return ()
 
--- Building the initial state
+------------------------------------------------------------------------------------------------
 
+-- *  Building the initial state
+
+------------------------------------------------------------------------------------------------
 buildInitialState :: IO RaffleizeUI
 buildInitialState = do
   logo <- readFile raffleizeLogoPath
@@ -75,14 +88,11 @@ buildInitialState = do
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   pure (RaffleizeUI atlasConfig validatorsConfig skey logo mempty)
 
-updateFromConfigFiles :: RaffleizeUI -> IO RaffleizeUI
-updateFromConfigFiles s = do
-  skey <- readPaymentKeyFile operationSkeyFilePath
-  atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
-  validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  return $ s {adminSkey = skey, atlasConfig = atlasConfig, validatorsConfig = validatorsConfig}
+------------------------------------------------------------------------------------------------
 
--- Handling events
+-- *  Handling Events
+
+------------------------------------------------------------------------------------------------
 
 handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Next RaffleizeUI)
 handleEvent s e = case e of
@@ -100,46 +110,21 @@ handleEvent s e = case e of
       liftIO deployValidators
       s' <- liftIO $ updateFromConfigFiles s
       continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
-    EvKey (KChar 'x') [] -> do
-      liftIO $ print ("marius" :: String)
-      continue s
     _ -> continue s
   _ -> continue s
 
--- Drawing
+updateFromConfigFiles :: RaffleizeUI -> IO RaffleizeUI
+updateFromConfigFiles s = do
+  skey <- readPaymentKeyFile operationSkeyFilePath
+  atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
+  validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
+  return $ s {adminSkey = skey, atlasConfig = atlasConfig, validatorsConfig = validatorsConfig}
 
-drawUI :: RaffleizeUI -> [Widget Name]
-drawUI s =
-  joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
-    <$> [ if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[B] - Back"
-        , mainMenu s
-        ]
+------------------------------------------------------------------------------------------------
 
-mainMenu :: RaffleizeUI -> Widget n
-mainMenu s =
-  vBox
-    [ center $ withAttr "highlight" $ str (logo s)
-    , hBorder
-    , hBox $
-        padAll 1
-          <$> [ str "Altas Config: " <+> showSymbol (isJust . atlasConfig $ s)
-              , str "Validators Config: " <+> showSymbol (isJust . validatorsConfig $ s)
-              , str "Admin Secret Key: " <+> showSymbol (isJust . adminSkey $ s)
-              ]
-    , hBorder
-    , vBox $
-        intersperse
-          hBorder
-          ( str
-              <$> filter
-                (not . null)
-                [ "[D] - Deploy Raffleize Validators"
-                , if isNothing . adminSkey $ s then "[G] - Generate new admin skey" else mempty
-                , "[R] - Refresh screen"
-                , "[Q] - Quit"
-                ]
-          )
-    ]
+-- *  Drawing
+
+------------------------------------------------------------------------------------------------
 
 theMap :: AttrMap
 theMap =
@@ -148,8 +133,99 @@ theMap =
     [ ("highlight", fg magenta)
     , ("warning", fg red)
     , ("good", fg green)
+    , ("action", fg yellow)
     ]
+
+drawUI :: RaffleizeUI -> [Widget Name]
+drawUI s =
+  joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
+    <$> [ if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[B] - Back"
+        , mainMenu s
+        ]
+
+------------------------------------------------------------------------------------------------
+
+-- **  Widgets
+
+------------------------------------------------------------------------------------------------
+
+mainMenu :: RaffleizeUI -> Widget n
+mainMenu s =
+  vBox
+    [ center $ withAttr "highlight" $ str (logo s)
+    , hBorder
+    , hCenter $ configFilesWidget s
+    , hBorder
+    , hCenter $ availableActionsWidget s
+    ]
+
+configFilesWidget :: RaffleizeUI -> Widget n
+configFilesWidget s =
+  borderWithLabel (str "CONFIGURATION FILES") $
+    hBox $ padAll 1 <$>
+      [ showProviderWidget (atlasConfig s)
+      , showValidatorsWidget (validatorsConfig s)
+      , showSymbol (isJust . adminSkey $ s) <+> str " Admin Secret Key"
+      ]
 
 showSymbol :: Bool -> Widget n
 showSymbol True = withAttr "good" $ str "✔"
 showSymbol False = withAttr "warning" $ str "X"
+
+showValidatorsWidget :: Maybe RaffleizeTxBuildingContext -> Widget n
+showValidatorsWidget mv =
+  borderWithLabel (str "Validators TxOuts\n with Reference Scripts ") $
+    renderTable $
+      table $
+        [str "Loaded: ", showSymbol (isJust mv)] : case mv of
+          Nothing -> []
+          Just (RaffleizeTxBuildingContext {..}) ->
+            [ [str "Raffle Validator", txOutRefWidget raffleValidatorRef]
+            , [str "Ticket Validator", txOutRefWidget ticketValidatorRef]
+            ]
+
+txOutRefWidget :: GYTxOutRef -> Widget n
+txOutRefWidget t = withAttr "good" $ str (unpack $ showTxOutRef t)
+
+showProviderWidget :: Maybe GYCoreConfig -> Widget n
+showProviderWidget mp =
+  borderWithLabel (str "Blockchain Provider") $
+    renderTable $
+      table $
+        [ str "Loaded: "
+        , showSymbol (isJust mp)
+        ]
+          : case mp of
+            Nothing -> []
+            Just cfg ->
+              [ [str "Provider: ", printProvider cfg]
+              , [str "Network: ", printNetwork cfg]
+              ]
+
+printNetwork :: GYCoreConfig -> Widget n
+printNetwork cfg = withAttr "good" . str $ case cfgCoreProvider cfg of
+  (GYNodeKupo {}) -> "KUPO"
+  (GYMaestro {}) -> "MAESTRO"
+  (GYBlockfrost {}) -> "BLOCKFROST"
+
+printProvider :: GYCoreConfig -> Widget n
+printProvider cfg = withAttr "good" . str $ case cfgNetworkId cfg of
+  GYMainnet -> "MAINNET"
+  GYTestnetPreprod -> "PREPROD"
+  GYTestnetPreview -> "PREVIEW"
+  GYTestnetLegacy -> "TESTNET-LEGACY"
+  GYPrivnet -> "PRIVNET"
+
+availableActionsWidget :: RaffleizeUI -> Widget n
+availableActionsWidget s =
+  withAttr "action" . borderWithLabel (str "AVAILABLE ACTIONS") $
+    vBox
+      ( str
+          <$> filter
+            (not . null)
+            [ "[D] - Deploy Raffleize Validators"
+            , if isNothing . adminSkey $ s then "[G] - Generate new admin skey" else mempty
+            , "[R] - Refresh screen"
+            , "[Q] - Quit"
+            ]
+      )
