@@ -9,7 +9,7 @@ import RaffleizeDApp.TxBuilding.Transactions
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as B
 
-import GeniusYield.Types (GYAddress, GYPaymentSigningKey, GYUTxO (utxoValue), GYUTxOs, GYValue, foldMapUTxOs)
+import GeniusYield.Types (Ada, GYAddress, GYPaymentSigningKey, GYUTxO (utxoValue), GYUTxOs, foldMapUTxOs, fromValue, valueToPlutus)
 import RaffleizeDApp.Constants (
   operationSkeyFilePath,
   raffleizeValidatorsConfig,
@@ -28,11 +28,11 @@ getAdminAddress skey = runContextWithCfgProviders "get addmin address" $ queryGe
 getAdminUTxOs :: GYAddress -> IO GYUTxOs
 getAdminUTxOs addr = runContextWithCfgProviders "get addmin utxos" $ queryGetUTxOs addr
 
-sumValueGYUTxOs :: GYUTxOs -> GYValue
-sumValueGYUTxOs = foldMapUTxOs utxoValue
+getAdaBalance :: GYUTxOs -> Ada
+getAdaBalance = fromValue . valueToPlutus . foldMapUTxOs utxoValue
 
-getAddressAndValue :: GYPaymentSigningKey -> IO (GYAddress, GYValue)
+getAddressAndValue :: GYPaymentSigningKey -> IO (GYAddress, Ada)
 getAddressAndValue skey = do
   addr <- getAdminAddress skey
   utxos <- getAdminUTxOs addr
-  return (addr, sumValueGYUTxOs utxos)
+  return (addr, getAdaBalance utxos)

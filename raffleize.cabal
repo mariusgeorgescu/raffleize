@@ -86,6 +86,7 @@ library
   hs-source-dirs:     src
   build-depends:
     , aeson
+    , ansi-terminal
     , atlas-cardano
     , base
     , base16-bytestring

@@ -8,7 +8,7 @@ import Brick.Types
 import Graphics.Vty.Input.Events
 
 import GeniusYield.GYConfig (GYCoreConfig (cfgCoreProvider, cfgNetworkId), GYCoreProviderInfo (..))
-import GeniusYield.Types (GYAddress, GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, GYValue, showTxOutRef)
+import GeniusYield.Types (Ada, GYAddress, GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, addressToText, showTxOutRef)
 
 import Brick.Widgets.Core
 
@@ -24,7 +24,9 @@ import RaffleizeDApp.Constants (atlasCoreConfig, operationSkeyFilePath, raffleiz
 import RaffleizeDApp.TxBuilding.Interactions
 
 import Brick.Widgets.Table (renderTable, table)
+import Data.Char
 import Data.Text (unpack)
+import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
 import TUI.Actions
 import TUI.Utils
@@ -40,7 +42,7 @@ data RaffleizeUI = RaffleizeUI
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
   , adminSkey :: Maybe GYPaymentSigningKey
   , adminAddress :: Maybe GYAddress
-  , adminBalance :: Maybe GYValue
+  , adminBalance :: Maybe Ada
   , logo :: String
   , message :: String
   }
@@ -99,20 +101,19 @@ buildInitialState = do
 handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Next RaffleizeUI)
 handleEvent s e = case e of
   VtyEvent vtye -> case vtye of
-    EvKey (KChar 'q') [] -> halt s
-    EvKey (KChar 'l') [] -> do
-      let (Just skey) = adminSkey s
+    EvKey (KChar c) [] | c `elem` ("qQ" :: [Char]) -> halt s
+    EvKey (KChar c) [] | c `elem` ("lL" :: [Char]) -> do
+      let skey = fromMaybe (error "No skey") $ adminSkey s
       (addr, val) <- liftIO $ getAddressAndValue skey
-      liftIO $ print addr
-      liftIO $ print val
       continue s {adminAddress = Just addr, adminBalance = Just val}
-    EvKey (KChar 'b') [] -> continue s {message = ""}
-    EvKey (KChar 'r') [] -> continue s {message = "Refresh Screen"}
-    EvKey (KChar 'g') [] -> do
+    EvKey (KChar c) [] | c `elem` ("bB" :: [Char]) -> continue s {message = ""}
+    EvKey (KChar c) [] | c `elem` ("rR" :: [Char]) -> continue s {message = "Refresh Screen"}
+    EvKey (KChar c) [] | c `elem` ("gG" :: [Char]) -> do
       liftIO $ generateNewAdminSkey operationSkeyFilePath
       s' <- liftIO $ updateFromConfigFiles s
       continue s'
-    EvKey (KChar 'd') [] -> do
+    EvKey (KChar c) [] | c `elem` ("dD" :: [Char]) -> do
+      liftIO clearScreen
       liftIO $ print ("Deploying validators ...." :: String)
       liftIO $ print ("Building, signing and submiting transactions and waiting for confirmations.." :: String)
       liftIO deployValidators
@@ -169,24 +170,24 @@ mainMenu s =
 
 configFilesWidget :: RaffleizeUI -> Widget n
 configFilesWidget s =
-  borderWithLabel (str "CONFIGURATION FILES") $
+  borderWithLabel (str "CONFIGURATION") $
     hBox $
       padAll 1
-        <$> [ showProviderWidget (atlasConfig s)
-            , showValidatorsWidget (validatorsConfig s)
-            , showSymbol (isJust . adminSkey $ s) <+> str " Admin Secret Key"
+        <$> [ providersWidget (atlasConfig s)
+            , validatorsWidget (validatorsConfig s)
+            , adminWidget (adminSkey s) (adminAddress s) (adminBalance s)
             ]
 
-showSymbol :: Bool -> Widget n
-showSymbol True = withAttr "good" $ str "✔"
-showSymbol False = withAttr "warning" $ str "X"
+symbolWidget :: Bool -> Widget n
+symbolWidget True = withAttr "good" $ str "✔"
+symbolWidget False = withAttr "warning" $ str "X"
 
-showValidatorsWidget :: Maybe RaffleizeTxBuildingContext -> Widget n
-showValidatorsWidget mv =
+validatorsWidget :: Maybe RaffleizeTxBuildingContext -> Widget n
+validatorsWidget mv =
   borderWithLabel (str "Validators TxOuts\n with Reference Scripts ") $
     renderTable $
       table $
-        [str "Loaded: ", showSymbol (isJust mv)] : case mv of
+        [str "Loaded: ", symbolWidget (isJust mv)] : case mv of
           Nothing -> []
           Just (RaffleizeTxBuildingContext {..}) ->
             [ [str "Raffle Validator", txOutRefWidget raffleValidatorRef]
@@ -196,13 +197,13 @@ showValidatorsWidget mv =
 txOutRefWidget :: GYTxOutRef -> Widget n
 txOutRefWidget t = withAttr "good" $ str (unpack $ showTxOutRef t)
 
-showProviderWidget :: Maybe GYCoreConfig -> Widget n
-showProviderWidget mp =
+providersWidget :: Maybe GYCoreConfig -> Widget n
+providersWidget mp =
   borderWithLabel (str "Blockchain Provider") $
     renderTable $
       table $
         [ str "Loaded: "
-        , showSymbol (isJust mp)
+        , symbolWidget (isJust mp)
         ]
           : case mp of
             Nothing -> []
@@ -225,6 +226,26 @@ printNetwork cfg = withAttr "good" . str $ case cfgNetworkId cfg of
   GYTestnetLegacy -> "TESTNET-LEGACY"
   GYPrivnet -> "PRIVNET"
 
+adaBalanceWidget :: Ada -> Widget n
+adaBalanceWidget val = withAttr "good" $ str (show val)
+
+addressWidget :: GYAddress -> Widget n
+addressWidget addr = withAttr "good" $ str (show . unpack $ addressToText addr)
+
+adminWidget :: Maybe a -> Maybe GYAddress -> Maybe Ada -> Widget n
+adminWidget ma maddr mbal =
+  borderWithLabel (str "Admin") $
+    renderTable $
+      table $
+        [str "Loaded: ", symbolWidget (isJust ma)] : case ma of
+          Nothing -> []
+          Just _ -> case (maddr, mbal) of
+            (Just addr, Just bal) ->
+              [ [str "Address: ", addressWidget addr]
+              , [str "Balance: ", adaBalanceWidget bal]
+              ]
+            _ -> []
+
 availableActionsWidget :: RaffleizeUI -> Widget n
 availableActionsWidget s =
   withAttr "action" . borderWithLabel (str "AVAILABLE ACTIONS") $
@@ -233,7 +254,7 @@ availableActionsWidget s =
           <$> filter
             (not . null)
             [ "[D] - Deploy Raffleize Validators"
-            , if isNothing . adminSkey $ s then "[G] - Generate new admin skey" else mempty
+            , if isNothing . adminSkey $ s then "[G] - Generate new admin skey" else "[L] - Query current admin balance"
             , "[R] - Refresh screen"
             , "[Q] - Quit"
             ]
