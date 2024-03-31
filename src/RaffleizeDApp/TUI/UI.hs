@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module TUI.UI where
+module RaffleizeDApp.TUI.UI where
 
 import Brick.AttrMap
 import Brick.Main
@@ -26,10 +26,10 @@ import RaffleizeDApp.TxBuilding.Interactions
 import Brick.Widgets.Table (renderTable, table)
 import Data.Char
 import Data.Text (unpack)
+import RaffleizeDApp.TUI.Actions
+import RaffleizeDApp.TUI.Utils
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
-import TUI.Actions
-import TUI.Utils
 
 ------------------------------------------------------------------------------------------------
 

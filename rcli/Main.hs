@@ -1,6 +1,6 @@
 module Main where
 
-import TUI.UI (tui)
+import RaffleizeDApp.TUI.UI (tui)
 
 -- import Data.Aeson
 -- import Data.ByteString.Lazy qualified as B

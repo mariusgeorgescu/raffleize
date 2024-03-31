@@ -65,6 +65,9 @@ library
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
     RaffleizeDApp.Tests.UnitTests
+    RaffleizeDApp.TUI.Actions
+    RaffleizeDApp.TUI.UI
+    RaffleizeDApp.TUI.Utils
     RaffleizeDApp.TxBuilding.Context
     RaffleizeDApp.TxBuilding.Exceptions
     RaffleizeDApp.TxBuilding.Interactions
@@ -74,9 +77,6 @@ library
     RaffleizeDApp.TxBuilding.Transactions
     RaffleizeDApp.TxBuilding.Utils
     RaffleizeDApp.TxBuilding.Validators
-    TUI.Actions
-    TUI.UI
-    TUI.Utils
 
   -- Add new contracts here, i.e.:
   -- Contracts.MyContract

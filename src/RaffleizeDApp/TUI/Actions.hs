@@ -1,4 +1,4 @@
-module TUI.Actions where
+module RaffleizeDApp.TUI.Actions where
 
 import Data.Aeson
 
@@ -14,7 +14,7 @@ import RaffleizeDApp.Constants (
   operationSkeyFilePath,
   raffleizeValidatorsConfig,
  )
-import TUI.Utils
+import RaffleizeDApp.TUI.Utils
 
 deployValidators :: IO ()
 deployValidators = do

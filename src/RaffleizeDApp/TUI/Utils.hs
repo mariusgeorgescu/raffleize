@@ -1,4 +1,4 @@
-module TUI.Utils where
+module RaffleizeDApp.TUI.Utils where
 
 import Data.Aeson
 import GeniusYield.Types
