@@ -64,6 +64,7 @@ library
     RaffleizeDApp.OnChain.RaffleizeTicketValidator
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
+    RaffleizeDApp.Server.API
     RaffleizeDApp.Tests.UnitTests
     RaffleizeDApp.TUI.Actions
     RaffleizeDApp.TUI.UI
@@ -110,11 +111,14 @@ library
     , plutus-tx-plugin
     , row-types
     , serialise
+    , servant-server
     , tasty
     , text
     , time
     , turtle
     , vty
+    , servant-swagger
+    , swagger2
 
   default-extensions:
     DataKinds
