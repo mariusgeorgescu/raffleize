@@ -102,7 +102,7 @@ handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Nex
 handleEvent s e = case e of
   VtyEvent vtye -> case vtye of
     EvKey (KChar c) [] | c `elem` ("qQ" :: [Char]) -> halt s
-    EvKey (KChar c) [] | c `elem` ("lL" :: [Char]) -> do
+    EvKey (KChar c) [] | c `elem` ("lL" :: [Char]) && isJust (adminSkey s) -> do
       let skey = fromMaybe (error "No skey") $ adminSkey s
       (addr, val) <- liftIO $ getAddressAndValue skey
       continue s {adminAddress = Just addr, adminBalance = Just val}
@@ -112,7 +112,7 @@ handleEvent s e = case e of
       liftIO $ generateNewAdminSkey operationSkeyFilePath
       s' <- liftIO $ updateFromConfigFiles s
       continue s'
-    EvKey (KChar c) [] | c `elem` ("dD" :: [Char]) -> do
+    EvKey (KChar c) [] | c `elem` ("dD" :: [Char]) && isJust (adminSkey s) -> do
       liftIO clearScreen
       liftIO $ print ("Deploying validators ...." :: String)
       liftIO $ print ("Building, signing and submiting transactions and waiting for confirmations.." :: String)
@@ -253,9 +253,12 @@ availableActionsWidget s =
       ( str
           <$> filter
             (not . null)
-            [ "[D] - Deploy Raffleize Validators"
-            , if isNothing . adminSkey $ s then "[G] - Generate new admin skey" else "[L] - Query current admin balance"
-            , "[R] - Refresh screen"
-            , "[Q] - Quit"
-            ]
+            ( ( if isNothing . adminSkey $ s
+                  then ["[G] - Generate new admin skey"]
+                  else ["[D] - Deploy Raffleize Validators", "[L] - Query current admin balance"]
+              )
+                ++ [ "[R] - Refresh screen"
+                   , "[Q] - Quit"
+                   ]
+            )
       )
