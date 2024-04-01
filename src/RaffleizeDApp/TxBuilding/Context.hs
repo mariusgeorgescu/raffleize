@@ -21,13 +21,13 @@ data UserAddresses = UserAddresses
   }
 
 -- | Our Context.
-data Ctx = Ctx
+data ProviderCtx = ProviderCtx
   { ctxCoreCfg :: !GYCoreConfig
   , ctxProviders :: !GYProviders
   }
 
 -- | To run for simple queries, the one which don't requiring building for transaction skeleton.
-runQuery :: GYTxQueryMonadNode a -> ReaderT Ctx IO a
+runQuery :: GYTxQueryMonadNode a -> ReaderT ProviderCtx IO a
 runQuery q = do
   ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
@@ -38,7 +38,7 @@ runQuery q = do
 runTxI ::
   UserAddresses ->
   GYTxMonadNode (GYTxSkeleton v) ->
-  ReaderT Ctx IO GYTxBody
+  ReaderT ProviderCtx IO GYTxBody
 runTxI = coerce (runTxF @Identity)
 
 -- | Tries to build for given skeletons wrapped under traversable structure.
@@ -46,7 +46,7 @@ runTxF ::
   Traversable t =>
   UserAddresses ->
   GYTxMonadNode (t (GYTxSkeleton v)) ->
-  ReaderT Ctx IO (t GYTxBody)
+  ReaderT ProviderCtx IO (t GYTxBody)
 runTxF UserAddresses {usedAddresses, changeAddress, reservedCollateral} skeleton = do
   ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
@@ -86,9 +86,9 @@ parseArgs = do
 readCoreConfiguration :: IO GYCoreConfig
 readCoreConfiguration = coreConfigIO atlasCoreConfig -- Parsing our core configuration.
 
-runContextWithCfgProviders :: GYLogNamespace -> ReaderT Ctx IO b -> IO b
+runContextWithCfgProviders :: GYLogNamespace -> ReaderT ProviderCtx IO b -> IO b
 runContextWithCfgProviders s m = do
   coreConfig <- readCoreConfiguration
   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
-    let ctx = Ctx coreConfig providers
+    let ctx = ProviderCtx coreConfig providers
     runReaderT m ctx

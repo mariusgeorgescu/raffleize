@@ -20,7 +20,7 @@ import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidato
 
 ------------------------------------------------------------------------------------------------
 
-queryGetAddressFromSkey :: GYPaymentSigningKey -> ReaderT Ctx IO GYAddress
+queryGetAddressFromSkey :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYAddress
 queryGetAddressFromSkey skey = do
   nid <- asks (cfgNetworkId . ctxCoreCfg)
   runQuery $ do
@@ -29,13 +29,13 @@ queryGetAddressFromSkey skey = do
         address = addressFromPubKeyHash nid pub_key_hash
     return address
 
-queryGetAddressFromSkeyFile :: FilePath -> ReaderT Ctx IO ()
+queryGetAddressFromSkeyFile :: FilePath -> ReaderT ProviderCtx IO ()
 queryGetAddressFromSkeyFile skey_file = do
   skey <- liftIO $ readPaymentSigningKey skey_file
   addr <- queryGetAddressFromSkey skey
   liftIO $ printf "Address: %s" (show addr)
 
-queryGetUTxOs :: GYAddress -> ReaderT Ctx IO GYUTxOs
+queryGetUTxOs :: GYAddress -> ReaderT ProviderCtx IO GYUTxOs
 queryGetUTxOs addr = do
   providers <- asks ctxProviders
   liftIO $ gyQueryUtxosAtAddress providers addr Nothing
@@ -46,14 +46,14 @@ queryGetUTxOs addr = do
 -----------------
 -----------------
 
-submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader Ctx m) => a -> m GYTxBody -> m ()
+submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m ()
 submitTxBody skey m = do
   txBody <- m
   ctxProviders <- asks ctxProviders
   tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
   liftIO $ printf "submitted tx: %s\n" tid
 
-submitTxBody' :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader Ctx m) => a -> m GYTxBody -> m GYTxId
+submitTxBody' :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m GYTxId
 submitTxBody' skey m = do
   txBody <- m
   ctxProviders <- asks ctxProviders
@@ -62,7 +62,7 @@ submitTxBody' skey m = do
   return tid
 
 -- | Build a transaction for creating a new raffle.
-buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT Ctx IO GYTxBody
+buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYTxBody
 buildMintTestTokensTx skey = do
   my_addr <- queryGetAddressFromSkey skey
   runTxI (UserAddresses [my_addr] my_addr Nothing) $ snd <$> mintTestTokens "teststake" 100
@@ -72,18 +72,18 @@ buildMintTestTokensTx skey = do
 --------------------------
 
 -- | Build a transaction for creating a new raffle.
-buildCreateRaffleTx :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO GYTxBody
+buildCreateRaffleTx :: GYPaymentSigningKey -> RaffleConfig -> ReaderT ProviderCtx IO GYTxBody
 buildCreateRaffleTx skey raffleConfiguration = do
   my_addr <- queryGetAddressFromSkey skey
   let useraddrs = UserAddresses [my_addr] my_addr Nothing
   let createRaffleInteraction = RaffleizeInteraction Nothing (User (CreateRaffle raffleConfiguration)) useraddrs Nothing
   runReader (interactionToTxBody createRaffleInteraction) undefined
 
-createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Ctx IO ()
+createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> ReaderT ProviderCtx IO ()
 createRaffleTransaction skey raffle_config = do
   submitTxBody skey $ buildCreateRaffleTx skey raffle_config
 
-mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT Ctx IO ()
+mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT ProviderCtx IO ()
 mintTestTokensTransaction skey = do
   submitTxBody skey $ buildMintTestTokensTx skey
 
@@ -93,7 +93,7 @@ mintTestTokensTransaction skey = do
 
 ------------------------------------------------------------------------------------------------
 
-deployReferenceScriptTransaction :: GYPaymentSigningKey -> GYScript 'PlutusV2 -> ReaderT Ctx IO GYTxOutRef
+deployReferenceScriptTransaction :: GYPaymentSigningKey -> GYScript 'PlutusV2 -> ReaderT ProviderCtx IO GYTxOutRef
 deployReferenceScriptTransaction skey script = do
   gyTxId <- submitTxBody' skey $ do
     my_addr <- queryGetAddressFromSkey skey
@@ -105,7 +105,7 @@ deployReferenceScriptTransaction skey script = do
   -- liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
   return txOutRef
 
-deployRaffleizeValidators :: GYPaymentSigningKey -> ReaderT Ctx IO RaffleizeTxBuildingContext
+deployRaffleizeValidators :: GYPaymentSigningKey -> ReaderT ProviderCtx IO RaffleizeTxBuildingContext
 deployRaffleizeValidators skey = do
   raffleValidatorRef <- deployReferenceScriptTransaction skey (validatorToScript raffleizeValidatorGY)
   ticketValidatoRef <- deployReferenceScriptTransaction skey (validatorToScript ticketValidatorGY)

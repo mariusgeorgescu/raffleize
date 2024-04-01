@@ -67,14 +67,14 @@ interactionToTxSkeleton
             GetCollateraOfExpiredTicket -> getCollateralOfExpiredTicketTX ticketValidatorRef usedAddrs receiveAddr contextNFT
           Admin CloseRaffle -> undefined -- TODO
 
-interactionToTxBody :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT Ctx IO GYTxBody)
+interactionToTxBody :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT ProviderCtx IO GYTxBody)
 interactionToTxBody interaction@RaffleizeInteraction {userAddresses} = do
   raffleizeTxBuildingContext <- ask
   let skeleton = runReader (interactionToTxSkeleton interaction) raffleizeTxBuildingContext
   return $ runTxI userAddresses (fst <$> skeleton)
 
-interactionToUnsignedTx :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT Ctx IO GYTx)
+interactionToUnsignedTx :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT ProviderCtx IO GYTx)
 interactionToUnsignedTx = (fmap unsignedTx <$>) . interactionToTxBody
 
-interactionToHexEncodedCBOR :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT Ctx IO String)
+interactionToHexEncodedCBOR :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT ProviderCtx IO String)
 interactionToHexEncodedCBOR = (fmap txToHex <$>) . interactionToUnsignedTx
