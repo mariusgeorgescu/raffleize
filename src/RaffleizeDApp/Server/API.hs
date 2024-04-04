@@ -2,7 +2,6 @@ module RaffleizeDApp.Server.API where
 
 import Control.Monad.Reader
 
-import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleStateData)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions (RaffleizeInteraction, RaffleizeTxBuildingContext, interactionToHexEncodedCBOR)
@@ -10,12 +9,13 @@ import Servant
 
 type RaffleizeAPI =
   "build-tx" :> InteractionInterace
-    :<|> "lookup" :> LookupsInterface
+
+-- :<|> "lookup" :> LookupsInterface
 
 -- | Type for our Raffleize Servant API.
 type InteractionInterace =
   ReqBody '[JSON] RaffleizeInteraction
-    :> Post '[JSON] (Maybe AssetClass)
+    :> Post '[JSON] String
 
 -- | Type for our Raffleize Servant API.
 type LookupsInterface =
@@ -29,8 +29,11 @@ raffleizeApi = Proxy
 -- apiSwagger = toSwagger raffleizeApi
 
 handleInteraction :: RaffleizeTxBuildingContext -> ProviderCtx -> RaffleizeInteraction -> IO String
-handleInteraction tbCtx ctx i =
+handleInteraction tbCtx pCtx i =
   let
     i' = runReader (interactionToHexEncodedCBOR i) tbCtx
    in
-    runReaderT i' ctx
+    runReaderT i' pCtx
+
+raffleizeServer :: RaffleizeTxBuildingContext -> ProviderCtx -> ServerT RaffleizeAPI IO
+raffleizeServer = handleInteraction

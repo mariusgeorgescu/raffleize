@@ -112,13 +112,13 @@ library
     , row-types
     , serialise
     , servant-server
+    , servant-swagger
+    , swagger2
     , tasty
     , text
     , time
     , turtle
     , vty
-    , servant-swagger
-    , swagger2
 
   default-extensions:
     DataKinds
@@ -139,10 +139,17 @@ library
     TypeFamilies
     TypeOperators
 
-executable cli
+executable server
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: rcli
+  hs-source-dirs: server
+  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  build-depends:  raffleize
+
+executable tui
+  import:         common
+  main-is:        Main.hs
+  hs-source-dirs: tui
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
   build-depends:
     , aeson

@@ -71,7 +71,7 @@
       in
       flake // {
         # Built by `nix build .`
-        packages.default = flake.packages."raffleize:exe:cli";
+        packages.default = flake.packages."raffleize:exe:tui";
       });
 
   nixConfig = {
