@@ -144,7 +144,15 @@ executable server
   main-is:        Main.hs
   hs-source-dirs: server
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
-  build-depends:  raffleize
+  build-depends:
+    , atlas-cardano
+    , http-types
+    , raffleize
+    , servant-server
+    , transformers
+    , wai
+    , wai-cors
+    , warp
 
 executable tui
   import:         common

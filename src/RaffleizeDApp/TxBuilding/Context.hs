@@ -19,6 +19,7 @@ data UserAddresses = UserAddresses
   , reservedCollateral :: Maybe GYTxOutRefCbor
   -- ^ Browser wallet's reserved collateral (if set).
   }
+  deriving (Show, Generic, FromJSON)
 
 -- | Our Context.
 data ProviderCtx = ProviderCtx

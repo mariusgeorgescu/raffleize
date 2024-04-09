@@ -5,8 +5,6 @@ import PlutusTx
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 
-
-
 -------------------------------------------------------------------------------
 
 -- * Action Type  Declarations
@@ -18,7 +16,7 @@ data UserAction
   = CreateRaffle RaffleConfig
   | BuyTicket
       SecretHash --- ^ The hash of the secret to be used in commt-reveal-schemme.
-  deriving (Generic, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''UserAction --- TODO must be changed with stable version
 
@@ -30,7 +28,7 @@ data TicketOwnerAction
   | RefundTicket
   | RefundTicketExtra
   | RefundCollateralLosing
-  deriving (Generic, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''TicketOwnerAction --- TODO must be changed with stable version
 
@@ -43,13 +41,13 @@ data RaffleOwnerAction
   | RecoverStakeAndAmount
   | CollectAmount
   | GetCollateraOfExpiredTicket
-  deriving (Generic, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''RaffleOwnerAction --- TODO must be changed with stable version
 
 -- | Datatype representng the actions that can be peformed by the Admin.
 data AdminAction = CloseRaffle ---
-  deriving (Generic, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''AdminAction --- TODO must be changed with stable version
 
@@ -66,7 +64,7 @@ data RaffleizeAction
       RaffleOwnerAction --- ^ Action that can be peformed by Raffle Owner.
   | Admin
       AdminAction --- ^ Action that can be peformed by Admin.
-  deriving (Generic, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''RaffleizeAction --- TODO must be changed with stable version
 
