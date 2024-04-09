@@ -24,5 +24,23 @@ ticketDescription =  "This is a tokenized raffle ticket"
 ticketName :: BuiltinString
 ticketName = "RAFFLEIZE: TICKET OWNER NFT"
 
+
+
+
+
+
+--- Configuration FilePaths  ---
+
+raffleizeLogoPath :: FilePath
+raffleizeLogoPath = "raffleize.logo"
+
+
 atlasCoreConfig :: FilePath
 atlasCoreConfig = "atlas_config.json"
+
+raffleizeValidatorsConfig :: FilePath
+raffleizeValidatorsConfig = "raffleize_validators_config.json"
+
+
+operationSkeyFilePath :: FilePath
+operationSkeyFilePath = "operation.skey"

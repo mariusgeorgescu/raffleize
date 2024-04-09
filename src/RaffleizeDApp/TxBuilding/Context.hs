@@ -11,14 +11,24 @@ import GeniusYield.Types
 import RaffleizeDApp.Constants
 import System.Environment
 
+data UserAddresses = UserAddresses
+  { usedAddresses :: [GYAddress]
+  -- ^ User's used addresses.
+  , changeAddress :: GYAddress
+  -- ^ User's change address.
+  , reservedCollateral :: Maybe GYTxOutRefCbor
+  -- ^ Browser wallet's reserved collateral (if set).
+  }
+  deriving (Show, Generic, FromJSON)
+
 -- | Our Context.
-data Ctx = Ctx
+data ProviderCtx = ProviderCtx
   { ctxCoreCfg :: !GYCoreConfig
   , ctxProviders :: !GYProviders
   }
 
 -- | To run for simple queries, the one which don't requiring building for transaction skeleton.
-runQuery :: GYTxQueryMonadNode a -> ReaderT Ctx IO a
+runQuery :: GYTxQueryMonadNode a -> ReaderT ProviderCtx IO a
 runQuery q = do
   ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
@@ -27,28 +37,18 @@ runQuery q = do
 
 -- | Wraps our skeleton under `Identity` and calls `runTxF`.
 runTxI ::
-  -- | User's used addresses.
-  [GYAddress] ->
-  -- | User's change address.
-  GYAddress ->
-  -- | Browser wallet's reserved collateral (if set).
-  Maybe GYTxOutRefCbor ->
+  UserAddresses ->
   GYTxMonadNode (GYTxSkeleton v) ->
-  ReaderT Ctx IO GYTxBody
+  ReaderT ProviderCtx IO GYTxBody
 runTxI = coerce (runTxF @Identity)
 
 -- | Tries to build for given skeletons wrapped under traversable structure.
 runTxF ::
   Traversable t =>
-  -- | User's used addresses.
-  [GYAddress] ->
-  -- | User's change address.
-  GYAddress ->
-  -- | Browser wallet's reserved collateral (if set).
-  Maybe GYTxOutRefCbor ->
+  UserAddresses ->
   GYTxMonadNode (t (GYTxSkeleton v)) ->
-  ReaderT Ctx IO (t GYTxBody)
-runTxF addrs addr collateral skeleton = do
+  ReaderT ProviderCtx IO (t GYTxBody)
+runTxF UserAddresses {usedAddresses, changeAddress, reservedCollateral} skeleton = do
   ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
       providers = ctxProviders ctx
@@ -57,9 +57,9 @@ runTxF addrs addr collateral skeleton = do
       GYRandomImproveMultiAsset
       nid
       providers
-      addrs
-      addr
-      ( collateral
+      usedAddresses
+      changeAddress
+      ( reservedCollateral
           >>= ( \c ->
                   Just
                     ( getTxOutRefHex c
@@ -77,19 +77,19 @@ parseArgs = do
     coreCfg : _ -> return coreCfg
     _invalidArgument -> fail "Error: wrong arguments, needed a path to the CoreConfig JSON configuration file\n"
 
--- | Getting path for our core configuration.
-getCoreConfiguration :: IO GYCoreConfig
-getCoreConfiguration = do
-  coreCfgPath <- parseArgs
-  coreConfigIO coreCfgPath
+-- -- | Getting path for our core configuration.
+-- getCoreConfiguration :: IO GYCoreConfig
+-- getCoreConfiguration = do
+--   coreCfgPath <- parseArgs
+--   coreConfigIO coreCfgPath
 
 -- | Getting path for our core configuration.
 readCoreConfiguration :: IO GYCoreConfig
 readCoreConfiguration = coreConfigIO atlasCoreConfig -- Parsing our core configuration.
 
-runContextWithCfgProviders :: GYLogNamespace -> ReaderT Ctx IO b -> IO b
+runContextWithCfgProviders :: GYLogNamespace -> ReaderT ProviderCtx IO b -> IO b
 runContextWithCfgProviders s m = do
   coreConfig <- readCoreConfiguration
   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
-    let ctx = Ctx coreConfig providers
+    let ctx = ProviderCtx coreConfig providers
     runReaderT m ctx

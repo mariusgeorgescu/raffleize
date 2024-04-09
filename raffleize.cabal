@@ -64,11 +64,17 @@ library
     RaffleizeDApp.OnChain.RaffleizeTicketValidator
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
-    RaffleizeDApp.Tests.RaffleizeTests
+    RaffleizeDApp.Server.API
+    RaffleizeDApp.Tests.UnitTests
+    RaffleizeDApp.TUI.Actions
+    RaffleizeDApp.TUI.UI
+    RaffleizeDApp.TUI.Utils
     RaffleizeDApp.TxBuilding.Context
-    RaffleizeDApp.TxBuilding.RaffleizeLookups
-    RaffleizeDApp.TxBuilding.RaffleizeOperations
-    RaffleizeDApp.TxBuilding.RaffleizeSkeletons
+    RaffleizeDApp.TxBuilding.Exceptions
+    RaffleizeDApp.TxBuilding.Interactions
+    RaffleizeDApp.TxBuilding.Lookups
+    RaffleizeDApp.TxBuilding.Operations
+    RaffleizeDApp.TxBuilding.Skeletons
     RaffleizeDApp.TxBuilding.Transactions
     RaffleizeDApp.TxBuilding.Utils
     RaffleizeDApp.TxBuilding.Validators
@@ -81,9 +87,11 @@ library
   hs-source-dirs:     src
   build-depends:
     , aeson
+    , ansi-terminal
     , atlas-cardano
     , base
     , base16-bytestring
+    , brick
     , bytestring
     , cardano-api
     , cardano-binary
@@ -103,10 +111,14 @@ library
     , plutus-tx-plugin
     , row-types
     , serialise
+    , servant-server
+    , servant-swagger
+    , swagger2
     , tasty
     , text
     , time
     , turtle
+    , vty
 
   default-extensions:
     DataKinds
@@ -127,16 +139,31 @@ library
     TypeFamilies
     TypeOperators
 
-executable cli
+executable server
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: rcli
+  hs-source-dirs: server
+  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  build-depends:
+    , atlas-cardano
+    , http-types
+    , raffleize
+    , servant-server
+    , transformers
+    , wai
+    , wai-cors
+    , warp
+
+executable tui
+  import:         common
+  main-is:        Main.hs
+  hs-source-dirs: tui
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
   build-depends:
     , aeson
+    , atlas-cardano
     , bytestring
     , raffleize
-    , atlas-cardano
 
 test-suite tests
   import:         common

@@ -1,4 +1,4 @@
-module RaffleizeDApp.TxBuilding.RaffleizeSkeletons where
+module RaffleizeDApp.TxBuilding.Skeletons where
 
 import GHC.Stack
 import GeniusYield.TxBuilder
@@ -8,7 +8,7 @@ import PlutusLedgerApi.V2
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
-import RaffleizeDApp.TxBuilding.RaffleizeLookups
+import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 
@@ -62,10 +62,10 @@ txMustHaveStateAsRefInput stateTokenId gyValidator = do
   stateUTxO <- lookuptUTxOWithStateToken stateTokenId gyValidator
   return $ mustHaveRefInput (utxoRef stateUTxO)
 
-txMustSpendFromAddress :: (HasCallStack, GYTxMonad m) => AssetClass -> GYAddress -> m (GYTxSkeleton 'PlutusV2)
-txMustSpendFromAddress tokenId addr = do
+txMustSpendFromAddress :: (HasCallStack, GYTxMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV2)
+txMustSpendFromAddress tokenId addrs = do
   do
-    tokenUtxo <- lookupTxOWithTokenAtAddress tokenId addr
+    tokenUtxo <- lookupTxOWithTokenAtAddresses tokenId addrs
     return $
       mustHaveInput
         GYTxIn

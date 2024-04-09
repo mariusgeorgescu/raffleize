@@ -15,8 +15,7 @@ import PlutusTx (
  )
 import RaffleizeDApp.CustomTypes.ActionTypes (
   RaffleOwnerAction (GetCollateraOfExpiredTicket),
-  RaffleizeAction (RaffleOwner, TicketOwner),
-  TicketOwnerAction (RefundCollateralLosing, RevealTicketSecret),
+  TicketOwnerAction (RefundCollateralLosing, RevealTicketSecret), RaffleizeRedeemer (RaffleOwnerRedeemer, TicketOwnerRedeemer),
  )
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes (
@@ -51,7 +50,7 @@ import RaffleizeDApp.OnChain.Utils (
 
 --- *  Validator Lambda
 
-ticketValidatorLamba :: PubKeyHash -> TicketDatum -> RaffleizeAction -> AScriptContext -> Bool
+ticketValidatorLamba :: PubKeyHash -> TicketDatum -> RaffleizeRedeemer -> AScriptContext -> Bool
 ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeemer context@(AScriptContext ATxInfo {..} _) =
   let
     (!ticketRefAC, !ticketUserAC) = generateTicketACFromTicket tsd
@@ -69,7 +68,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
           ownValue = txOutValue ownInput
          in
           case redeemer of
-            RaffleOwner GetCollateraOfExpiredTicket ->
+            RaffleOwnerRedeemer GetCollateraOfExpiredTicket ->
               let raffleUserAC = deriveUserFromRefAC raffleRefAC
                   ---- RAFFLE STATE FROM REF INPUT
                   (rValue, rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs
@@ -80,7 +79,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                     , isBurningNFT ticketRefAC txInfoMint -- Transaction burns 1 ticketRef.
                     , hasTxInWithToken raffleUserAC txInfoInputs -- Transaction spends the raffle user NFT on another input.
                     ]
-            TicketOwner RefundCollateralLosing _tId ->
+            TicketOwnerRedeemer RefundCollateralLosing _ ->
               let
                 ---- RAFFLE STATE FROM REF INPUT
                 (rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction has the raffleRef as reference input
@@ -95,7 +94,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                   , traceIfFalse "are you stupid?" $
                       rRandomSeed rsd #== tNumber -- Must not be the winning ticket
                   ]
-            TicketOwner toa _tId ->
+            TicketOwnerRedeemer toa _ ->
               -- rsd must be strict to ensure that raffle state is spent
               let (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
                   currentStateLabel = evaluateRaffleState (txInfoValidRange, rsd, rValue)

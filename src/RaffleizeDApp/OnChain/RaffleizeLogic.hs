@@ -114,6 +114,12 @@ showRaffleStateLabel r = case r of
   33 -> "UNREVEALED_FINAL"
   _ -> traceError "invalid"
 
+redeemerToAction :: RaffleizeRedeemer -> RaffleizeAction
+redeemerToAction (UserRedeemer action) = User action
+redeemerToAction (RaffleOwnerRedeemer action) = RaffleOwner action
+redeemerToAction (TicketOwnerRedeemer action _) = TicketOwner action
+redeemerToAction (AdminRedeemer action) = Admin action
+
 updateRaffleStateValue :: RaffleizeAction -> RaffleStateData -> Value -> Value
 updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets} rValue = case action of
   User (BuyTicket _) -> rValue #+ raffleTicketPriceValue rsd
@@ -121,12 +127,12 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
   RaffleOwner RecoverStakeAndAmount -> rValue #- raffleStakeValue rsd #- raffleAccumulatedValue rsd
   RaffleOwner CollectAmount -> rValue #- raffleAccumulatedValue rsd
   RaffleOwner (Update _) -> rValue
-  TicketOwner (RevealTicketSecret _) _ -> rValue
-  TicketOwner CollectStake _ -> rValue #- raffleStakeValue rsd
-  TicketOwner RefundTicket _ ->
+  TicketOwner (RevealTicketSecret _) -> rValue
+  TicketOwner CollectStake -> rValue #- raffleStakeValue rsd
+  TicketOwner RefundTicket ->
     let fullRefundValue = raffleTicketPriceValue rsd #+ raffleTicketCollateralValue rsd
      in rValue #- fullRefundValue
-  TicketOwner RefundTicketExtra _ ->
+  TicketOwner RefundTicketExtra ->
     let
       extraRefundValue =
         adaValueFromLovelaces (rSoldTickets #* rTicketPrice rConfig `divideInteger` rRevealedTickets)
@@ -141,6 +147,7 @@ validateRaffleAction action currentStateLabel =
   let invalidActionError = "invalid action for validator"
    in traceIfFalse "Action not permited in this raffle state" $
         currentStateLabel `pelem` case action of
+          User (CreateRaffle _) -> traceError invalidActionError
           User (BuyTicket _) ->
             [ 1 -- NEW
             , 2 -- COMMIT
@@ -161,7 +168,7 @@ validateRaffleAction action currentStateLabel =
               , 41 -- SUCCESS_LOCKED_AMOUNT
               ]
             GetCollateraOfExpiredTicket -> traceError invalidActionError
-          TicketOwner toa _ -> case toa of
+          TicketOwner toa -> case toa of
             (RevealTicketSecret _) -> [3]
             CollectStake ->
               [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT

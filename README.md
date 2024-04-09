@@ -18,7 +18,6 @@ Table of Contents
     - [1.3 Scope](#13-scope)
       - [Objectives and Benefits](#objectives-and-benefits)
       - [Differentiators](#differentiators)
-      - [Goals and Business Alignment](#goals-and-business-alignment)
     - [1.4 References](#14-references)
   - [2. Description](#2-description)
     - [2.1 Perspective](#21-perspective)
@@ -52,7 +51,7 @@ Table of Contents
       - [Cancel](#cancel)
       - [Collect Accumulated Amount](#collect-accumulated-amount)
       - [Recover Stake](#recover-stake)
-      - [Recover Stake](#recover-stake-1)
+      - [Recover Stake And Amount](#recover-stake-and-amount)
       - [Collect collateral of unrevealed tickets](#collect-collateral-of-unrevealed-tickets)
       - [Reveal Secret](#reveal-secret)
       - [Collect Prize](#collect-prize)
@@ -71,6 +70,9 @@ Table of Contents
     - [3.1 User Interfaces](#31-user-interfaces)
       - [General User Interface Characteristics:](#general-user-interface-characteristics)
       - [Key Components of the User Interface:](#key-components-of-the-user-interface)
+  - [](#)
+  - [](#-1)
+  - [](#-2)
     - [3.2 Software Interfaces](#32-software-interfaces)
   - [Appendix A: Glossary](#appendix-a-glossary)
       - [Definitions, Acronyms and Abbreviations](#definitions-acronyms-and-abbreviations)
@@ -790,51 +792,8 @@ cabal build
 
 cabal test
 
-```
+cabal run tui
 
-## 5. Try on Preview
-
-Create an account and obtain a preview token from : https://www.gomaestro.org/  
-On project root add "atlas_config.json"  with the following content:
+cabal run server
 
 ```
-{
-    "coreProvider": { "maestroToken": "YOUR PREVIEW TOKEN" },
-    "networkId": "testnet-preview",
-    "logging": [{ "type": { "tag": "stderr" }, "severity": "Debug", "verbosity": "V2" }],
-    "utxoCacheEnable": false
-  }
-```
-
-
-On project root directory run:
-```
-cardano-cli address key-gen --signing-key-file marius.skey   --verification-key-file marius.vkey
-
-cardano-cli address build --payment-verification-key-file marius.vkey --testnet-magic 2 --out-file marius.addr
-
-cat marius.addr
-```
-
-Go to https://docs.cardano.org/cardano-testnet/tools/faucet/  and request funds for the previously created address.
-
-run the following command in project root directory -- this will mint some test tokens to the address
-```
- cabal run cli -- marius.skey 
-
-```
-
-Go to https://preview.cexplorer.io/  get the newly minted tokens policy id and replace it the "CurrencySymbol" field of the raffleconfig.json
-Go to https://www.timestamp-converter.com/ and get a posix time within the next 36 hours and replace it in "rCommitDDL" field of the raffleconfig.json
-
-
-run the following command in project root directory -- this will create a new raffle
-```
- cabal run cli -- marius.skey raffleconfig.json
-``` 
-
-Go to https://preview.cexplorer.io/ and check the Raffle NFT (referance and user NFTs metadata)
-
-
-
-example: https://preview.cexplorer.io/asset/asset1lkvgvd0ggh854t3vguvtdyealenx53jeh08xkn 

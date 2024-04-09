@@ -47,7 +47,13 @@ out
 *.DS_STORE
 *.link
 
+
+
 idealog.txt
 result
 
+#Raffleize
+
 atlas_config.json
+
+*.skey

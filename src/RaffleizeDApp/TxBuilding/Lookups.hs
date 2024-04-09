@@ -1,4 +1,5 @@
-module RaffleizeDApp.TxBuilding.RaffleizeLookups where
+module RaffleizeDApp.TxBuilding.Lookups where
+
 
 import GHC.Stack
 import GeniusYield.TxBuilder
@@ -32,6 +33,14 @@ lookupTxOWithTokenAtAddress tokenAC address = do
   case utxs of
     [x] -> return x
     _ -> throwError (GYQueryUTxOException (GYNoUtxosAtAddress [address]))
+
+lookupTxOWithTokenAtAddresses :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => AssetClass -> [GYAddress] -> m GYUTxO
+lookupTxOWithTokenAtAddresses tokenAC addresses = do
+  gyAC <- assetClassFromPlutus' tokenAC
+  utxs <- concatMap utxosToList <$> mapM (`utxosAtAddress` Just gyAC) addresses
+  case utxs of
+    [x] -> return x
+    _ -> throwError (GYQueryUTxOException (GYNoUtxosAtAddress addresses))
 
 lookupRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (RaffleStateData, Value)
 lookupRaffleStateDataAndValue raffleId =
