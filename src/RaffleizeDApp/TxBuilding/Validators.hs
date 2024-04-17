@@ -3,6 +3,7 @@ module RaffleizeDApp.TxBuilding.Validators where
 import GeniusYield.Types
 import PlutusLedgerApi.V2
 import PlutusTx
+import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.RaffleizeTicketValidator
@@ -71,11 +72,11 @@ raffleizeMintingPolicyPlutus = compileRaffleizeMP mockRaffleParam
 raffleizeMintingPolicyGY :: GYMintingPolicy 'PlutusV2
 raffleizeMintingPolicyGY = mintingPolicyFromPlutus raffleizeMintingPolicyPlutus
 
-printRaffleScript :: IO ()
-printRaffleScript = writeScript @'PlutusV2 "rscript.plutus" $ validatorToScript raffleizeValidatorGY
+exportRaffleScript :: IO ()
+exportRaffleScript = writeScript @'PlutusV2 raffleizeValidatorFile $ validatorToScript raffleizeValidatorGY
 
-printTicketScript :: IO ()
-printTicketScript = writeScript @'PlutusV2 "tscript.plutus" $ validatorToScript ticketValidatorGY
+exportTicketScript :: IO ()
+exportTicketScript = writeScript @'PlutusV2 ticketValidatorFile $ validatorToScript ticketValidatorGY
 
-printMP :: IO ()
-printMP = writeScript @'PlutusV2 "mp.plutus" $ mintingPolicyToScript raffleizeMintingPolicyGY
+exportMintingPolicy :: IO ()
+exportMintingPolicy = writeScript @'PlutusV2 mintingPolicyFile $ mintingPolicyToScript raffleizeMintingPolicyGY

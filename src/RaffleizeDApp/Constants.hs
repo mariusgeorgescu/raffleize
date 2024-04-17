@@ -19,21 +19,15 @@ ticketImageURI :: BuiltinString
 ticketImageURI = "ipfs://QmYWtPVSDCfZp2KAtqZCfLP21WDSUrLB6rfmvByTcDqPJf"
 
 ticketDescription :: BuiltinString
-ticketDescription =  "This is a tokenized raffle ticket"
+ticketDescription = "This is a tokenized raffle ticket"
 
 ticketName :: BuiltinString
 ticketName = "RAFFLEIZE: TICKET OWNER NFT"
-
-
-
-
-
 
 --- Configuration FilePaths  ---
 
 raffleizeLogoPath :: FilePath
 raffleizeLogoPath = "raffleize.logo"
-
 
 atlasCoreConfig :: FilePath
 atlasCoreConfig = "atlas_config.json"
@@ -41,6 +35,16 @@ atlasCoreConfig = "atlas_config.json"
 raffleizeValidatorsConfig :: FilePath
 raffleizeValidatorsConfig = "raffleize_validators_config.json"
 
-
 operationSkeyFilePath :: FilePath
 operationSkeyFilePath = "operation.skey"
+
+-- Exports
+
+raffleizeValidatorFile :: FilePath
+raffleizeValidatorFile = "raffleizeValidator.plutus"
+
+ticketValidatorFile :: FilePath
+ticketValidatorFile = "ticketValidator.plutus"
+
+mintingPolicyFile :: FilePath
+mintingPolicyFile = "raffleizeMintingPolicy.plutus"

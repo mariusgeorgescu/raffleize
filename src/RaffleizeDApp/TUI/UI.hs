@@ -20,14 +20,16 @@ import Brick.Widgets.Border
 import Brick.Widgets.Center
 import Control.Monad.IO.Class
 
-import RaffleizeDApp.Constants (atlasCoreConfig, operationSkeyFilePath, raffleizeLogoPath, raffleizeValidatorsConfig)
+import RaffleizeDApp.Constants (atlasCoreConfig, mintingPolicyFile, operationSkeyFilePath, raffleizeLogoPath, raffleizeValidatorFile, raffleizeValidatorsConfig, ticketValidatorFile)
 import RaffleizeDApp.TxBuilding.Interactions
 
 import Brick.Widgets.Table (renderTable, table)
 import Data.Char
+import Data.List (intercalate)
 import Data.Text (unpack)
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
+import RaffleizeDApp.TxBuilding.Validators (exportMintingPolicy, exportRaffleScript, exportTicketScript)
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
 
@@ -119,6 +121,9 @@ handleEvent s e = case e of
       liftIO deployValidators
       s' <- liftIO $ updateFromConfigFiles s
       continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
+    EvKey (KChar c) [] | c `elem` ("eE" :: [Char]) -> do
+      liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
+      continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
     _ -> continue s
   _ -> continue s
 
@@ -258,6 +263,7 @@ availableActionsWidget s =
                   else ["[D] - Deploy Raffleize Validators", "[L] - Query current admin balance"]
               )
                 ++ [ "[R] - Refresh screen"
+                   , "[E] - Export validators"
                    , "[Q] - Quit"
                    ]
             )
