@@ -1,10 +1,13 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
+import Control.Exception (try)
 import Control.Monad.Trans.Except (ExceptT (ExceptT))
 import GeniusYield.GYConfig (GYCoreConfig, withCfgProviders)
 import GeniusYield.Types (GYLogNamespace)
 import Network.HTTP.Types qualified as HttpTypes
-import Network.Wai.Handler.Warp (run)
+import Network.Wai.Handler.Warp (defaultSettings, runSettings, setHost, setPort)
 import Network.Wai.Middleware.Cors (
   CorsResourcePolicy (corsRequestHeaders),
   cors,
@@ -30,7 +33,6 @@ import Servant (
  )
 import System.Environment (lookupEnv)
 import Text.Read (read)
-import Control.Exception (try)
 
 getPortFromEnv :: IO Int
 getPortFromEnv = do
@@ -47,8 +49,9 @@ main = do
   port <- getPortFromEnv
   withCfgProviders atlasConfig (read @GYLogNamespace "raffleizeserver") $ \providers -> do
     let pCtx = ProviderCtx atlasConfig providers
-    putStrLn $ "Starting server at \n " <> "http://localhost:" <> show port
-    run port $ app tbCtx pCtx
+    putStrLn $ "Starting server at \n " <> "http://0.0.0.0:" <> show port
+    let settings = setPort port $ setHost "0.0.0.0" defaultSettings -- host and port customized for heroku
+    runSettings settings $ app tbCtx pCtx
 
 app :: RaffleizeTxBuildingContext -> ProviderCtx -> Application
 app tbCtx pCtx =
