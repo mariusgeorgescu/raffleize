@@ -48,4 +48,4 @@ RUN cabal build
 # Add and Install Application Code
 RUN cabal install
 
-CMD ["tui"]
+CMD ["server"]
