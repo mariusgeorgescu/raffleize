@@ -45,7 +45,6 @@ main = do
   tbCtx <- fromJust <$> decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   putStrLn "Loading Providers ..."
   port <- getPortFromEnv
-  print port
   withCfgProviders atlasConfig (read @GYLogNamespace "raffleizeserver") $ \providers -> do
     let pCtx = ProviderCtx atlasConfig providers
     putStrLn $ "Starting server at \n " <> "http://localhost:" <> show port
