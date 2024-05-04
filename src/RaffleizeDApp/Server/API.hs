@@ -8,19 +8,18 @@ import RaffleizeDApp.TxBuilding.Interactions (RaffleizeInteraction, RaffleizeTxB
 import Servant
 
 type RaffleizeAPI =
-  "build-tx" :> InteractionInterace
-
--- :<|> "lookup" :> LookupsInterface
+  "build-tx" :> InteractionInterface
+    :<|>LookupsInterface
 
 -- | Type for our Raffleize Servant API.
-type InteractionInterace =
+type InteractionInterface =
   ReqBody '[JSON] RaffleizeInteraction
     :> Post '[JSON] String
 
 -- | Type for our Raffleize Servant API.
 type LookupsInterface =
-  "raffles" :> Get '[JSON] [RaffleStateData]
-    :<|> "raffles" :> Get '[JSON] [RaffleStateData]
+  Get '[JSON] String
+    -- :<|> "raffles" :> Get '[JSON] [RaffleStateData]
 
 raffleizeApi :: Proxy RaffleizeAPI
 raffleizeApi = Proxy
@@ -35,5 +34,8 @@ handleInteraction tbCtx pCtx i =
    in
     runReaderT i' pCtx
 
+handleLookup :: IO String
+handleLookup = return "hello"
+
 raffleizeServer :: RaffleizeTxBuildingContext -> ProviderCtx -> ServerT RaffleizeAPI IO
-raffleizeServer = handleInteraction
+raffleizeServer r p = handleInteraction r p :<|> handleLookup
