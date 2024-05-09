@@ -49,11 +49,11 @@ queryRaffleizeValidatorUTxOs = do
   queryGetUTxOs gyValidatorAddressGY
 
 -- TODO FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
-queryRaffles :: ReaderT ProviderCtx IO [RaffleStateData]
+
+queryRaffles :: ReaderT ProviderCtx IO [String]
 queryRaffles = do
   raffflesUTxOs <- queryRaffleizeValidatorUTxOs
-  r <- runQuery $ mapM getRaffleDatumAndValue $ utxosToList raffflesUTxOs
-  return (fst <$> r)
+  return $ show <$> utxosToList raffflesUTxOs
 
 -----------------
 -----------------
@@ -78,7 +78,7 @@ submitTxBodyAndWaitForConfirmation skey m = do
   let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
   return txOutRef
 
--- | Build a transaction for creating a new raffle.
+-- | Build a transaction for minting test tokens
 buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYTxBody
 buildMintTestTokensTx skey = do
   my_addr <- queryGetAddressFromSkey skey
