@@ -76,6 +76,10 @@ instance ToJSON AssetClass where
   toJSON :: AssetClass -> Data.Aeson.Value
   toJSON (AssetClass ac) = toJSON ac
 
+instance ToJSON ScriptHash where
+  toJSON :: ScriptHash -> Data.Aeson.Value
+  toJSON (ScriptHash s) = toJSON s
+
 instance FromJSON AssetClass where
   parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser AssetClass
   parseJSON v =
@@ -96,7 +100,7 @@ data RaffleParam = RaffleParam
   , rTicketCollateral :: Integer --- ^ The min. no. of lovelaces that must be locked with the ticket state (recovered when ticket ref NFT is burned).
   , rRaffleCollateral :: Integer --- ^ The min. no. of lovelaces that must be locked with the raffle state (recovered when raffle ref. NFT is burned).
   }
-  deriving (Generic, Eq)
+  deriving (Generic, Eq, ToJSON)
 
 unstableMakeIsData ''RaffleParam --- TODO must be changed with stable version
 
@@ -115,7 +119,7 @@ data RaffleStateData = RaffleStateData
   , rRefundedTickets :: Integer --- ^  The current number of tickets refunded.
   , rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
   }
-  deriving (Generic)
+  deriving (Generic, ToJSON)
 
 unstableMakeIsData ''RaffleStateData --- TODO must be changed with stable version
 

@@ -5,11 +5,12 @@ import Control.Monad.Reader
 import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleStateData)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions (RaffleizeInteraction, RaffleizeTxBuildingContext, interactionToHexEncodedCBOR)
+import RaffleizeDApp.TxBuilding.Transactions
 import Servant
 
 type RaffleizeAPI =
   "build-tx" :> InteractionInterface
-    :<|>LookupsInterface
+    :<|> LookupsInterface
 
 -- | Type for our Raffleize Servant API.
 type InteractionInterface =
@@ -19,7 +20,7 @@ type InteractionInterface =
 -- | Type for our Raffleize Servant API.
 type LookupsInterface =
   Get '[JSON] String
-    -- :<|> "raffles" :> Get '[JSON] [RaffleStateData]
+    :<|> "raffles" :> Get '[JSON] [RaffleStateData]
 
 raffleizeApi :: Proxy RaffleizeAPI
 raffleizeApi = Proxy
@@ -37,5 +38,8 @@ handleInteraction tbCtx pCtx i =
 handleLookup :: IO String
 handleLookup = return "hello"
 
+handleGetRaffles :: IO [RaffleStateData]
+handleGetRaffles = runContextWithCfgProviders "get raffles" queryRaffles
+
 raffleizeServer :: RaffleizeTxBuildingContext -> ProviderCtx -> ServerT RaffleizeAPI IO
-raffleizeServer r p = handleInteraction r p :<|> handleLookup
+raffleizeServer r p = handleInteraction r p :<|> handleLookup :<|> handleGetRaffles

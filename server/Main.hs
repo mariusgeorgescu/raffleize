@@ -38,19 +38,20 @@ getPortFromEnv :: IO Int
 getPortFromEnv = do
   eport <- lookupEnv "PORT"
   case eport of
-    Nothing -> return 8081
+    Nothing -> return 8082
     Just p -> return (read p)
 
 main :: IO ()
 main = do
   atlasConfig <- fromJust <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
   tbCtx <- fromJust <$> decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  putStrLn "Loading Providers ..."
+  let host = "0.0.0.0"
   port <- getPortFromEnv
+  putStrLn "Loading Providers ..."
   withCfgProviders atlasConfig (read @GYLogNamespace "raffleizeserver") $ \providers -> do
     let pCtx = ProviderCtx atlasConfig providers
-    putStrLn $ "Starting server at \n " <> "http://0.0.0.0:" <> show port
-    let settings = setPort port $ setHost "0.0.0.0" defaultSettings -- host and port customized for heroku
+    putStrLn $ "Starting server at " <> show host <> " " <> show port
+    let settings = setHost host $ setPort port defaultSettings -- host and port customized for heroku
     runSettings settings $ app tbCtx pCtx
 
 app :: RaffleizeTxBuildingContext -> ProviderCtx -> Application

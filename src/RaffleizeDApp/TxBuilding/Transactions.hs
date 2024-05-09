@@ -8,10 +8,13 @@ import GeniusYield.GYConfig
 import GeniusYield.Types
 import GeniusYield.Types.Key.Class
 
+import GeniusYield.TxBuilder
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
+import RaffleizeDApp.TxBuilding.Lookups (getRaffleDatumAndValue)
 import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
 
 ------------------------------------------------------------------------------------------------
@@ -40,26 +43,40 @@ queryGetUTxOs addr = do
   providers <- asks ctxProviders
   liftIO $ gyQueryUtxosAtAddress providers addr Nothing
 
+queryRaffleizeValidatorUTxOs :: ReaderT ProviderCtx IO GYUTxOs
+queryRaffleizeValidatorUTxOs = do
+  gyValidatorAddressGY <- runQuery $ scriptAddress raffleizeValidatorGY
+  queryGetUTxOs gyValidatorAddressGY
+
+-- TODO FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
+queryRaffles :: ReaderT ProviderCtx IO [RaffleStateData]
+queryRaffles = do
+  raffflesUTxOs <- queryRaffleizeValidatorUTxOs
+  r <- runQuery $ mapM getRaffleDatumAndValue $ utxosToList raffflesUTxOs
+  return (fst <$> r)
+
 -----------------
 -----------------
 -----------------
 -----------------
 -----------------
 
-submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m ()
+submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m GYTxId
 submitTxBody skey m = do
   txBody <- m
   ctxProviders <- asks ctxProviders
-  tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
-  liftIO $ printf "submitted tx: %s\n" tid
+  liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
 
-submitTxBody' :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m GYTxId
-submitTxBody' skey m = do
-  txBody <- m
+submitTxBodyAndWaitForConfirmation :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m GYTxOutRef
+submitTxBodyAndWaitForConfirmation skey m = do
+  gyTxId <- submitTxBody skey m
+  liftIO $ printf (greenColorString "Built, signed and submitted transaction: %s\n Waiting for confirmation ...") gyTxId
+
+  let txId = txIdToApi gyTxId
   ctxProviders <- asks ctxProviders
-  tid <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
-  liftIO $ printf "submitted tx: %s\n" tid
-  return tid
+  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 10 50000000 1) gyTxId
+  let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
+  return txOutRef
 
 -- | Build a transaction for creating a new raffle.
 buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYTxBody
@@ -79,13 +96,13 @@ buildCreateRaffleTx skey raffleConfiguration = do
   let createRaffleInteraction = RaffleizeInteraction Nothing (User (CreateRaffle raffleConfiguration)) useraddrs Nothing
   runReader (interactionToTxBody createRaffleInteraction) undefined
 
-createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> ReaderT ProviderCtx IO ()
+createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> ReaderT ProviderCtx IO GYTxOutRef
 createRaffleTransaction skey raffle_config = do
-  submitTxBody skey $ buildCreateRaffleTx skey raffle_config
+  submitTxBodyAndWaitForConfirmation skey $ buildCreateRaffleTx skey raffle_config
 
-mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT ProviderCtx IO ()
+mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYTxOutRef
 mintTestTokensTransaction skey = do
-  submitTxBody skey $ buildMintTestTokensTx skey
+  submitTxBodyAndWaitForConfirmation skey $ buildMintTestTokensTx skey
 
 ------------------------------------------------------------------------------------------------
 
@@ -95,15 +112,11 @@ mintTestTokensTransaction skey = do
 
 deployReferenceScriptTransaction :: GYPaymentSigningKey -> GYScript 'PlutusV2 -> ReaderT ProviderCtx IO GYTxOutRef
 deployReferenceScriptTransaction skey script = do
-  gyTxId <- submitTxBody' skey $ do
+  submitTxBodyAndWaitForConfirmation skey $ do
     my_addr <- queryGetAddressFromSkey skey
     runTxI (UserAddresses [my_addr] my_addr Nothing) $ addRefScript' script
-  let txId = txIdToApi gyTxId
-  ctxProviders <- asks ctxProviders
-  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 3 50000000 1) gyTxId
-  let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
-  -- liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
-  return txOutRef
+
+-- liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
 
 deployRaffleizeValidators :: GYPaymentSigningKey -> ReaderT ProviderCtx IO RaffleizeTxBuildingContext
 deployRaffleizeValidators skey = do

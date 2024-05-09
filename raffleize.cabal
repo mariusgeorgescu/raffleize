@@ -119,6 +119,7 @@ library
     , time
     , turtle
     , vty
+    , cassava
 
   default-extensions:
     DataKinds
