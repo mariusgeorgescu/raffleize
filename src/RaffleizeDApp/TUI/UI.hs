@@ -105,33 +105,43 @@ buildInitialState = do
 handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Next RaffleizeUI)
 handleEvent s e = case e of
   VtyEvent vtye -> case vtye of
-    EvKey (KChar c) [] | c `elem` ("qQ" :: [Char]) -> halt s
-    EvKey (KChar c) [] | c `elem` ("lL" :: [Char]) && isJust (adminSkey s) -> do
-      let skey = fromMaybe (error "No skey") $ adminSkey s
-      (addr, val) <- liftIO $ getAddressAndValue skey
-      continue s {adminAddress = Just addr, adminBalance = Just val}
-    EvKey (KChar c) [] | c `elem` ("bB" :: [Char]) -> continue s {message = ""}
-    EvKey (KChar c) [] | c `elem` ("rR" :: [Char]) -> continue s {message = "Refresh Screen"}
-    EvKey (KChar c) [] | c `elem` ("gG" :: [Char]) -> do
-      liftIO $ generateNewAdminSkey operationSkeyFilePath
-      s' <- liftIO $ updateFromConfigFiles s
-      continue s'
-    EvKey (KChar c) [] | c `elem` ("dD" :: [Char]) && isJust (adminSkey s) -> do
-      liftIO clearScreen
-      liftIO deployValidators
-      s' <- liftIO $ updateFromConfigFiles s
-      continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
-    EvKey (KChar c) [] | c `elem` ("tT" :: [Char]) && isJust (adminSkey s) -> do
-      liftIO clearScreen
-      txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
-      continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> show txOutRef}
-    EvKey (KChar c) [] | c `elem` ("cC" :: [Char]) && isJust (adminSkey s) -> do
-      liftIO clearScreen
-      txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
-      continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> show txOutRef}
-    EvKey (KChar c) [] | c `elem` ("eE" :: [Char]) -> do
-      liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
-      continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
+    EvKey (KChar c) []
+      | c `elem` ("qQ" :: [Char]) -> halt s
+    EvKey (KChar c) []
+      | c `elem` ("lL" :: [Char]) && isJust (adminSkey s) -> do
+          let skey = fromMaybe (error "No skey") $ adminSkey s
+          (addr, val) <- liftIO $ getAddressAndValue skey
+          continue s {adminAddress = Just addr, adminBalance = Just val}
+    EvKey (KChar c) []
+      | c `elem` ("bB" :: [Char]) ->
+          handleEvent (s {message = ""}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
+    EvKey (KChar c) []
+      | c `elem` ("rR" :: [Char]) -> continue s {message = "Refresh Screen"}
+    EvKey (KChar c) []
+      | c `elem` ("gG" :: [Char]) -> do
+          liftIO $ generateNewAdminSkey operationSkeyFilePath
+          s' <- liftIO $ updateFromConfigFiles s
+          continue s'
+    EvKey (KChar c) []
+      | c `elem` ("dD" :: [Char]) && isJust (adminSkey s) -> do
+          liftIO clearScreen
+          liftIO deployValidators
+          s' <- liftIO $ updateFromConfigFiles s
+          continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
+    EvKey (KChar c) []
+      | c `elem` ("tT" :: [Char]) && isJust (adminSkey s) -> do
+          liftIO clearScreen
+          txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
+          continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> show txOutRef}
+    EvKey (KChar c) []
+      | c `elem` ("cC" :: [Char]) && isJust (adminSkey s) -> do
+          liftIO clearScreen
+          txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
+          continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> show txOutRef}
+    EvKey (KChar c) []
+      | c `elem` ("eE" :: [Char]) -> do
+          liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
+          continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
     _ -> continue s
   _ -> continue s
 
