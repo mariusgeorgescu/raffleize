@@ -305,3 +305,4 @@ adaValueFromLovelaces = singleton adaSymbol adaToken
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
 unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
+

@@ -14,8 +14,9 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
-import RaffleizeDApp.TxBuilding.Lookups (getRaffleDatumAndValue)
+import RaffleizeDApp.TxBuilding.Lookups (getRaffleDatumAndValue, gyOutHasValidRefToken)
 import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
+import qualified PlutusLedgerApi.V1
 
 ------------------------------------------------------------------------------------------------
 
@@ -48,12 +49,13 @@ queryRaffleizeValidatorUTxOs = do
   gyValidatorAddressGY <- runQuery $ scriptAddress raffleizeValidatorGY
   queryGetUTxOs gyValidatorAddressGY
 
--- TODO FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
-
-queryRaffles :: ReaderT ProviderCtx IO [String]
+-- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
+queryRaffles :: ReaderT ProviderCtx IO [(RaffleStateData, PlutusLedgerApi.V1.Value)]
 queryRaffles = do
-  raffflesUTxOs <- queryRaffleizeValidatorUTxOs
-  return $ show <$> utxosToList raffflesUTxOs
+  allUTxOs <- queryRaffleizeValidatorUTxOs
+  let validUTxOs = filterUTxOs gyOutHasValidRefToken allUTxOs
+  let raffles =  mapMaybe getRaffleDatumAndValue (utxosToList validUTxOs)
+  return raffles
 
 -----------------
 -----------------

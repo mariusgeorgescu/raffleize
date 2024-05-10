@@ -12,6 +12,8 @@ import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils
 
+import PlutusTx.Show qualified as PlutusTx (show)
+
 -------------------------------------------------------------------------------
 
 -- * Raffle Type  Declarations
@@ -32,11 +34,12 @@ data RaffleConfig = RaffleConfig
 
 instance ToJSON BuiltinByteString where
   toJSON :: BuiltinByteString -> Data.Aeson.Value
-  toJSON bs = toJSON $ fromBuiltin (decodeUtf8 bs)
+  toJSON bs = toJSON  $ fromBuiltin @BuiltinString @Text $ PlutusTx.show bs
 
 instance FromJSON BuiltinByteString where
   parseJSON :: Data.Aeson.Value -> Data.Aeson.Types.Internal.Parser BuiltinByteString
-  parseJSON v = encodeUtf8 . (toBuiltin @Text @BuiltinString) <$> parseJSON @Text v
+  parseJSON v = fromString <$> parseJSON @String v
+
 
 instance ToJSON POSIXTime where
   toJSON :: POSIXTime -> Data.Aeson.Value

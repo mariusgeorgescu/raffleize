@@ -1,10 +1,11 @@
 module RaffleizeDApp.TxBuilding.Utils where
 
-import GHC.Stack
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 
 import PlutusLedgerApi.V2
+import RaffleizeDApp.TxBuilding.Exceptions
+import RaffleizeDApp.TxBuilding.Lookups
 
 ------------------------
 
@@ -12,10 +13,8 @@ import PlutusLedgerApi.V2
 
 ------------------------
 
-gyGetInlineDatumAndValue :: (HasCallStack, GYTxQueryMonad m) => GYUTxO -> m (GYDatum, GYValue)
-gyGetInlineDatumAndValue utxo = case utxoOutDatum utxo of
-  GYOutDatumInline datum -> return (datum, utxoValue utxo)
-  _ -> throwError (GYQueryDatumException (GYNoDatumHash utxo))
+gyGetInlineDatumAndValue' :: MonadError GYTxMonadException m => GYUTxO -> m (GYDatum, GYValue)
+gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ gyGetInlineDatumAndValue utxo
 
 pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime
 pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . slotFromApi . fromInteger
