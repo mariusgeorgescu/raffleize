@@ -49,7 +49,7 @@ txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyVali
   do
     let gyRedeemer = redeemerFromPlutusData redeemer
     stateUTxO <- lookuptUTxOWithStateToken stateTokenId gyValidator
-    (gyDatum, _v) <- gyGetInlineDatumAndValue stateUTxO
+    (gyDatum, _v) <- gyGetInlineDatumAndValue' stateUTxO
     return $
       mustHaveInput
         GYTxIn

@@ -1,6 +1,5 @@
 module RaffleizeDApp.TxBuilding.Lookups where
 
-
 import GHC.Stack
 import GeniusYield.TxBuilder
 import GeniusYield.Types
@@ -8,7 +7,9 @@ import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.TxBuilding.Utils
+import RaffleizeDApp.OnChain.RaffleizeLogic (hasRefPrefix)
+import RaffleizeDApp.TxBuilding.Exceptions
+
 import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
@@ -46,38 +47,53 @@ lookupRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass 
 lookupRaffleStateDataAndValue raffleId =
   do
     utxo <- lookuptUTxOWithStateToken raffleId raffleizeValidatorGY
-    getRaffleDatumAndValue utxo
+    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ getRaffleDatumAndValue utxo
 
 lookupTicketStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (TicketStateData, Value)
 lookupTicketStateDataAndValue ticketId =
   do
     utxo <- lookuptUTxOWithStateToken ticketId ticketValidatorGY
-    getTicketDatumAndValue utxo
+    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ getTicketDatumAndValue utxo
 
 ------------------------------------------------------------------------------------------------
 
 -- * Extract State Data
 
 ------------------------------------------------------------------------------------------------
+-- This function checks if a GYTxOut has a reference token minted by the raffleize minting policy
+-- Since the reference tokens minted by the raffleize minting policy are always locked at the script address
+gyOutHasValidRefToken :: GYUTxO -> Bool
+gyOutHasValidRefToken gyOut =
+  let gyValue = utxoValue gyOut
+      gyAssets = valueAssets gyValue
+   in any isRaffleizeAC gyAssets
 
-gyDatumToRSD :: (HasCallStack, GYTxQueryMonad m) => GYDatum -> m RaffleStateData
-gyDatumToRSD datum = case fromBuiltinData @RaffleDatum . datumToPlutus' $ datum of
-  Nothing -> throwError (GYQueryDatumException (GYInvalidDatum datum))
-  Just (RaffleDatum _mdata _v rsd) -> return rsd
+-- | This function checks if a 'GYAssetClass' is of a reference token minted by Raffleize Minting Policy
+isRaffleizeAC :: GYAssetClass -> Bool
+isRaffleizeAC (GYToken gyMP gyTN) =
+  (gyMP == mintingPolicyId raffleizeMintingPolicyGY)
+    && hasRefPrefix (tokenNameToPlutus gyTN)
+isRaffleizeAC _ = False
 
-gyDatumToTSD :: (HasCallStack, GYTxQueryMonad m) => GYDatum -> m TicketStateData
-gyDatumToTSD datum = case fromBuiltinData @TicketDatum . datumToPlutus' $ datum of
-  Nothing -> throwError (GYQueryDatumException (GYInvalidDatum datum))
-  Just (TicketDatum _ _ tsd) -> return tsd
+gyDatumToRSD :: GYDatum -> Maybe RaffleStateData
+gyDatumToRSD gyDatum = RaffleizeDApp.CustomTypes.RaffleTypes.extra <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
 
-getRaffleDatumAndValue :: (HasCallStack, GYTxQueryMonad m) => GYUTxO -> m (RaffleStateData, Value)
+gyDatumToTSD :: GYDatum -> Maybe TicketStateData
+gyDatumToTSD gyDatum = RaffleizeDApp.CustomTypes.TicketTypes.extra <$> (fromBuiltinData @TicketDatum . datumToPlutus' $ gyDatum)
+
+gyGetInlineDatumAndValue :: GYUTxO -> Maybe (GYDatum, GYValue)
+gyGetInlineDatumAndValue utxo = case utxoOutDatum utxo of
+  GYOutDatumInline datum -> Just (datum, utxoValue utxo)
+  _ -> Nothing
+
+getRaffleDatumAndValue :: GYUTxO -> Maybe (RaffleStateData, Value)
 getRaffleDatumAndValue raffleStateUTxO = do
   (gyDatum, gyValue) <- gyGetInlineDatumAndValue raffleStateUTxO
   rsd <- gyDatumToRSD gyDatum
   let pVal = valueToPlutus gyValue
   return (rsd, pVal)
 
-getTicketDatumAndValue :: (HasCallStack, GYTxQueryMonad m) => GYUTxO -> m (TicketStateData, Value)
+getTicketDatumAndValue :: GYUTxO -> Maybe (TicketStateData, Value)
 getTicketDatumAndValue ticketStateUTxO = do
   (gyDatum, gyValue) <- gyGetInlineDatumAndValue ticketStateUTxO
   tsd <- gyDatumToTSD gyDatum

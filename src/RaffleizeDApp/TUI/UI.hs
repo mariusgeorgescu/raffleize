@@ -8,7 +8,7 @@ import Brick.Types
 import Graphics.Vty.Input.Events
 
 import GeniusYield.GYConfig (GYCoreConfig (cfgCoreProvider, cfgNetworkId), GYCoreProviderInfo (..))
-import GeniusYield.Types (Ada, GYAddress, GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, addressToText, showTxOutRef)
+import GeniusYield.Types (GYAddress, GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, addressToText, fromValue, showTxOutRef)
 
 import Brick.Widgets.Core
 
@@ -27,6 +27,8 @@ import Brick.Widgets.Table (renderTable, table)
 import Data.Char
 import Data.List (intercalate)
 import Data.Text (unpack)
+import PlutusLedgerApi.V1 (Value)
+import RaffleizeDApp.OnChain.Utils (showValue)
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Validators (exportMintingPolicy, exportRaffleScript, exportTicketScript)
@@ -44,7 +46,7 @@ data RaffleizeUI = RaffleizeUI
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
   , adminSkey :: Maybe GYPaymentSigningKey
   , adminAddress :: Maybe GYAddress
-  , adminBalance :: Maybe Ada
+  , adminBalance :: Maybe Value
   , logo :: String
   , message :: String
   }
@@ -116,11 +118,17 @@ handleEvent s e = case e of
       continue s'
     EvKey (KChar c) [] | c `elem` ("dD" :: [Char]) && isJust (adminSkey s) -> do
       liftIO clearScreen
-      liftIO $ print ("Deploying validators ...." :: String)
-      liftIO $ print ("Building, signing and submiting transactions and waiting for confirmations.." :: String)
       liftIO deployValidators
       s' <- liftIO $ updateFromConfigFiles s
       continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
+    EvKey (KChar c) [] | c `elem` ("tT" :: [Char]) && isJust (adminSkey s) -> do
+      liftIO clearScreen
+      txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
+      continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> show txOutRef}
+    EvKey (KChar c) [] | c `elem` ("cC" :: [Char]) && isJust (adminSkey s) -> do
+      liftIO clearScreen
+      txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
+      continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> show txOutRef}
     EvKey (KChar c) [] | c `elem` ("eE" :: [Char]) -> do
       liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
       continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
@@ -231,13 +239,13 @@ printNetwork cfg = withAttr "good" . str $ case cfgNetworkId cfg of
   GYTestnetLegacy -> "TESTNET-LEGACY"
   GYPrivnet -> "PRIVNET"
 
-adaBalanceWidget :: Ada -> Widget n
-adaBalanceWidget val = withAttr "good" $ str (show val)
+adaBalanceWidget :: Value -> Widget n
+adaBalanceWidget val = withAttr "good" $ str (show (fromValue val) ++ "\n" ++ showValue "BALANCE" val)
 
 addressWidget :: GYAddress -> Widget n
 addressWidget addr = withAttr "good" $ str (show . unpack $ addressToText addr)
 
-adminWidget :: Maybe a -> Maybe GYAddress -> Maybe Ada -> Widget n
+adminWidget :: Maybe a -> Maybe GYAddress -> Maybe Value -> Widget n
 adminWidget ma maddr mbal =
   borderWithLabel (str "Admin") $
     renderTable $
@@ -260,7 +268,7 @@ availableActionsWidget s =
             (not . null)
             ( ( if isNothing . adminSkey $ s
                   then ["[G] - Generate new admin skey"]
-                  else ["[D] - Deploy Raffleize Validators", "[L] - Query current admin balance"]
+                  else ["[D] - Deploy Raffleize Validators", "[L] - Query current admin balance", "[C] - Create raffle", "[T] - Mint some test tokens"]
               )
                 ++ [ "[R] - Refresh screen"
                    , "[E] - Export validators"

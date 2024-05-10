@@ -88,6 +88,8 @@ checkRaffle
           rStake `geq` mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
       -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
@@ -333,11 +335,11 @@ deriveUserFromRefAC (AssetClass (ac, tn)) = AssetClass (ac, deriveUserFromRefTN 
 --------------
 
 generateRefAndUserTN :: TokenName -> (TokenName, TokenName)
-generateRefAndUserTN (TokenName bs) = (TokenName (refTokenPrefxBS #<> bs), TokenName (userTokenPrefixBS #<> bs))
+generateRefAndUserTN (TokenName bs) = (TokenName (refTokenPrefixBS #<> bs), TokenName (userTokenPrefixBS #<> bs))
 {-# INLINEABLE generateRefAndUserTN #-}
 
 generateRefAndUserAC :: AssetClass -> (AssetClass, AssetClass)
-generateRefAndUserAC (AssetClass (ac, TokenName bs)) = (AssetClass (ac, TokenName (refTokenPrefxBS #<> bs)), AssetClass (ac, TokenName (userTokenPrefixBS #<> bs)))
+generateRefAndUserAC (AssetClass (ac, TokenName bs)) = (AssetClass (ac, TokenName (refTokenPrefixBS #<> bs)), AssetClass (ac, TokenName (userTokenPrefixBS #<> bs)))
 {-# INLINEABLE generateRefAndUserAC #-}
 
 getNextTicketToMintAssetClasses :: RaffleStateData -> (AssetClass, AssetClass)
@@ -355,9 +357,9 @@ isOneOutputTo [out] adminPKH =
 isOneOutputTo _ _ = traceIfFalse "More than one ouput found" False
 {-# INLINEABLE isOneOutputTo #-}
 
-refTokenPrefxBS :: BuiltinByteString
-refTokenPrefxBS = integerToBs24 (0x000643b0 :: Integer)
-{-# INLINEABLE refTokenPrefxBS #-}
+refTokenPrefixBS :: BuiltinByteString
+refTokenPrefixBS = integerToBs24 (0x000643b0 :: Integer)
+{-# INLINEABLE refTokenPrefixBS #-}
 
 userTokenPrefixBS :: BuiltinByteString
 userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer)
@@ -399,3 +401,8 @@ paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
       ]
       || paysValueToAddr pValue pAddr outs
 {-# INLINEABLE paysValueToAddr #-}
+
+-- Used for Offchain to identify valid utxos before parsing datum
+-- This function checks if tokenname has the raffle prefix
+hasRefPrefix :: TokenName  -> Bool
+hasRefPrefix (TokenName tnbs)  = sliceByteString 0 4 tnbs #== refTokenPrefixBS

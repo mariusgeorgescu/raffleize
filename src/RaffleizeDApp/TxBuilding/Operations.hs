@@ -7,7 +7,7 @@ import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, revealTicketToRaffleRT, updateRaffleStateValue, redeemerToAction)
+import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, revealTicketToRaffleRT, updateRaffleStateValue)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Lookups
@@ -25,6 +25,7 @@ createRaffleTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => GYAddress -> 
 createRaffleTX recipient config@RaffleConfig {rCommitDDL, rStake} = do
   isValidByCommitDDL <- txIsValidByDDL rCommitDDL
   seedTxOutRef <- someUTxOWithoutRefScript
+  let isSpendingSeedUTxO = mustHaveInput (GYTxIn seedTxOutRef GYTxInWitnessKey)
   let seedTxOutRefPlutus = txOutRefToPlutus seedTxOutRef
   isMintingRaffleNFTs <- txNFTAction (MintRaffle config seedTxOutRefPlutus)
   let (raffleRefTN, raffleUserTN) = generateRefAndUserTN $ tokenNameFromTxOutRef seedTxOutRefPlutus
@@ -45,6 +46,7 @@ createRaffleTX recipient config@RaffleConfig {rCommitDDL, rStake} = do
         , isMintingRaffleNFTs
         , isLockingRaffleState
         , isGettingRaffleUserNFT
+        , isSpendingSeedUTxO
         ]
     , raffleRefAC
     )
