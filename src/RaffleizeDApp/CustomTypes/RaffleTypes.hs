@@ -1,18 +1,11 @@
 module RaffleizeDApp.CustomTypes.RaffleTypes where
 
-import Data.Aeson hiding (Value)
-import Data.Aeson qualified (Value)
-import Data.Aeson.Types qualified as Data.Aeson.Types.Internal
-import Data.String
-
-import PlutusLedgerApi.V1.Value
-import PlutusLedgerApi.V2
+import PlutusLedgerApi.V1.Value (AssetClass)
+import PlutusLedgerApi.V3
 import PlutusTx
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils
-
-import PlutusTx.Show qualified as PlutusTx (show)
 
 -------------------------------------------------------------------------------
 
@@ -32,63 +25,6 @@ data RaffleConfig = RaffleConfig
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
 
-instance ToJSON BuiltinByteString where
-  toJSON :: BuiltinByteString -> Data.Aeson.Value
-  toJSON bs = toJSON  $ fromBuiltin @BuiltinString @Text $ PlutusTx.show bs
-
-instance FromJSON BuiltinByteString where
-  parseJSON :: Data.Aeson.Value -> Data.Aeson.Types.Internal.Parser BuiltinByteString
-  parseJSON v = fromString <$> parseJSON @String v
-
-
-instance ToJSON POSIXTime where
-  toJSON :: POSIXTime -> Data.Aeson.Value
-  toJSON (POSIXTime i) = toJSON i
-
-instance FromJSON POSIXTime where
-  parseJSON :: Data.Aeson.Value -> Data.Aeson.Types.Internal.Parser POSIXTime
-  parseJSON v = POSIXTime <$> parseJSON @Integer v
-
-instance ToJSON TokenName where
-  toJSON :: TokenName -> Data.Aeson.Value
-  toJSON tn = object ["TokenName" .= toString tn]
-
-instance FromJSON TokenName where
-  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser TokenName
-  parseJSON = withObject "TokenName" $ \v -> fromString @TokenName <$> v .: "TokenName"
-
-instance ToJSON CurrencySymbol where
-  toJSON :: CurrencySymbol -> Data.Aeson.Value
-  toJSON cs = object ["CurrencySymbol" .= show cs]
-
-instance FromJSON CurrencySymbol where
-  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser CurrencySymbol
-  parseJSON = withObject "CurrencySymbol" $ \v -> fromString @CurrencySymbol <$> v .: "CurrencySymbol"
-
-instance ToJSON Value where
-  toJSON :: Value -> Data.Aeson.Value
-  toJSON value = toJSON $ flattenValue value
-
-instance FromJSON Value where
-  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser Value
-  parseJSON v =
-    let flattenedValue = parseJSON @[(CurrencySymbol, TokenName, Integer)] v
-     in unFlattenValue <$> flattenedValue
-
-instance ToJSON AssetClass where
-  toJSON :: AssetClass -> Data.Aeson.Value
-  toJSON (AssetClass ac) = toJSON ac
-
-instance ToJSON ScriptHash where
-  toJSON :: ScriptHash -> Data.Aeson.Value
-  toJSON (ScriptHash s) = toJSON s
-
-instance FromJSON AssetClass where
-  parseJSON :: Data.Aeson.Types.Internal.Value -> Data.Aeson.Types.Internal.Parser AssetClass
-  parseJSON v =
-    let ac = parseJSON @(CurrencySymbol, TokenName) v
-     in AssetClass <$> ac
-
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 
 {- | Raffle parameters
@@ -103,7 +39,7 @@ data RaffleParam = RaffleParam
   , rTicketCollateral :: Integer --- ^ The min. no. of lovelaces that must be locked with the ticket state (recovered when ticket ref NFT is burned).
   , rRaffleCollateral :: Integer --- ^ The min. no. of lovelaces that must be locked with the raffle state (recovered when raffle ref. NFT is burned).
   }
-  deriving (Generic, Eq, ToJSON)
+  deriving (Generic, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''RaffleParam --- TODO must be changed with stable version
 
@@ -122,7 +58,7 @@ data RaffleStateData = RaffleStateData
   , rRefundedTickets :: Integer --- ^  The current number of tickets refunded.
   , rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
   }
-  deriving (Generic, ToJSON)
+  deriving (Generic, ToJSON, FromJSON)
 
 unstableMakeIsData ''RaffleStateData --- TODO must be changed with stable version
 

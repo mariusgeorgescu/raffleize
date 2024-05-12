@@ -76,10 +76,10 @@ isRaffleizeAC (GYToken gyMP gyTN) =
 isRaffleizeAC _ = False
 
 gyDatumToRSD :: GYDatum -> Maybe RaffleStateData
-gyDatumToRSD gyDatum = RaffleizeDApp.CustomTypes.RaffleTypes.extra <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
+gyDatumToRSD gyDatum = raffleStateData <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
 
 gyDatumToTSD :: GYDatum -> Maybe TicketStateData
-gyDatumToTSD gyDatum = RaffleizeDApp.CustomTypes.TicketTypes.extra <$> (fromBuiltinData @TicketDatum . datumToPlutus' $ gyDatum)
+gyDatumToTSD gyDatum = ticketStateData <$> (fromBuiltinData @TicketDatum . datumToPlutus' $ gyDatum)
 
 gyGetInlineDatumAndValue :: GYUTxO -> Maybe (GYDatum, GYValue)
 gyGetInlineDatumAndValue utxo = case utxoOutDatum utxo of

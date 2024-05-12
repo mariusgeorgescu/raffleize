@@ -30,7 +30,7 @@ txIsPayingValueToAddress recipient gyValue = do
         }
 
 isValidBetween :: GYSlot -> GYSlot -> GYTxSkeleton 'PlutusV2
-isValidBetween s1 s2 = 
+isValidBetween s1 s2 =
   mconcat
     [ isInvalidBefore s1
     , isInvalidAfter s2
@@ -39,10 +39,10 @@ isValidBetween s1 s2 =
 txIsValidByDDL :: (HasCallStack, GYTxQueryMonad m) => POSIXTime -> m (GYTxSkeleton 'PlutusV2)
 txIsValidByDDL ddl = do
   now <- slotOfCurrentBlock
-  after36hSlot <- advanceSlot' now 129600 -- 36h in seconds
+  after36hSlot <- advanceSlot' now 25920 -- ~7h in seconds (era safe zone)
   after36hTime <- pPOSIXTimeFromGYSlot after36hSlot
   validUntil <- gySlotFromPOSIXTime (min ddl after36hTime)
-  return $ isValidBetween now validUntil 
+  return $ isValidBetween now validUntil
 
 txMustSpendStateFromRefScriptWithRedeemer :: (HasCallStack, GYTxMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYValidator 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
 txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyValidator =
@@ -91,7 +91,7 @@ txNFTAction :: (HasCallStack, GYTxMonad m) => RaffleizeMintingReedemer -> m (GYT
 txNFTAction redeemer = do
   let gyRedeemer = redeemerFromPlutus' . toBuiltinData $ redeemer
   case redeemer of
-    MintRaffle _ tor  -> do
+    MintRaffle _ tor -> do
       let (raffleRefTN, raffleUserTN) = generateRefAndUserTN $ tokenNameFromTxOutRef tor
       let raffleRefAC = AssetClass (mintingPolicyCurrencySymbol raffleizeMintingPolicyGY, raffleRefTN)
       let raffleUserAC = AssetClass (mintingPolicyCurrencySymbol raffleizeMintingPolicyGY, raffleUserTN)

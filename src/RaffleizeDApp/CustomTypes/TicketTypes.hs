@@ -27,7 +27,7 @@ data TicketStateData = TicketStateData
   , tRaffle :: AssetClass --- ^ The raffle id of the raffle to which the ticket is associated.
   , tRaffleValidator :: ScriptHash --- ^ The validator hash of the validation logic for spending the raffle state UTxO.
   }
-  deriving (Generic)
+  deriving (Generic, ToJSON, FromJSON)
 
 unstableMakeIsData ''TicketStateData ---  must be changed with stable version
 

@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
-
 module RaffleizeDApp.TUI.Actions where
 
 import Data.Aeson
@@ -59,5 +57,5 @@ createRaffle skey = do
   print raffle_config
   let msg = "Create raffle"
   liftIO $ print msg
-  r <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTransaction skey
+  r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle_config
   return $ show $ toField r
