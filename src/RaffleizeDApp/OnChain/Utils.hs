@@ -2,8 +2,6 @@ module RaffleizeDApp.OnChain.Utils where
 
 import Data.List.Extra (intercalate)
 import PlutusLedgerApi.V1.Value (
-  AssetClass (AssetClass, unAssetClass),
-  CurrencySymbol,
   TokenName (..),
   Value,
   adaSymbol,
@@ -13,7 +11,7 @@ import PlutusLedgerApi.V1.Value (
   assetClassValueOf,
   flattenValue,
   geq,
-  singleton,
+  singleton, AssetClass (unAssetClass),
  )
 import PlutusLedgerApi.V2 (
   Address,
@@ -301,8 +299,4 @@ findOwnInputA _ = Nothing
 adaValueFromLovelaces :: Integer -> Value
 adaValueFromLovelaces = singleton adaSymbol adaToken
 {-# INLINEABLE adaValueFromLovelaces #-}
-
-unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
-unFlattenValue [] = mempty
-unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
 

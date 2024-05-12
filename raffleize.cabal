@@ -53,6 +53,8 @@ common plutus-ghc-options
 library
   import:             common, plutus-ghc-options
   exposed-modules:
+    CodeGen.PSTypes
+    CodeGen.TypeBridges
     Prelude
     RaffleizeDApp.Constants
     RaffleizeDApp.CustomTypes.ActionTypes
@@ -96,11 +98,13 @@ library
     , cardano-api
     , cardano-binary
     , cardano-simple
+    , cassava
     , containers
     , data-default
     , extra
     , foldl
     , freer-simple
+    , lens
     , megaparsec
     , mtl
     , optparse-applicative
@@ -109,6 +113,7 @@ library
     , plutus-simple-model
     , plutus-tx
     , plutus-tx-plugin
+    , purescript-bridge
     , row-types
     , serialise
     , servant-server
@@ -119,7 +124,6 @@ library
     , time
     , turtle
     , vty
-    , cassava
 
   default-extensions:
     DataKinds
@@ -164,6 +168,15 @@ executable tui
     , aeson
     , atlas-cardano
     , bytestring
+    , raffleize
+
+executable psgen
+  import:         common
+  main-is:        Main.hs
+  hs-source-dirs: purescript-bridge-generator
+  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  build-depends:
+    , purescript-bridge
     , raffleize
 
 test-suite tests
