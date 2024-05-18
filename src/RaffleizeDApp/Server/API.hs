@@ -22,6 +22,8 @@ type InteractionInterface =
 type LookupsInterface =
   Get '[JSON] String
     :<|> "raffles" :> Get '[JSON] [(RaffleStateData, PlutusLedgerApi.V1.Value)]
+    :<|> "raffle" :> Get '[JSON] RaffleStateData
+    :<|> "value" :> Get '[JSON] PlutusLedgerApi.V1.Value
 
 raffleizeApi :: Proxy RaffleizeAPI
 raffleizeApi = Proxy
@@ -42,5 +44,11 @@ handleLookup = return "hello"
 handleGetRaffles :: IO [(RaffleStateData, PlutusLedgerApi.V1.Value)]
 handleGetRaffles = runContextWithCfgProviders "get raffles" queryRaffles
 
+handleGetRaffle :: IO RaffleStateData
+handleGetRaffle = fst . head <$> runContextWithCfgProviders "get raffles" queryRaffles
+
+handleGetValue :: IO PlutusLedgerApi.V1.Value
+handleGetValue = snd . head <$> runContextWithCfgProviders "get raffles" queryRaffles
+
 raffleizeServer :: RaffleizeTxBuildingContext -> ProviderCtx -> ServerT RaffleizeAPI IO
-raffleizeServer r p = handleInteraction r p :<|> handleLookup :<|> handleGetRaffles
+raffleizeServer r p = handleInteraction r p :<|> handleLookup :<|> handleGetRaffles :<|> handleGetRaffle :<|> handleGetValue
