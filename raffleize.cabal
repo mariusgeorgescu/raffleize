@@ -29,6 +29,7 @@ common common
     -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
     -fno-specialise -Wno-orphans -Wno-unused-local-binds
     -fconstraint-solver-iterations=0
+
   if flag(defer-plugin-errors)
     ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
 
@@ -67,6 +68,8 @@ library
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
     RaffleizeDApp.Server.API
+    RaffleizeDApp.Server.Queries
+    RaffleizeDApp.Server.Types
     RaffleizeDApp.Tests.PropertyTests
     RaffleizeDApp.Tests.UnitTests
     RaffleizeDApp.TUI.Actions

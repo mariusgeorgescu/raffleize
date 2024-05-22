@@ -3,12 +3,27 @@
 module RaffleizeDApp.CustomTypes.RaffleTypes where
 
 import PlutusLedgerApi.V1.Value (AssetClass)
-import PlutusLedgerApi.V3
-import PlutusTx
-import RaffleizeDApp.Constants
-import RaffleizeDApp.CustomTypes.Types
-import RaffleizeDApp.OnChain.Utils
-import Test.QuickCheck.Arbitrary.Generic
+import PlutusLedgerApi.V3 (
+  POSIXTime (..),
+  ScriptHash,
+  Value,
+ )
+import PlutusTx (makeLift, unstableMakeIsData)
+import PlutusTx.AssocMap
+import RaffleizeDApp.Constants (
+  metadataVersion,
+  raffleDescription,
+  raffleImageURI,
+  raffleName,
+ )
+import RaffleizeDApp.CustomTypes.Types (Metadata)
+import RaffleizeDApp.OnChain.Utils (
+  adaValueFromLovelaces,
+  encodeUtf8KV,
+  showValue,
+  wrapTitle,
+ )
+import Test.QuickCheck.Arbitrary.Generic (Arbitrary (arbitrary))
 
 -------------------------------------------------------------------------------
 
@@ -89,6 +104,10 @@ unstableMakeIsData ''RaffleDatum --- TODO must be changed with stable version
 raffleStateData :: RaffleDatum -> RaffleStateData
 raffleStateData = extra
 {-# INLINEABLE raffleStateData #-}
+
+-- | Functon to get the image link from metadata
+raffleImage :: RaffleDatum -> BuiltinByteString
+raffleImage datum = fromMaybe @BuiltinByteString "" $ lookup (encodeUtf8 "image") (metadata datum)
 
 -- | Functon to construct a @RaffleDatum@, from a  @RaffleStateData@.
 mkRaffleDatum :: RaffleStateData -> RaffleDatum

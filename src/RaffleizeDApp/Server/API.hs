@@ -4,9 +4,10 @@ import Control.Monad.Reader
 
 import PlutusLedgerApi.V1 qualified
 import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleStateData)
+import RaffleizeDApp.Server.Queries
+import RaffleizeDApp.Server.Types
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions (RaffleizeInteraction, RaffleizeTxBuildingContext, interactionToHexEncodedCBOR)
-import RaffleizeDApp.TxBuilding.Transactions
 import Servant
 
 type RaffleizeAPI =
@@ -24,6 +25,7 @@ type LookupsInterface =
     :<|> "raffles" :> Get '[JSON] [(RaffleStateData, PlutusLedgerApi.V1.Value)]
     :<|> "raffle" :> Get '[JSON] RaffleStateData
     :<|> "value" :> Get '[JSON] PlutusLedgerApi.V1.Value
+    :<|> "info" :> Get '[JSON] RaffleInfo
 
 raffleizeApi :: Proxy RaffleizeAPI
 raffleizeApi = Proxy
@@ -38,17 +40,5 @@ handleInteraction tbCtx pCtx i =
    in
     runReaderT i' pCtx
 
-handleLookup :: IO String
-handleLookup = return "hello"
-
-handleGetRaffles :: IO [(RaffleStateData, PlutusLedgerApi.V1.Value)]
-handleGetRaffles = runContextWithCfgProviders "get raffles" queryRaffles
-
-handleGetRaffle :: IO RaffleStateData
-handleGetRaffle = fst . head <$> runContextWithCfgProviders "get raffles" queryRaffles
-
-handleGetValue :: IO PlutusLedgerApi.V1.Value
-handleGetValue = snd . head <$> runContextWithCfgProviders "get raffles" queryRaffles
-
 raffleizeServer :: RaffleizeTxBuildingContext -> ProviderCtx -> ServerT RaffleizeAPI IO
-raffleizeServer r p = handleInteraction r p :<|> handleLookup :<|> handleGetRaffles :<|> handleGetRaffle :<|> handleGetValue
+raffleizeServer r p = handleInteraction r p :<|> handleLookup :<|> handleGetRaffles :<|> handleGetRaffle :<|> handleGetValue :<|> handleGetInfo

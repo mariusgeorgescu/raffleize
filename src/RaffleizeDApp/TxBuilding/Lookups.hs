@@ -7,9 +7,13 @@ import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (hasRefPrefix)
+import RaffleizeDApp.OnChain.RaffleizeLogic (evaluateRaffleState, hasRefPrefix, showRaffleStateLabel, validActionLabelsForState)
 import RaffleizeDApp.TxBuilding.Exceptions
 
+import Data.Text qualified as Text
+import PlutusLedgerApi.V1.Interval qualified
+import RaffleizeDApp.Server.Types (RaffleInfo (RaffleInfo))
+import RaffleizeDApp.TxBuilding.Utils (pPOSIXTimeFromGYSlot)
 import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
@@ -47,13 +51,37 @@ lookupRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass 
 lookupRaffleStateDataAndValue raffleId =
   do
     utxo <- lookuptUTxOWithStateToken raffleId raffleizeValidatorGY
-    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ getRaffleDatumAndValue utxo
+    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ getRaffleStateDataAndValue utxo
 
 lookupTicketStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (TicketStateData, Value)
 lookupTicketStateDataAndValue ticketId =
   do
     utxo <- lookuptUTxOWithStateToken ticketId ticketValidatorGY
     maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ getTicketDatumAndValue utxo
+
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+
+gyGetInlineDatumAndValue' :: MonadError GYTxMonadException m => GYUTxO -> m (GYDatum, GYValue)
+gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ gyGetInlineDatumAndValue utxo
+
+-- getRaffleStateDataAndValue' :: MonadError GYTxMonadException m => GYUTxO -> m (RaffleStateData, Value)
+-- getRaffleStateDataAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getRaffleStateDataAndValue utxo
+
+gyGetRaffleInfo :: (HasCallStack, GYTxQueryMonad m) => GYUTxO -> m RaffleInfo
+gyGetRaffleInfo utxo = do
+  now <- slotOfCurrentBlock
+  nowposix <- pPOSIXTimeFromGYSlot now
+  let r = PlutusLedgerApi.V1.Interval.singleton nowposix
+  (rsd, val, img) <- maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getRaffleStateValueAndImage utxo
+  let stateId = evaluateRaffleState (r, rsd, val)
+  let stateLabel = showRaffleStateLabel stateId
+  let actions = validActionLabelsForState stateId
+  return $ RaffleInfo rsd val img stateLabel actions
 
 ------------------------------------------------------------------------------------------------
 
@@ -78,6 +106,9 @@ isRaffleizeAC _ = False
 gyDatumToRSD :: GYDatum -> Maybe RaffleStateData
 gyDatumToRSD gyDatum = raffleStateData <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
 
+gyGetImageFromRaffleDatum :: GYDatum -> Maybe BuiltinByteString
+gyGetImageFromRaffleDatum gyDatum = raffleImage <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
+
 gyDatumToTSD :: GYDatum -> Maybe TicketStateData
 gyDatumToTSD gyDatum = ticketStateData <$> (fromBuiltinData @TicketDatum . datumToPlutus' $ gyDatum)
 
@@ -86,12 +117,21 @@ gyGetInlineDatumAndValue utxo = case utxoOutDatum utxo of
   GYOutDatumInline datum -> Just (datum, utxoValue utxo)
   _ -> Nothing
 
-getRaffleDatumAndValue :: GYUTxO -> Maybe (RaffleStateData, Value)
-getRaffleDatumAndValue raffleStateUTxO = do
+getRaffleStateDataAndValue :: GYUTxO -> Maybe (RaffleStateData, Value)
+getRaffleStateDataAndValue raffleStateUTxO = do
   (gyDatum, gyValue) <- gyGetInlineDatumAndValue raffleStateUTxO
   rsd <- gyDatumToRSD gyDatum
   let pVal = valueToPlutus gyValue
   return (rsd, pVal)
+
+getRaffleStateValueAndImage :: GYUTxO -> Maybe (RaffleStateData, Value, String)
+getRaffleStateValueAndImage raffleStateUTxO = do
+  (gyDatum, gyValue) <- gyGetInlineDatumAndValue raffleStateUTxO
+  rsd <- gyDatumToRSD gyDatum
+  img <- gyGetImageFromRaffleDatum gyDatum
+  let pVal = valueToPlutus gyValue
+  let img2 = Text.unpack $ fromBuiltin $ decodeUtf8 img
+  return (rsd, pVal, img2)
 
 getTicketDatumAndValue :: GYUTxO -> Maybe (TicketStateData, Value)
 getTicketDatumAndValue ticketStateUTxO = do

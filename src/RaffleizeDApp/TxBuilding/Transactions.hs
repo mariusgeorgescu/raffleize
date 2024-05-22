@@ -9,14 +9,15 @@ import GeniusYield.Types
 import GeniusYield.Types.Key.Class
 
 import GeniusYield.TxBuilder
+import PlutusLedgerApi.V1 qualified
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.Server.Types (RaffleInfo)
 import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
-import RaffleizeDApp.TxBuilding.Lookups (getRaffleDatumAndValue, gyOutHasValidRefToken)
+import RaffleizeDApp.TxBuilding.Lookups (getRaffleStateDataAndValue, gyGetRaffleInfo, gyOutHasValidRefToken)
 import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
-import qualified PlutusLedgerApi.V1
 
 ------------------------------------------------------------------------------------------------
 
@@ -54,8 +55,15 @@ queryRaffles :: ReaderT ProviderCtx IO [(RaffleStateData, PlutusLedgerApi.V1.Val
 queryRaffles = do
   allUTxOs <- queryRaffleizeValidatorUTxOs
   let validUTxOs = filterUTxOs gyOutHasValidRefToken allUTxOs
-  let raffles =  mapMaybe getRaffleDatumAndValue (utxosToList validUTxOs)
+  let raffles = mapMaybe getRaffleStateDataAndValue (utxosToList validUTxOs)
   return raffles
+
+-- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
+queryRafflesInfos :: ReaderT ProviderCtx IO [RaffleInfo]
+queryRafflesInfos = do
+  allUTxOs <- queryRaffleizeValidatorUTxOs
+  let validUTxOs = filterUTxOs gyOutHasValidRefToken allUTxOs
+  runQuery $ mapM gyGetRaffleInfo (utxosToList validUTxOs)
 
 -----------------
 -----------------

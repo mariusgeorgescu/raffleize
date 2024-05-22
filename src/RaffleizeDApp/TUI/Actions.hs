@@ -54,6 +54,7 @@ createRaffle :: GYPaymentSigningKey -> IO String
 createRaffle skey = do
   bs <- B.readFile "raffleconfig.json"
   let raffle_config = fromJust $ decode @RaffleConfig bs
+  print emptyString
   print raffle_config
   let msg = "Create raffle"
   liftIO $ print msg
