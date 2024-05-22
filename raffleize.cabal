@@ -69,7 +69,6 @@ library
     RaffleizeDApp.OnChain.Utils
     RaffleizeDApp.Server.API
     RaffleizeDApp.Server.Queries
-    RaffleizeDApp.Server.Types
     RaffleizeDApp.Tests.PropertyTests
     RaffleizeDApp.Tests.UnitTests
     RaffleizeDApp.TUI.Actions

@@ -130,6 +130,16 @@ type RaffleStateId = Integer -- TODO : check if any data encoding works bette on
 
 type RaffleizeActionLabel = (String, String)
 
+data RaffleInfo = RaffleInfo
+  { riRsd :: RaffleStateData
+  , riValue :: Value
+  , riImage :: String
+  , riStateLabel :: String
+  , riAvailableActions :: [RaffleizeActionLabel]
+  }
+  deriving (Generic, ToJSON, FromJSON)
+
+
 -------------------------------------------------------------------------------
 
 -- *  Show Instances

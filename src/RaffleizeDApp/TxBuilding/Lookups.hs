@@ -12,7 +12,6 @@ import RaffleizeDApp.TxBuilding.Exceptions
 
 import Data.Text qualified as Text
 import PlutusLedgerApi.V1.Interval qualified
-import RaffleizeDApp.Server.Types (RaffleInfo (RaffleInfo))
 import RaffleizeDApp.TxBuilding.Utils (pPOSIXTimeFromGYSlot)
 import RaffleizeDApp.TxBuilding.Validators
 

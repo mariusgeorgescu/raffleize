@@ -2,7 +2,6 @@ module RaffleizeDApp.Server.Queries where
 
 import PlutusLedgerApi.V1 qualified
 import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.Server.Types (RaffleInfo)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Transactions
 

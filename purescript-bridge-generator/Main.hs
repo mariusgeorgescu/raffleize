@@ -25,6 +25,7 @@ myTypes =
   , mkSumType (Proxy :: Proxy RaffleizeAction)
   , mkSumType (Proxy :: Proxy UserAddresses)
   , mkSumType (Proxy :: Proxy RaffleizeInteraction)
+  , mkSumType (Proxy :: Proxy RaffleInfo)
   ]
 
 main :: IO ()

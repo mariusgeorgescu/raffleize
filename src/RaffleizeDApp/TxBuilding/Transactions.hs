@@ -12,7 +12,6 @@ import GeniusYield.TxBuilder
 import PlutusLedgerApi.V1 qualified
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.Server.Types (RaffleInfo)
 import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
@@ -81,10 +80,9 @@ submitTxBodyAndWaitForConfirmation :: (ToShelleyWitnessSigningKey a, MonadIO m, 
 submitTxBodyAndWaitForConfirmation skey m = do
   gyTxId <- submitTxBody skey m
   liftIO $ printf (greenColorString "Built, signed and submitted transaction: %s\n Waiting for confirmation ...") gyTxId
-
   let txId = txIdToApi gyTxId
   ctxProviders <- asks ctxProviders
-  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 10 50000000 1) gyTxId
+  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 10 30000000 1) gyTxId
   let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
   return txOutRef
 

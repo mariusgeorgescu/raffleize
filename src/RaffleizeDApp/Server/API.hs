@@ -3,9 +3,8 @@ module RaffleizeDApp.Server.API where
 import Control.Monad.Reader
 
 import PlutusLedgerApi.V1 qualified
-import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleStateData)
+import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleStateData, RaffleInfo)
 import RaffleizeDApp.Server.Queries
-import RaffleizeDApp.Server.Types
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions (RaffleizeInteraction, RaffleizeTxBuildingContext, interactionToHexEncodedCBOR)
 import Servant

@@ -24,7 +24,7 @@ data RaffleizeInteraction = RaffleizeInteraction
   , recipient :: Maybe GYAddress
   -- ^ If the interaction unlocks some funds, the funds will be sent to this address (if set, otherwise to the change address).
   }
-  deriving (Show, Generic, FromJSON)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
   { raffleValidatorRef :: GYTxOutRef
