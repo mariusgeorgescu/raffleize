@@ -87,9 +87,6 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake `geq` mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
@@ -144,7 +141,7 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
   _ -> trace "no raffle state should exist after this action" pmempty
 {-# INLINEABLE updateRaffleStateValue #-}
 
-validateRaffleAction :: RaffleizeAction -> Integer -> Bool
+validateRaffleAction :: RaffleizeAction -> RaffleStateLabel -> Bool
 validateRaffleAction action currentStateLabel =
   let invalidActionError = "invalid action for validator"
    in traceIfFalse "Action not permited in this raffle state" $
@@ -404,5 +401,5 @@ paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
 
 -- Used for Offchain to identify valid utxos before parsing datum
 -- This function checks if tokenname has the raffle prefix
-hasRefPrefix :: TokenName  -> Bool
-hasRefPrefix (TokenName tnbs)  = sliceByteString 0 4 tnbs #== refTokenPrefixBS
+hasRefPrefix :: TokenName -> Bool
+hasRefPrefix (TokenName tnbs) = sliceByteString 0 4 tnbs #== refTokenPrefixBS
