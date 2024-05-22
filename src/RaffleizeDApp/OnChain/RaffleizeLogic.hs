@@ -32,7 +32,8 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
   RaffleDatum,
   RaffleParam (..),
   RaffleStateData (..),
-  RaffleStateLabel,
+  RaffleStateId,
+  RaffleizeActionLabel,
   raffleStateData,
  )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateLabel, ticketStateData)
@@ -87,11 +88,14 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake `geq` mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
 
-showRaffleStateLabel :: RaffleStateLabel -> String
+showRaffleStateLabel :: RaffleStateId -> String
 showRaffleStateLabel r = case r of
   1 -> "NEW"
   10 -> "EXPIRED_LOCKED_STAKE"
@@ -141,56 +145,95 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
   _ -> trace "no raffle state should exist after this action" pmempty
 {-# INLINEABLE updateRaffleStateValue #-}
 
-validateRaffleAction :: RaffleizeAction -> RaffleStateLabel -> Bool
+validateRaffleAction :: RaffleizeAction -> RaffleStateId -> Bool
 validateRaffleAction action currentStateLabel =
-  let invalidActionError = "invalid action for validator"
-   in traceIfFalse "Action not permited in this raffle state" $
-        currentStateLabel `pelem` case action of
-          User (CreateRaffle _) -> traceError invalidActionError
-          User (BuyTicket _) ->
-            [ 1 -- NEW
-            , 2 -- COMMIT
-            ]
-          RaffleOwner roa -> case roa of
-            Cancel -> [1] -- NEW -- Current state is valid for cancelling the raffle.
-            (Update _) -> [1] -- NEW -- Current state is valid for updating raffle config.
-            RecoverStake ->
-              [ 10 -- EXPIRED_LOCKED_STAKE
-              , 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-              , 22 -- UNDERFUNDED_LOCKED_STAKE
-              , 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-              , 32 -- UNREVEALED_LOCKED_STAKE
-              ]
-            RecoverStakeAndAmount -> [300] -- UNREVEALED_NO_REVEALS
-            CollectAmount ->
-              [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-              , 41 -- SUCCESS_LOCKED_AMOUNT
-              ]
-            GetCollateraOfExpiredTicket -> traceError invalidActionError
-          TicketOwner toa -> case toa of
-            (RevealTicketSecret _) -> [3]
-            CollectStake ->
-              [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-              , 42 -- SUCCESS_LOCKED_STAKE
-              ]
-            RefundTicket ->
-              [ 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-              , 21 -- UNDERFUNDED_LOCKED_REFUNDS.
-              ]
-            RefundTicketExtra ->
-              [ 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-              , 31 -- UNREVEALED_LOCKED_REFUNDS
-              ]
-            RefundCollateralLosing -> traceError invalidActionError
-          Admin _ ->
-            [ 11 -- EXPIRED_FINAL
-            , 23 -- UNDERFUNDED_FINAL
-            , 33 -- UNREVEALED_FINAL
-            , 43 -- SUCCESS_FINAL
-            ]
+  traceIfFalse "Action not permited in this raffle state" $
+    currentStateLabel `pelem` validRaffleStatesForRaffleAction action
 {-# INLINEABLE validateRaffleAction #-}
 
-evaluateRaffleState :: (POSIXTimeRange, RaffleStateData, Value) -> RaffleStateLabel
+validRaffleStatesForRaffleAction :: RaffleizeAction -> [RaffleStateId]
+validRaffleStatesForRaffleAction action = case action of
+  User (CreateRaffle _) -> []
+  User (BuyTicket _) ->
+    [ 1 -- NEW
+    , 2 -- COMMIT
+    ]
+  RaffleOwner roa -> case roa of
+    Cancel -> [1] -- NEW -- Current state is valid for cancelling the raffle.
+    (Update _) -> [1] -- NEW -- Current state is valid for updating raffle config.
+    RecoverStake ->
+      [ 10 -- EXPIRED_LOCKED_STAKE
+      , 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+      , 22 -- UNDERFUNDED_LOCKED_STAKE
+      , 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
+      , 32 -- UNREVEALED_LOCKED_STAKE
+      ]
+    RecoverStakeAndAmount -> [300] -- UNREVEALED_NO_REVEALS
+    CollectAmount ->
+      [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
+      , 41 -- SUCCESS_LOCKED_AMOUNT
+      ]
+    GetCollateraOfExpiredTicket -> [] -- ticket action, not on raffle state
+  TicketOwner toa -> case toa of
+    (RevealTicketSecret _) -> [3]
+    CollectStake ->
+      [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
+      , 42 -- SUCCESS_LOCKED_STAKE
+      ]
+    RefundTicket ->
+      [ 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+      , 21 -- UNDERFUNDED_LOCKED_REFUNDS.
+      ]
+    RefundTicketExtra ->
+      [ 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
+      , 31 -- UNREVEALED_LOCKED_REFUNDS
+      ]
+    RefundCollateralLosing -> [] -- ticket action, not on raffle state
+  Admin _ ->
+    [ 11 -- EXPIRED_FINAL
+    , 23 -- UNDERFUNDED_FINAL
+    , 33 -- UNREVEALED_FINAL
+    , 43 -- SUCCESS_FINAL
+    ]
+{-# INLINEABLE validRaffleStatesForRaffleAction #-}
+
+-- | used in property based testing to check consistency of validActionLabelsForState with  validateRaffleAction
+actionToLabel :: RaffleizeAction -> RaffleizeActionLabel
+actionToLabel action = case action of
+  User a -> ("User",) $ case a of
+    (CreateRaffle _) -> "CreateRaffle"
+    (BuyTicket _) -> "BuyTicket"
+  RaffleOwner roa -> ("RaffleOwner",) $ case roa of
+    (Update _) -> "Update"
+    _ -> show roa
+  TicketOwner toa -> ("TicketOwner",) $ case toa of
+    (RevealTicketSecret _) -> "RevealTicketSecret"
+    _ -> show toa
+  Admin CloseRaffle -> ("Admin", "CloseRaffle")
+
+validActionLabelsForState :: RaffleStateId -> [RaffleizeActionLabel]
+validActionLabelsForState r = case r of
+  1 -> [("User", "BuyTicket"), ("RaffleOwner", "Cancel"), ("RaffleOwner", "Update")]
+  10 -> [("RaffleOwner", "RecoverStake")]
+  11 -> [("Admin", "CloseRaffle")]
+  2 -> [("User", "BuyTicket")]
+  20 -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicket")]
+  21 -> [("TicketOwner", "RefundTicket")]
+  22 -> [("RaffleOwner", "RecoverStake")]
+  23 -> [("Admin", "CloseRaffle")]
+  3 -> [("TicketOwner", "RevealTicketSecret")]
+  40 -> [("RaffleOwner", "CollectAmount"), ("TicketOwner", "CollectStake")]
+  41 -> [("RaffleOwner", "CollectAmount")]
+  42 -> [("TicketOwner", "CollectStake")]
+  43 -> [("Admin", "CloseRaffle")]
+  300 -> [("RaffleOwner", "RecoverStakeAndAmount")]
+  30 -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicketExtra")]
+  31 -> [("TicketOwner", "RefundTicketExtra")]
+  32 -> [("RaffleOwner", "RecoverStake")]
+  33 -> [("Admin", "CloseRaffle")]
+  _ -> []
+
+evaluateRaffleState :: (POSIXTimeRange, RaffleStateData, Value) -> RaffleStateId
 evaluateRaffleState (time_range, rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets, rRefundedTickets}, svalue) =
   let isBeforeCommitDDL = after (rCommitDDL rConfig) time_range
       isBetweenCommitAndRevealDDL = before (rCommitDDL rConfig) time_range && after (rRevealDDL rConfig) time_range
@@ -241,7 +284,7 @@ evaluateRaffleState (time_range, rsd@RaffleStateData {rConfig, rSoldTickets, rRe
                           (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
 {-# INLINEABLE evaluateRaffleState #-}
 
-evalTicketState :: TicketStateData -> RaffleStateLabel -> TicketStateLabel
+evalTicketState :: TicketStateData -> RaffleStateId -> TicketStateLabel
 evalTicketState TicketStateData {tSecret = Just _} _ = 6 --  ==> BURNABLE_BY_TICKET_OWNER
 evalTicketState TicketStateData {tSecret = Nothing} rs
   | rs #== 3 = 5 -- ticket is unrevealed & raffle is in revealing ==> REVEALABLE

@@ -25,7 +25,7 @@ import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Operations
 import RaffleizeDApp.TxBuilding.Validators
-import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty
 
 -- | Our unit tests for creating a raffle
 createRaffleTests :: TestTree
@@ -101,7 +101,7 @@ revealTicketTXRun raffleScriptRef ticketScriptRef secret ticketRefAC = do
 collectAmountTXRun :: GYTxOutRef -> AssetClass -> GYTxMonadRun ()
 collectAmountTXRun scriptRef raffleRefAC = do
   recipient <- ownAddress
-  skeleton <- collectAmountTX scriptRef recipient  raffleRefAC
+  skeleton <- collectAmountTX scriptRef recipient raffleRefAC
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 winnerCollectStakeTXRun :: GYTxOutRef -> GYTxOutRef -> AssetClass -> GYTxMonadRun ()
@@ -160,7 +160,7 @@ getTimeRangeForNextNSlots i = do
   let upper = slotToEndPOSIXTime sltCfg (now + Slot i)
   return $ intersection (from lower) (to upper)
 
-queryRaffleRUN :: HasCallStack => Bool -> Wallet -> AssetClass -> Run RaffleStateLabel
+queryRaffleRUN :: HasCallStack => Bool -> Wallet -> AssetClass -> Run RaffleStateId
 queryRaffleRUN log w rid = do
   (r, v) <- runWallet' w $ do
     lookupRaffleStateDataAndValue rid `catchError` (error . show)
@@ -390,9 +390,8 @@ blueColorString s =
     ++ "\ESC[0m"
     ++ "\n"
 
-runTest :: IO ()
-runTest =
-  defaultMain (testGroup "CreateRaffles" [createRaffleTests])
+unitTests :: TestTree
+unitTests = testGroup "CreateRaffles" [createRaffleTests]
 
 --- >>> lengthOfByteString "5b39bfccb1447d4aae30e7a4fb0f4ba37e79ea96ec54b5ba7223979a15e4d0ae5b39bfccb1447d4aae30e7a4fb0f4ba37e79ea96ec54b5ba7223979a15e4d0ae=====------------------------"
 -- 157

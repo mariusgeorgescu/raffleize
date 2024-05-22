@@ -28,7 +28,7 @@ common common
     -Wall -fobject-code -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
     -fno-specialise -Wno-orphans -Wno-unused-local-binds
-
+    -fconstraint-solver-iterations=0
   if flag(defer-plugin-errors)
     ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
 
@@ -67,6 +67,7 @@ library
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
     RaffleizeDApp.Server.API
+    RaffleizeDApp.Tests.PropertyTests
     RaffleizeDApp.Tests.UnitTests
     RaffleizeDApp.TUI.Actions
     RaffleizeDApp.TUI.UI
@@ -104,6 +105,7 @@ library
     , extra
     , foldl
     , freer-simple
+    , generic-arbitrary
     , lens
     , megaparsec
     , mtl
@@ -120,6 +122,7 @@ library
     , servant-swagger
     , swagger2
     , tasty
+    , tasty-quickcheck
     , text
     , time
     , turtle
@@ -185,4 +188,7 @@ test-suite tests
   hs-source-dirs: src/RaffleizeDApp/Tests
   type:           exitcode-stdio-1.0
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
-  build-depends:  raffleize
+  build-depends:
+    , raffleize
+    , tasty
+    , tasty-quickcheck
