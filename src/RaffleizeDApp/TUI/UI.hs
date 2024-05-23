@@ -26,6 +26,7 @@ import RaffleizeDApp.TxBuilding.Interactions
 import Brick.Widgets.Table (renderTable, table)
 import Data.Char
 import Data.List (intercalate)
+import Data.String qualified
 import Data.Text (unpack)
 import PlutusLedgerApi.V1 (Value)
 import RaffleizeDApp.OnChain.Utils (showValue)
@@ -59,7 +60,7 @@ data RaffleizeEvent = RaffleizeEvent
 Not currently used, but will be easier to refactor
 if we call this "Name" now.
 -}
-type Name = ()
+type Name = String
 
 ------------------------------------------------------------------------------------------------
 
@@ -105,6 +106,22 @@ buildInitialState = do
 handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Next RaffleizeUI)
 handleEvent s e = case e of
   VtyEvent vtye -> case vtye of
+    EvKey KRight [] -> do
+      let hscroll = viewportScroll "myviewport"
+      hScrollBy hscroll 1
+      continue s
+    EvKey KLeft [] -> do
+      let hscroll = viewportScroll "myviewport"
+      hScrollBy hscroll (-1)
+      continue s
+    EvKey KDown [] -> do
+      let vscroll = viewportScroll "myviewport"
+      vScrollBy vscroll 1
+      continue s
+    EvKey KUp [] -> do
+      let vscroll = viewportScroll "myviewport"
+      vScrollBy vscroll (-1)
+      continue s
     EvKey (KChar c) []
       | c `elem` ("qQ" :: [Char]) -> halt s
     EvKey (KChar c) []
@@ -181,7 +198,7 @@ drawUI s =
 
 ------------------------------------------------------------------------------------------------
 
-mainMenu :: RaffleizeUI -> Widget n
+mainMenu :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
 mainMenu s =
   vBox
     [ center $ withAttr "highlight" $ str (logo s)
@@ -191,15 +208,21 @@ mainMenu s =
     , hCenter $ availableActionsWidget s
     ]
 
-configFilesWidget :: RaffleizeUI -> Widget n
+configFilesWidget :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
 configFilesWidget s =
-  borderWithLabel (str "CONFIGURATION") $
-    hBox $
-      padAll 1
-        <$> [ providersWidget (atlasConfig s)
-            , validatorsWidget (validatorsConfig s)
-            , adminWidget (adminSkey s) (adminAddress s) (adminBalance s)
-            ]
+  visible $
+    withVScrollBarHandles $
+      withHScrollBarHandles $
+        withHScrollBars OnBottom $
+          withVScrollBars OnRight $
+            viewport "myviewport" Both $
+              borderWithLabel (str "CONFIGURATION") $
+                hBox $
+                  padAll 1
+                    <$> [ providersWidget (atlasConfig s)
+                        , validatorsWidget (validatorsConfig s)
+                        , adminWidget (adminSkey s) (adminAddress s) (adminBalance s)
+                        ]
 
 symbolWidget :: Bool -> Widget n
 symbolWidget True = withAttr "good" $ str "✔"
@@ -255,7 +278,7 @@ adaBalanceWidget val = withAttr "good" $ str (show (fromValue val) ++ "\n" ++ sh
 addressWidget :: GYAddress -> Widget n
 addressWidget addr = withAttr "good" $ str (show . unpack $ addressToText addr)
 
-adminWidget :: Maybe a -> Maybe GYAddress -> Maybe Value -> Widget n
+adminWidget :: (Ord n, Show n, Data.String.IsString n) => Maybe a -> Maybe GYAddress -> Maybe Value -> Widget n
 adminWidget ma maddr mbal =
   borderWithLabel (str "Admin") $
     renderTable $
