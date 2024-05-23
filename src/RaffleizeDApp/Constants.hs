@@ -48,3 +48,13 @@ ticketValidatorFile = "ticketValidator.plutus"
 
 mintingPolicyFile :: FilePath
 mintingPolicyFile = "raffleizeMintingPolicy.plutus"
+
+
+---
+
+cexplorerTxPreview :: String
+cexplorerTxPreview = "https://preview.cexplorer.io/"
+cexplorerTxPreprod :: String
+cexplorerTxPreprod = "https://preprod.cexplorer.io/"
+cexplorerTxMainnet :: String
+cexplorerTxMainnet = "https://cexplorer.io/"

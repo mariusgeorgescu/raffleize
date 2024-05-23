@@ -20,3 +20,5 @@ pPOSIXTimeFromGYSlot = (timeToPlutus <$>) . slotToBeginTime
 gySlotFromPOSIXTime :: GYTxQueryMonad m => POSIXTime -> m GYSlot
 gySlotFromPOSIXTime ptime = do
   enclosingSlotFromTime' (timeFromPlutus ptime)
+
+

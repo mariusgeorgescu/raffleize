@@ -20,7 +20,7 @@ import Brick.Widgets.Border
 import Brick.Widgets.Center
 import Control.Monad.IO.Class
 
-import RaffleizeDApp.Constants (atlasCoreConfig, mintingPolicyFile, operationSkeyFilePath, raffleizeLogoPath, raffleizeValidatorFile, raffleizeValidatorsConfig, ticketValidatorFile)
+import RaffleizeDApp.Constants (atlasCoreConfig, mintingPolicyFile, operationSkeyFilePath, raffleizeLogoPath, raffleizeValidatorFile, raffleizeValidatorsConfig, ticketValidatorFile, cexplorerTxMainnet, cexplorerTxPreprod, cexplorerTxPreview)
 import RaffleizeDApp.TxBuilding.Interactions
 
 import Brick.Widgets.Table (renderTable, table)
@@ -149,12 +149,12 @@ handleEvent s e = case e of
       | c `elem` ("tT" :: [Char]) && isJust (adminSkey s) -> do
           liftIO clearScreen
           txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
-          continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> show txOutRef}
+          continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <>  txOutRef}
     EvKey (KChar c) []
       | c `elem` ("cC" :: [Char]) && isJust (adminSkey s) -> do
           liftIO clearScreen
           txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
-          continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> show txOutRef}
+          continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <>  txOutRef}
     EvKey (KChar c) []
       | c `elem` ("eE" :: [Char]) -> do
           liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
@@ -276,7 +276,7 @@ adaBalanceWidget :: Value -> Widget n
 adaBalanceWidget val = withAttr "good" $ str (show (fromValue val) ++ "\n" ++ showValue "BALANCE" val)
 
 addressWidget :: GYAddress -> Widget n
-addressWidget addr = withAttr "good" $ str (show . unpack $ addressToText addr)
+addressWidget addr = withAttr "good" $ str $ unpack $ addressToText addr
 
 adminWidget :: (Ord n, Show n, Data.String.IsString n) => Maybe a -> Maybe GYAddress -> Maybe Value -> Widget n
 adminWidget ma maddr mbal =
@@ -309,3 +309,4 @@ availableActionsWidget s =
                    ]
             )
       )
+
