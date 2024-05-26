@@ -1,4 +1,8 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-unused-matches #-}
 
 module RaffleizeDApp.TUI.UI where
 
@@ -13,28 +17,53 @@ import GeniusYield.Types (GYAddress, GYNetworkId (..), GYPaymentSigningKey, GYTx
 import Brick.Widgets.Core
 
 import Brick.Util
-import Brick.Widgets.Border.Style
-import Graphics.Vty
-
 import Brick.Widgets.Border
+import Brick.Widgets.Border.Style
 import Brick.Widgets.Center
+import Control.Lens
 import Control.Monad.IO.Class
+import Graphics.Vty
 
 import RaffleizeDApp.Constants
 import RaffleizeDApp.TxBuilding.Interactions
 
+import Brick.Forms
+import Brick.Widgets.List (Splittable (splitAt), list, renderList)
 import Brick.Widgets.Table (renderTable, table)
+import Control.Monad.State (modify)
+import Control.Monad.State.Class (gets)
 import Data.Char
+import Data.Csv (Name)
 import Data.List (intercalate)
+import Data.String (IsString)
 import Data.String qualified
 import Data.Text (unpack)
-import PlutusLedgerApi.V1 (Value)
-import RaffleizeDApp.OnChain.Utils (showValue)
+import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Validators (exportMintingPolicy, exportRaffleScript, exportTicketScript)
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
+
+-----
+
+-------
+
+data NameResources = ValueItemsList | ValueItemsViewPort | TokenNameField | Other deriving (Eq, Ord, Show, Generic)
+instance IsString NameResources where
+  fromString :: String -> NameResources
+  fromString "TokenNameField" = TokenNameField
+  fromString "ValueItemsViewPort" = ValueItemsViewPort
+  fromString "ValueItemsList" = ValueItemsList
+  fromString _ = Other
+
+newtype MintTokenForm = MintTokenForm {_tokenNameField :: Text} deriving (Show)
+
+makeLenses ''MintTokenForm
+
+mkForm :: MintTokenForm -> Form MintTokenForm e NameResources
+mkForm =
+  newForm [(str "Name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)]
 
 ------------------------------------------------------------------------------------------------
 
@@ -50,25 +79,18 @@ data RaffleizeUI = RaffleizeUI
   , adminBalance :: Maybe Value
   , logo :: String
   , message :: String
+  , mintTokenForm :: Form MintTokenForm RaffleizeEvent NameResources
   }
-  deriving (Show)
 
 data RaffleizeEvent = RaffleizeEvent
 
-{- | Named resources
+------------------------------------------------------------------------------------------------
 
-Not currently used, but will be easier to refactor
-if we call this "Name" now.
--}
-type Name = String
+-- *   App definition
 
 ------------------------------------------------------------------------------------------------
 
--- *   App definitionF
-
-------------------------------------------------------------------------------------------------
-
-app :: App RaffleizeUI RaffleizeEvent Name
+app :: App RaffleizeUI RaffleizeEvent NameResources
 app =
   App
     { appDraw = drawUI
@@ -95,7 +117,7 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty)
+  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty (mkForm (MintTokenForm mempty)))
 
 ------------------------------------------------------------------------------------------------
 
@@ -103,64 +125,60 @@ buildInitialState = do
 
 ------------------------------------------------------------------------------------------------
 
-handleEvent :: RaffleizeUI -> BrickEvent Name RaffleizeEvent -> EventM Name (Next RaffleizeUI)
-handleEvent s e = case e of
-  VtyEvent vtye -> case vtye of
-    EvKey KRight [] -> do
-      let hscroll = viewportScroll "myviewport"
-      hScrollBy hscroll 1
-      continue s
-    EvKey KLeft [] -> do
-      let hscroll = viewportScroll "myviewport"
-      hScrollBy hscroll (-1)
-      continue s
-    EvKey KDown [] -> do
-      let vscroll = viewportScroll "myviewport"
-      vScrollBy vscroll 1
-      continue s
-    EvKey KUp [] -> do
-      let vscroll = viewportScroll "myviewport"
-      vScrollBy vscroll (-1)
-      continue s
-    EvKey (KChar c) []
-      | c `elem` ("qQ" :: [Char]) -> halt s
-    EvKey (KChar c) []
-      | c `elem` ("lL" :: [Char]) && isJust (adminSkey s) -> do
-          let skey = fromMaybe (error "No skey") $ adminSkey s
-          (addr, val) <- liftIO $ getAddressAndValue skey
-          continue s {adminAddress = Just addr, adminBalance = Just val}
-    EvKey (KChar c) []
-      | c `elem` ("bB" :: [Char]) ->
-          handleEvent (s {message = ""}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
-    EvKey (KChar c) []
-      | c `elem` ("rR" :: [Char]) -> continue s {message = "Refresh Screen"}
-    EvKey (KChar c) []
-      | c `elem` ("gG" :: [Char]) -> do
-          liftIO $ generateNewAdminSkey operationSkeyFilePath
-          s' <- liftIO $ updateFromConfigFiles s
-          continue s'
-    EvKey (KChar c) []
-      | c `elem` ("dD" :: [Char]) && isJust (adminSkey s) -> do
-          liftIO clearScreen
-          liftIO deployValidators
-          s' <- liftIO $ updateFromConfigFiles s
-          continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
-    EvKey (KChar c) []
-      | c `elem` ("tT" :: [Char]) && isJust (adminSkey s) -> do
-          liftIO clearScreen
-          txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
-          continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> txOutRef}
-    EvKey (KChar c) []
-      | c `elem` ("cC" :: [Char]) && isJust (adminSkey s) -> do
-          liftIO clearScreen
-          txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
-          continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> txOutRef}
-    EvKey (KChar c) []
-      | c `elem` ("eE" :: [Char]) -> do
-          liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
-          continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
+handleEvent :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleEvent s e =
+  case e of
+    VtyEvent vtye -> case vtye of
+      EvKey KDown [] -> do
+        let vscroll = viewportScroll ValueItemsViewPort
+        vScrollBy vscroll 1
+        continue s
+      EvKey KUp [] -> do
+        let vscroll = viewportScroll ValueItemsViewPort
+        vScrollBy vscroll (-1)
+        continue s
+      EvKey (KChar c) []
+        | c `elem` ("qQ" :: [Char]) -> halt s
+      EvKey (KChar c) []
+        | c `elem` ("lL" :: [Char]) && isJust (adminSkey s) -> do
+            let skey = fromMaybe (error "No skey") $ adminSkey s
+            (addr, val) <- liftIO $ getAddressAndValue skey
+            continue s {adminAddress = Just addr, adminBalance = Just val}
+      EvKey (KChar c) []
+        | c `elem` ("bB" :: [Char]) ->
+            handleEvent (s {message = ""}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
+      EvKey (KChar c) []
+        | c `elem` ("rR" :: [Char]) -> continue s {message = "Refresh Screen"}
+      EvKey (KChar c) []
+        | c `elem` ("gG" :: [Char]) -> do
+            liftIO $ generateNewAdminSkey operationSkeyFilePath
+            s' <- liftIO $ updateFromConfigFiles s
+            continue s'
+      EvKey (KChar c) []
+        | c `elem` ("dD" :: [Char]) && isJust (adminSkey s) -> do
+            liftIO clearScreen
+            liftIO deployValidators
+            s' <- liftIO $ updateFromConfigFiles s
+            continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
+      EvKey (KChar c) []
+        | c `elem` ("tT" :: [Char]) && isJust (adminSkey s) -> do
+            liftIO clearScreen
+            txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
+            continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> txOutRef}
+      EvKey (KChar c) []
+        | c `elem` ("cC" :: [Char]) && isJust (adminSkey s) -> do
+            liftIO clearScreen
+            txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
+            continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> txOutRef}
+      EvKey (KChar c) []
+        | c `elem` ("eE" :: [Char]) -> do
+            liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
+            continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
+      _ ->
+        do
+          f <- handleFormEvent e (mintTokenForm s)
+          continue s {mintTokenForm = f}
     _ -> continue s
-  _ -> continue s
 
 updateFromConfigFiles :: RaffleizeUI -> IO RaffleizeUI
 updateFromConfigFiles s = do
@@ -185,7 +203,7 @@ theMap =
     , ("action", fg yellow)
     ]
 
-drawUI :: RaffleizeUI -> [Widget Name]
+drawUI :: RaffleizeUI -> [Widget NameResources]
 drawUI s =
   joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
     <$> [ if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[B] - Back"
@@ -198,54 +216,63 @@ drawUI s =
 
 ------------------------------------------------------------------------------------------------
 
-mainMenu :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
+mainMenu :: RaffleizeUI -> Widget NameResources
 mainMenu s =
   vBox
-    [ center $ withAttr "highlight" $ str (logo s)
+    [ -- hCenter $ withAttr "highlight" $ str (logo s)
+      border $ renderForm $ mintTokenForm s
     , hBorder
-    , hCenter $ configFilesWidget s
-    , hBorder
-    , hCenter $ availableActionsWidget s
+    , center $ bodyWidget s
     ]
 
-configFilesWidget :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
-configFilesWidget s =
-  visible $
-    withVScrollBarHandles $
-      withHScrollBarHandles $
-        withHScrollBars OnBottom $
-          withVScrollBars OnRight $
-            viewport "myviewport" Both $
-              borderWithLabel (str "CONFIGURATION") $
-                hBox $
-                  padAll 1
-                    <$> [ providersWidget (atlasConfig s)
-                        , validatorsWidget (validatorsConfig s)
-                        , adminWidget (adminSkey s) (adminAddress s) (adminBalance s)
-                        ]
+bodyWidget :: RaffleizeUI -> Widget NameResources
+bodyWidget s =
+  vBox $
+    padLeftRight 1
+      <$> [ leftBodyWidget s
+          , hBorder
+          , assetsWidget (cfgNetworkId <$> atlasConfig s) (adminSkey s) (adminAddress s) (adminBalance s)
+          ]
 
-symbolWidget :: Bool -> Widget n
-symbolWidget True = withAttr "good" $ str "✔"
-symbolWidget False = withAttr "warning" $ str "X"
-
-validatorsWidget :: Maybe RaffleizeTxBuildingContext -> Widget n
-validatorsWidget mv =
-  borderWithLabel (str "Validators TxOuts\n with Reference Scripts ") $
-    renderTable $
-      table $
-        [str "Loaded: ", symbolWidget (isJust mv)] : case mv of
-          Nothing -> []
-          Just (RaffleizeTxBuildingContext {..}) ->
-            [ [str "Raffle Validator", txOutRefWidget raffleValidatorRef]
-            , [str "Ticket Validator", txOutRefWidget ticketValidatorRef]
+leftBodyWidget :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
+leftBodyWidget s =
+  hCenter $
+    hBox $
+      padLeftRight 1
+        <$> [ availableActionsWidget s
+            , providersWidget (atlasConfig s)
+            , validatorsWidget (cfgNetworkId <$> atlasConfig s) (validatorsConfig s)
+            , walletFlagWidget (adminSkey s)
             ]
 
-txOutRefWidget :: GYTxOutRef -> Widget n
-txOutRefWidget t = withAttr "good" $ str (unpack $ showTxOutRef t)
+symbolWidget :: Bool -> Widget n
+symbolWidget v = if v then withAttr "good" $ str "✔" else withAttr "warning" $ str "X"
+
+validatorsWidget :: Maybe GYNetworkId -> Maybe RaffleizeTxBuildingContext -> Widget n
+validatorsWidget mnid mv =
+  borderWithLabel (str "VALIDATORS") $
+    renderTable $
+      table $
+        [str "Deployed: ", symbolWidget (isJust mv)] : case (mnid, mv) of
+          (Just nid, Just (RaffleizeTxBuildingContext {..})) ->
+            [ [str "Raffle Validator", txOutRefWidget nid raffleValidatorRef]
+            , [str "Ticket Validator", txOutRefWidget nid ticketValidatorRef]
+            ]
+          _ -> []
+
+walletFlagWidget :: (Ord n, Show n, Data.String.IsString n) => Maybe a -> Widget n
+walletFlagWidget mkey =
+  borderWithLabel (str "WALLET") $
+    renderTable $
+      table
+        [[str "Connected ", symbolWidget (isJust mkey)]]
+
+txOutRefWidget :: GYNetworkId -> GYTxOutRef -> Widget n
+txOutRefWidget nid t = withAttr "good" $ str (showLink nid "tx" $ unpack $ showTxOutRef t)
 
 providersWidget :: Maybe GYCoreConfig -> Widget n
 providersWidget mp =
-  borderWithLabel (str "Blockchain Provider") $
+  borderWithLabel (str "BLOCKCHAIN PROVIDER") $
     renderTable $
       table $
         [ str "Loaded: "
@@ -272,25 +299,61 @@ printNetwork cfg = withAttr "good" . str $ case cfgNetworkId cfg of
   GYTestnetLegacy -> "TESTNET-LEGACY"
   GYPrivnet -> "PRIVNET"
 
+showLink :: GYNetworkId -> String -> String -> String
+showLink nid s content = case nid of
+  GYMainnet -> cexplorerMainnet <> s <> "/" <> content <> " "
+  GYTestnetPreprod -> cexplorerPreprod <> s <> "/" <> content <> " "
+  GYTestnetPreview -> cexplorerPreview <> s <> "/" <> content <> " "
+  GYTestnetLegacy -> content
+  GYPrivnet -> content
+
 adaBalanceWidget :: Value -> Widget n
-adaBalanceWidget val = withAttr "good" $ str (show (fromValue val) ++ "\n" ++ showValue "BALANCE" val)
+adaBalanceWidget val = withAttr "good" $ str (show (fromValue val) ++ "\n")
 
-addressWidget :: GYAddress -> Widget n
-addressWidget addr = withAttr "good" $ str $ unpack $ addressToText addr
+instance Splittable [] where
+  splitAt :: Int -> [a] -> ([a], [a])
+  splitAt i = Prelude.splitAt (fromIntegral i)
 
-adminWidget :: (Ord n, Show n, Data.String.IsString n) => Maybe a -> Maybe GYAddress -> Maybe Value -> Widget n
-adminWidget ma maddr mbal =
-  borderWithLabel (str "Admin") $
-    renderTable $
-      table $
-        [str "Loaded: ", symbolWidget (isJust ma)] : case ma of
-          Nothing -> []
-          Just _ -> case (maddr, mbal) of
-            (Just addr, Just bal) ->
-              [ [str "Address: ", addressWidget addr]
-              , [str "Balance: ", adaBalanceWidget bal]
-              ]
-            _ -> []
+assetsBalanceWidget :: Value -> Widget NameResources
+assetsBalanceWidget val =
+  let
+    valueItemsList = Brick.Widgets.List.list ValueItemsList (flattenValue val) 5
+   in
+    borderWithLabel (str "ASSETS") $
+      visible $
+        withVScrollBarHandles $
+          withVScrollBars OnRight $
+            viewport ValueItemsViewPort Vertical $
+              vLimit 300 $
+                hLimit 110 $
+                  renderList valueItemWidget False valueItemsList
+
+assetClassItemWidget :: CurrencySymbol -> TokenName -> Widget n
+assetClassItemWidget cs tn = str (show cs) <=> hBorder <=> str (toString tn)
+
+valueItemWidget :: Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
+valueItemWidget hasFocus (cs, tn, i) = vLimit 5 $ hLimit 100 (border (assetClassItemWidget cs tn <+> vBorder <+> center (str (show i))))
+
+addressWidget :: GYNetworkId -> GYAddress -> Widget n
+addressWidget nid addr = withAttr "good" $ str $ showLink nid "address" $ unpack $ addressToText addr
+
+assetsWidget :: Maybe GYNetworkId -> Maybe a -> Maybe GYAddress -> Maybe Value -> Widget NameResources
+assetsWidget (Just nid) (Just key) (Just addr) (Just val) =
+  borderWithLabel (str "WALLET") $
+    hBox
+      [ assetsAdaWidget nid addr val
+      , vBorder
+      , assetsBalanceWidget val
+      ]
+assetsWidget _ _ _ _ = emptyWidget
+
+assetsAdaWidget :: (Ord n, Show n, Data.String.IsString n) => GYNetworkId -> GYAddress -> Value -> Widget n
+assetsAdaWidget nid addr val =
+  renderTable $
+    table
+      [ [str "Address: ", addressWidget nid addr]
+      , [str "Ada | ₳ |:", adaBalanceWidget val]
+      ]
 
 availableActionsWidget :: RaffleizeUI -> Widget n
 availableActionsWidget s =
