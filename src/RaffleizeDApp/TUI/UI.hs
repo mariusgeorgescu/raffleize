@@ -45,25 +45,39 @@ import RaffleizeDApp.TxBuilding.Validators (exportMintingPolicy, exportRaffleScr
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
 
+
 -----
 
 -------
 
-data NameResources = ValueItemsList | ValueItemsViewPort | TokenNameField | Other deriving (Eq, Ord, Show, Generic)
+data NameResources
+  = ValueItemsList
+  | ValueItemsViewPort
+  | TokenNameField
+  | MintAmount
+  | Other
+  deriving (Eq, Ord, Show, Generic)
+
 instance IsString NameResources where
   fromString :: String -> NameResources
   fromString "TokenNameField" = TokenNameField
+  fromString "MintAmount" = MintAmount
   fromString "ValueItemsViewPort" = ValueItemsViewPort
   fromString "ValueItemsList" = ValueItemsList
   fromString _ = Other
 
-newtype MintTokenForm = MintTokenForm {_tokenNameField :: Text} deriving (Show)
+data MintTokenForm = MintTokenForm
+  { _tokenNameField :: Text
+  , _mintAmount :: Int
+  }
+  deriving (Show)
 
 makeLenses ''MintTokenForm
 
 mkForm :: MintTokenForm -> Form MintTokenForm e NameResources
 mkForm =
-  newForm [(str "Name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)]
+  newForm [(str "Name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)
+          , (str "Amount: " <+>) @@= editShowableFieldWithValidate mintAmount  MintAmount (==100) ]
 
 ------------------------------------------------------------------------------------------------
 
@@ -118,7 +132,7 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty (mkForm (MintTokenForm mempty)) False)
+  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty (mkForm (MintTokenForm mempty 0)) False)
 
 ------------------------------------------------------------------------------------------------
 
