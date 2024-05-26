@@ -80,6 +80,7 @@ data RaffleizeUI = RaffleizeUI
   , logo :: String
   , message :: String
   , mintTokenForm :: Form MintTokenForm RaffleizeEvent NameResources
+  , unlockKeys :: Bool
   }
 
 data RaffleizeEvent = RaffleizeEvent
@@ -117,7 +118,7 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty (mkForm (MintTokenForm mempty)))
+  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty (mkForm (MintTokenForm mempty)) False)
 
 ------------------------------------------------------------------------------------------------
 
@@ -129,55 +130,56 @@ handleEvent :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM 
 handleEvent s e =
   case e of
     VtyEvent vtye -> case vtye of
-      EvKey KDown [] -> do
-        let vscroll = viewportScroll ValueItemsViewPort
-        vScrollBy vscroll 1
-        continue s
-      EvKey KUp [] -> do
-        let vscroll = viewportScroll ValueItemsViewPort
-        vScrollBy vscroll (-1)
-        continue s
-      EvKey (KChar c) []
-        | c `elem` ("qQ" :: [Char]) -> halt s
-      EvKey (KChar c) []
-        | c `elem` ("lL" :: [Char]) && isJust (adminSkey s) -> do
-            let skey = fromMaybe (error "No skey") $ adminSkey s
-            (addr, val) <- liftIO $ getAddressAndValue skey
-            continue s {adminAddress = Just addr, adminBalance = Just val}
-      EvKey (KChar c) []
-        | c `elem` ("bB" :: [Char]) ->
-            handleEvent (s {message = ""}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
-      EvKey (KChar c) []
-        | c `elem` ("rR" :: [Char]) -> continue s {message = "Refresh Screen"}
-      EvKey (KChar c) []
-        | c `elem` ("gG" :: [Char]) -> do
-            liftIO $ generateNewAdminSkey operationSkeyFilePath
-            s' <- liftIO $ updateFromConfigFiles s
-            continue s'
-      EvKey (KChar c) []
-        | c `elem` ("dD" :: [Char]) && isJust (adminSkey s) -> do
-            liftIO clearScreen
-            liftIO deployValidators
-            s' <- liftIO $ updateFromConfigFiles s
-            continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
-      EvKey (KChar c) []
-        | c `elem` ("tT" :: [Char]) && isJust (adminSkey s) -> do
-            liftIO clearScreen
-            txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
-            continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> txOutRef}
-      EvKey (KChar c) []
-        | c `elem` ("cC" :: [Char]) && isJust (adminSkey s) -> do
-            liftIO clearScreen
-            txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
-            continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> txOutRef}
-      EvKey (KChar c) []
-        | c `elem` ("eE" :: [Char]) -> do
-            liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
-            continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
-      _ ->
-        do
-          f <- handleFormEvent e (mintTokenForm s)
-          continue s {mintTokenForm = f}
+      EvKey KEsc [] -> continue s {message = "", unlockKeys = False} -- handleEvent (s {message = "", unlockKeys = False}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
+      EvKey key _modifiers ->
+        if unlockKeys s
+          then do
+            f <- handleFormEvent e (mintTokenForm s)
+            continue s {mintTokenForm = f}
+          else case key of
+            KDown -> do
+              let vscroll = viewportScroll ValueItemsViewPort
+              vScrollBy vscroll 1
+              continue s
+            KUp -> do
+              let vscroll = viewportScroll ValueItemsViewPort
+              vScrollBy vscroll (-1)
+              continue s
+            (KChar c) -> case c of
+              'p' -> continue s {unlockKeys = True}
+              'q' -> halt s
+              'r' -> continue s {message = "Refresh Screen"}
+              'g' -> do
+                liftIO $ generateNewAdminSkey operationSkeyFilePath
+                s' <- liftIO $ updateFromConfigFiles s
+                continue s'
+              'e' -> do
+                liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
+                continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
+              _ ->
+                if isNothing (adminSkey s)
+                  then continue s
+                  else case c of
+                    'l' -> do
+                      let skey = fromMaybe (error "No skey") $ adminSkey s
+                      (addr, val) <- liftIO $ getAddressAndValue skey
+                      continue s {adminAddress = Just addr, adminBalance = Just val}
+                    'd' -> do
+                      liftIO clearScreen
+                      liftIO deployValidators
+                      s' <- liftIO $ updateFromConfigFiles s
+                      continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
+                    't' -> do
+                      liftIO clearScreen
+                      txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
+                      continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> txOutRef}
+                    'c' -> do
+                      liftIO clearScreen
+                      txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
+                      continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> txOutRef}
+                    _ -> continue s
+            _ -> continue s
+      _ -> continue s
     _ -> continue s
 
 updateFromConfigFiles :: RaffleizeUI -> IO RaffleizeUI
@@ -206,7 +208,8 @@ theMap =
 drawUI :: RaffleizeUI -> [Widget NameResources]
 drawUI s =
   joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
-    <$> [ if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[B] - Back"
+    <$> [ if not (unlockKeys s) then emptyWidget else center (border $ renderForm $ mintTokenForm s) <=> str "[ESC] - Close"
+        , if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[ESC] - Close"
         , mainMenu s
         ]
 
@@ -219,8 +222,7 @@ drawUI s =
 mainMenu :: RaffleizeUI -> Widget NameResources
 mainMenu s =
   vBox
-    [ -- hCenter $ withAttr "highlight" $ str (logo s)
-      border $ renderForm $ mintTokenForm s
+    [ hCenter $ withAttr "highlight" $ str (logo s)
     , hBorder
     , center $ bodyWidget s
     ]
@@ -364,7 +366,7 @@ availableActionsWidget s =
             (not . null)
             ( ( if isNothing . adminSkey $ s
                   then ["[G] - Generate new admin skey"]
-                  else ["[D] - Deploy Raffleize Validators", "[L] - Query current admin balance", "[C] - Create raffle", "[T] - Mint some test tokens"]
+                  else ["[D] - Deploy Raffleize Validators", "[L] - Get wallet balance", "[C] - Create raffle", "[T] - Mint some test tokens"]
               )
                 ++ [ "[R] - Refresh screen"
                    , "[E] - Export validators"
