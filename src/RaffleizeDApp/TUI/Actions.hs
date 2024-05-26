@@ -7,10 +7,11 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Transactions
 
 import Control.Monad.IO.Class
-import Data.Csv (toField)
 import Data.ByteString.Lazy qualified as B
+import Data.Csv (toField)
 import Data.String (fromString)
-import GeniusYield.Types (Ada, GYAddress, GYPaymentSigningKey, GYUTxO (utxoValue), GYUTxOs, foldMapUTxOs, fromValue, valueToPlutus)
+import Data.Text qualified
+import GeniusYield.Types (Ada, GYAddress, GYPaymentSigningKey, GYUTxO (utxoValue), GYUTxOs, foldMapUTxOs, fromValue, valueToPlutus, showTxOutRef)
 import PlutusLedgerApi.V1 qualified
 import RaffleizeDApp.Constants (
   operationSkeyFilePath,
@@ -43,12 +44,12 @@ getAddressAndValue skey = do
   utxos <- getAdminUTxOs addr
   return (addr, getValueBalance utxos)
 
-mintTestTokens :: GYPaymentSigningKey -> IO String
-mintTestTokens skey = do
+mintTestTokens :: GYPaymentSigningKey -> String -> Integer -> IO String
+mintTestTokens skey tn amount = do
   let msg = "Minting test tokens"
   liftIO $ print msg
-  r <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTransaction skey
-  return $ show $ toField r
+  r <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTransaction skey tn amount
+  return $ Data.Text.unpack $ showTxOutRef r
 
 createRaffle :: GYPaymentSigningKey -> IO String
 createRaffle skey = do

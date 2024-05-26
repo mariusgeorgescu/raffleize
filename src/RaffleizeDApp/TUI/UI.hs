@@ -30,21 +30,17 @@ import RaffleizeDApp.TxBuilding.Interactions
 import Brick.Forms
 import Brick.Widgets.List (Splittable (splitAt), list, renderList)
 import Brick.Widgets.Table (renderTable, table)
-import Control.Monad.State (modify)
-import Control.Monad.State.Class (gets)
-import Data.Char
-import Data.Csv (Name)
+import Data.Char ()
 import Data.List (intercalate)
 import Data.String (IsString)
 import Data.String qualified
-import Data.Text (unpack)
+import Data.Text (length, unpack)
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Validators (exportMintingPolicy, exportRaffleScript, exportTicketScript)
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
-
 
 -----
 
@@ -74,10 +70,12 @@ data MintTokenForm = MintTokenForm
 
 makeLenses ''MintTokenForm
 
-mkForm :: MintTokenForm -> Form MintTokenForm e NameResources
-mkForm =
-  newForm [(str "Name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)
-          , (str "Amount: " <+>) @@= editShowableFieldWithValidate mintAmount  MintAmount (==100) ]
+mkMintTokenForm :: MintTokenForm -> Form MintTokenForm e NameResources
+mkMintTokenForm =
+  newForm
+    [ (str "Name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)
+    , (str "Amount: " <+>) @@= editShowableField mintAmount MintAmount 
+    ]
 
 ------------------------------------------------------------------------------------------------
 
@@ -132,7 +130,8 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty (mkForm (MintTokenForm mempty 0)) False)
+  let mintTokenForm = mkMintTokenForm (MintTokenForm mempty 0)
+  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm False)
 
 ------------------------------------------------------------------------------------------------
 
@@ -147,9 +146,36 @@ handleEvent s e =
       EvKey KEsc [] -> continue s {message = "", unlockKeys = False} -- handleEvent (s {message = "", unlockKeys = False}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
       EvKey key _modifiers ->
         if unlockKeys s
-          then do
-            f <- handleFormEvent e (mintTokenForm s)
-            continue s {mintTokenForm = f}
+          then
+            let f = mintTokenForm s
+                mintTokensForm_state = formState f
+                invalid_fields = invalidFields f
+             in case key of
+                  KEnter ->
+                    do
+                      if null invalid_fields
+                        then do
+                          liftIO clearScreen
+                          let tn = _tokenNameField mintTokensForm_state
+                          let amount = _mintAmount mintTokensForm_state
+                          txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s)) (unpack tn) (fromIntegral amount)
+                          let nid = (cfgNetworkId . fromJust . atlasConfig) s
+                          continue
+                            s
+                              { message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> showLink nid "tx" txOutRef
+                              , unlockKeys = False
+                              }
+                        else
+                          continue
+                            s
+                              { message = "Form must pass validations"
+                              }
+                  _ -> do
+                    updated_form <- handleFormEvent e (mintTokenForm s)
+                    let tnfield = _tokenNameField (formState updated_form)
+                    let fieldValidations = [setFieldValid (Data.Text.length tnfield <= 32) TokenNameField]
+                    let validated_form = foldr' ($) updated_form fieldValidations
+                    continue s {mintTokenForm = validated_form}
           else case key of
             KDown -> do
               let vscroll = viewportScroll ValueItemsViewPort
@@ -183,10 +209,6 @@ handleEvent s e =
                       liftIO deployValidators
                       s' <- liftIO $ updateFromConfigFiles s
                       continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
-                    't' -> do
-                      liftIO clearScreen
-                      txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s))
-                      continue s {message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> txOutRef}
                     'c' -> do
                       liftIO clearScreen
                       txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
@@ -217,15 +239,27 @@ theMap =
     , ("warning", fg red)
     , ("good", fg green)
     , ("action", fg yellow)
+    , (focusedFormInputAttr, fg blue)
+    , (invalidFormInputAttr, white `on` red)
     ]
 
 drawUI :: RaffleizeUI -> [Widget NameResources]
 drawUI s =
   joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
-    <$> [ if not (unlockKeys s) then emptyWidget else center (border $ renderForm $ mintTokenForm s) <=> str "[ESC] - Close"
-        , if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[ESC] - Close"
+    <$> [ if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[ESC] - Close"
+        , if not (unlockKeys s) then emptyWidget else mintTestTokensScreen s
         , mainMenu s
         ]
+
+mintTestTokensScreen :: RaffleizeUI -> Widget NameResources
+mintTestTokensScreen s =
+  let ivf = invalidFields (mintTokenForm s)
+   in center $
+        border $
+          withAttr formAttr (withAttr invalidFormInputAttr (withAttr focusedFormInputAttr (renderForm $ mintTokenForm s)))
+            <=> str (show ivf)
+            <=> str "[Enter] - Mint"
+            <=> str "[ESC] - Close"
 
 ------------------------------------------------------------------------------------------------
 

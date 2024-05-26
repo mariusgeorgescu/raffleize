@@ -8,6 +8,7 @@ import GeniusYield.GYConfig
 import GeniusYield.Types
 import GeniusYield.Types.Key.Class
 
+import GeniusYield.Imports (IsString (..))
 import GeniusYield.TxBuilder
 import PlutusLedgerApi.V1 qualified
 import RaffleizeDApp.CustomTypes.ActionTypes
@@ -87,10 +88,10 @@ submitTxBodyAndWaitForConfirmation skey m = do
   return txOutRef
 
 -- | Build a transaction for minting test tokens
-buildMintTestTokensTx :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYTxBody
-buildMintTestTokensTx skey = do
+buildMintTestTokensTx :: GYPaymentSigningKey -> String -> Integer -> ReaderT ProviderCtx IO GYTxBody
+buildMintTestTokensTx skey tn amount = do
   my_addr <- queryGetAddressFromSkey skey
-  runTxI (UserAddresses [my_addr] my_addr Nothing) $ snd <$> mintTestTokens "teststake" 100
+  runTxI (UserAddresses [my_addr] my_addr Nothing) $ snd <$> mintTestTokens (fromString tn) (fromInteger amount)
 
 --------------------------
 --------------------------
@@ -108,9 +109,9 @@ createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> ReaderT Provid
 createRaffleTransaction skey raffle_config = do
   submitTxBodyAndWaitForConfirmation skey $ buildCreateRaffleTx skey raffle_config
 
-mintTestTokensTransaction :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYTxOutRef
-mintTestTokensTransaction skey = do
-  submitTxBodyAndWaitForConfirmation skey $ buildMintTestTokensTx skey
+mintTestTokensTransaction :: GYPaymentSigningKey -> String -> Integer -> ReaderT ProviderCtx IO GYTxOutRef
+mintTestTokensTransaction skey tn amount = do
+  submitTxBodyAndWaitForConfirmation skey $ buildMintTestTokensTx skey tn amount
 
 ------------------------------------------------------------------------------------------------
 
