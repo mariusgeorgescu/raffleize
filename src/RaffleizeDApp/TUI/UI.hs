@@ -73,8 +73,8 @@ makeLenses ''MintTokenForm
 mkMintTokenForm :: MintTokenForm -> Form MintTokenForm e NameResources
 mkMintTokenForm =
   newForm
-    [ (str "Name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)
-    , (str "Amount: " <+>) @@= editShowableField mintAmount MintAmount
+    [ (str "Token name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)
+    , (str "Minting amount: " <+>) @@= editShowableField mintAmount MintAmount
     ]
 
 ------------------------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  let mintTokenForm = mkMintTokenForm (MintTokenForm mempty 0)
+  let mintTokenForm = mkMintTokenForm (MintTokenForm "test-tokens" 0)
   pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm False)
 
 ------------------------------------------------------------------------------------------------
@@ -165,15 +165,11 @@ handleEvent s e =
                               { message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> showLink nid "tx" txOutRef
                               , unlockKeys = False
                               }
-                        else
-                          continue
-                            s
-                              { message = "Form must pass validations"
-                              }
+                        else continue s
                   _ -> do
                     updated_form <- handleFormEvent e (mintTokenForm s)
                     let tnfield = _tokenNameField (formState updated_form)
-                    let fieldValidations = [setFieldValid (Data.Text.length tnfield <= 32) TokenNameField]
+                    let fieldValidations = [setFieldValid (Data.Text.length tnfield <= tokenNameMaxLength) TokenNameField]
                     let validated_form = foldr' ($) updated_form fieldValidations
                     continue s {mintTokenForm = validated_form}
           else case key of
@@ -195,7 +191,7 @@ handleEvent s e =
                 continue s'
               'e' -> do
                 liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
-                continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
+                continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" ++ Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile]}
               _ ->
                 if isNothing (adminSkey s)
                   then continue s
@@ -212,7 +208,8 @@ handleEvent s e =
                     'c' -> do
                       liftIO clearScreen
                       txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
-                      continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> txOutRef}
+                      let nid = (cfgNetworkId . fromJust . atlasConfig) s
+                      continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <>   showLink nid "tx" txOutRef}
                     _ -> continue s
             _ -> continue s
       _ -> continue s
@@ -253,13 +250,36 @@ drawUI s =
 
 mintTestTokensScreen :: RaffleizeUI -> Widget NameResources
 mintTestTokensScreen s =
-  let ivf = invalidFields (mintTokenForm s)
+  let ivfs = invalidFields (mintTokenForm s)
    in center $
-        border $
-          withAttr formAttr (withAttr invalidFormInputAttr (withAttr focusedFormInputAttr (renderForm $ mintTokenForm s)))
-            <=> str (show ivf)
-            <=> str "[Enter] - Mint"
-            <=> str "[ESC] - Close"
+        borderWithLabel (str "MINT TEST TOKENS") $
+          vBox $
+            padAll 1
+              <$> [ withAttr formAttr (withAttr invalidFormInputAttr (withAttr focusedFormInputAttr (renderForm $ mintTokenForm s)))
+                  , hBorder
+                  , hCenter $ str (printMTivfs ivfs)
+                  , hBorder
+                  , hCenter $ mintTokenActions (null ivfs)
+                  ]
+
+mintTokenActions :: Bool -> Widget n
+mintTokenActions isValid =
+  withAttr "action" . borderWithLabel (str "AVAILABLE ACTIONS") $
+    vBox
+      [ str "[ESC]   - Close          "
+      , if isValid then str "[Enter] - Mint tokens" else emptyWidget
+      ]
+
+printMTivf :: NameResources -> String
+printMTivf TokenNameField = "Token name must have maximum " <> show tokenNameMaxLength <> " characters!"
+printMTivf MintAmount = "The minting amount must be an integer value !"
+printMTivf _ = ""
+
+printMTivfs :: [NameResources] -> String
+printMTivfs x = Data.List.intercalate "\n" $ printMTivf <$> x
+
+tokenNameMaxLength :: Int
+tokenNameMaxLength = 32
 
 ------------------------------------------------------------------------------------------------
 
@@ -291,7 +311,7 @@ summaryWidget s =
       [ availableActionsWidget s
       , providersWidget (atlasConfig s)
       , validatorsWidget (cfgNetworkId <$> atlasConfig s) (validatorsConfig s)
-      , walletFlagWidget (adminSkey s) 
+      , walletFlagWidget (adminSkey s)
       ]
 
 symbolWidget :: Bool -> Widget n
@@ -317,7 +337,7 @@ walletFlagWidget mkey =
         [[str "Connected ", symbolWidget (isJust mkey)]]
 
 txOutRefWidget :: GYNetworkId -> GYTxOutRef -> Widget n
-txOutRefWidget nid t = withAttr "good" $ str (showLink nid "tx" $ unpack $ showTxOutRef t)
+txOutRefWidget nid t = withAttr "good" $ txt $ showTxOutRef t
 
 providersWidget :: Maybe GYCoreConfig -> Widget n
 providersWidget mp =
@@ -384,13 +404,13 @@ valueItemWidget :: Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
 valueItemWidget hasFocus (cs, tn, i) = vLimit 5 $ hLimit 100 (border (assetClassItemWidget cs tn <+> vBorder <+> center (str (show i))))
 
 addressWidget :: GYNetworkId -> GYAddress -> Widget n
-addressWidget nid addr = withAttr "good" $ str $ showLink nid "address" $ unpack $ addressToText addr
+addressWidget nid addr = withAttr "good" $ txt $ addressToText addr
 
 assetsWidget :: Maybe GYNetworkId -> Maybe a -> Maybe GYAddress -> Maybe Value -> Widget NameResources
 assetsWidget (Just nid) (Just key) (Just addr) (Just val) =
   borderWithLabel (str "WALLET") $
     hBox
-      [ assetsAdaWidget nid addr val 
+      [ assetsAdaWidget nid addr val
       , vBorder
       , assetsBalanceWidget val
       ]
