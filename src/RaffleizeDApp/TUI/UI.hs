@@ -2,43 +2,34 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
 
 module RaffleizeDApp.TUI.UI where
 
 import Brick.AttrMap
+import Brick.Forms
 import Brick.Main
 import Brick.Types
-import Graphics.Vty.Input.Events
-
-import GeniusYield.GYConfig (GYCoreConfig (cfgCoreProvider, cfgNetworkId), GYCoreProviderInfo (..))
-import GeniusYield.Types (GYAddress, GYNetworkId (..), GYPaymentSigningKey, GYTxOutRef, addressToText, fromValue, showTxOutRef)
-
-import Brick.Widgets.Core
-
 import Brick.Util
 import Brick.Widgets.Border
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Center
+import Brick.Widgets.Core
+import Brick.Widgets.List
+import Brick.Widgets.Table
 import Control.Lens
 import Control.Monad.IO.Class
+import Data.List qualified
+import Data.Text qualified
+import Data.Vector qualified
+import GeniusYield.GYConfig
+import GeniusYield.Types
 import Graphics.Vty
-
-import RaffleizeDApp.Constants
-import RaffleizeDApp.TxBuilding.Interactions
-
-import Brick.Forms
-import Brick.Widgets.List (Splittable (splitAt), list, renderList)
-import Brick.Widgets.Table (renderTable, table)
-import Data.Char ()
-import Data.List (intercalate)
-import Data.String (IsString)
-import Data.String qualified
-import Data.Text (length, unpack)
 import PlutusLedgerApi.V1.Value
+import RaffleizeDApp.Constants
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
-import RaffleizeDApp.TxBuilding.Validators (exportMintingPolicy, exportRaffleScript, exportTicketScript)
+import RaffleizeDApp.TxBuilding.Interactions
+import RaffleizeDApp.TxBuilding.Validators
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
 
@@ -47,34 +38,55 @@ import System.IO.Extra (readFile)
 -------
 
 data NameResources
-  = ValueItemsList
+  = CommitDDL
+  | RevealDDL
+  | MinNoTokens
+  | StakeValue
+  | StakeAmount
+  | ValueItemsList
   | ValueItemsViewPort
   | TokenNameField
-  | MintAmount
+  | MintAmountField
   | Other
   deriving (Eq, Ord, Show, Generic)
 
-instance IsString NameResources where
-  fromString :: String -> NameResources
-  fromString "TokenNameField" = TokenNameField
-  fromString "MintAmount" = MintAmount
-  fromString "ValueItemsViewPort" = ValueItemsViewPort
-  fromString "ValueItemsList" = ValueItemsList
-  fromString _ = Other
-
-data MintTokenForm = MintTokenForm
+data MintTokenFormState = MintTokenFormState
   { _tokenNameField :: Text
   , _mintAmount :: Int
   }
   deriving (Show)
 
-makeLenses ''MintTokenForm
+makeLenses ''MintTokenFormState
 
-mkMintTokenForm :: MintTokenForm -> Form MintTokenForm e NameResources
+mkMintTokenForm :: MintTokenFormState -> Form MintTokenFormState e NameResources
 mkMintTokenForm =
   newForm
     [ (str "Token name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)
-    , (str "Minting amount: " <+>) @@= editShowableField mintAmount MintAmount
+    , (str "Minting amount: " <+>) @@= editShowableField mintAmount MintAmountField
+    ]
+
+------------------------------------------------------------------------------------------------
+
+data CreateRaffleFormState = CreateRaffleFormState
+  { _commitDdl :: String
+  , _revealDdl :: String
+  , _minNoTickets :: Int
+  , _availableAssets :: Data.Vector.Vector (CurrencySymbol, TokenName, Integer)
+  , _selectedAsset :: Maybe (CurrencySymbol, TokenName, Integer)
+  , _amount :: Int
+  }
+  deriving (Show)
+
+makeLenses ''CreateRaffleFormState
+
+mkCreateRaffleForm :: CreateRaffleFormState -> Form CreateRaffleFormState e NameResources
+mkCreateRaffleForm =
+  newForm
+    [ (str "Commit deadline: " <+>) @@= editShowableField commitDdl CommitDDL
+    , (str "Reveal deadline: " <+>) @@= editShowableField revealDdl RevealDDL
+    , (str "Min. no. of tickets: " <+>) @@= editShowableField minNoTickets MinNoTokens
+    , (str "Select Asset" <+>) @@= listField _availableAssets selectedAsset valueItemWidgetTwo 1 StakeValue
+    , (str "Amount: " <+>) @@= editShowableField amount StakeAmount
     ]
 
 ------------------------------------------------------------------------------------------------
@@ -87,13 +99,16 @@ data RaffleizeUI = RaffleizeUI
   { atlasConfig :: Maybe GYCoreConfig
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
   , adminSkey :: Maybe GYPaymentSigningKey
-  , adminAddress :: Maybe GYAddress
+  , connectedWalletAddr :: Maybe GYAddress
   , adminBalance :: Maybe Value
   , logo :: String
   , message :: String
-  , mintTokenForm :: Form MintTokenForm RaffleizeEvent NameResources
-  , unlockKeys :: Bool
+  , mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources
+  , createRaffleForm :: Form CreateRaffleFormState RaffleizeEvent NameResources
+  , currentScreen :: Screen
   }
+
+data Screen = MainScreen | CreateRaffleScreen | MintTokenScreen deriving (Eq, Ord, Enum, Show)
 
 data RaffleizeEvent = RaffleizeEvent
 
@@ -130,8 +145,9 @@ buildInitialState = do
   skey <- readPaymentKeyFile operationSkeyFilePath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  let mintTokenForm = mkMintTokenForm (MintTokenForm "test-tokens" 0)
-  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm False)
+  let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 0)
+  let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 mempty Nothing 0)
+  pure (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm MainScreen)
 
 ------------------------------------------------------------------------------------------------
 
@@ -143,10 +159,30 @@ handleEvent :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM 
 handleEvent s e =
   case e of
     VtyEvent vtye -> case vtye of
-      EvKey KEsc [] -> continue s {message = "", unlockKeys = False} -- handleEvent (s {message = "", unlockKeys = False}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
+      EvKey KEsc [] -> continue s {message = "", currentScreen = MainScreen} -- handleEvent (s {message = "", currentScreen = False}) (VtyEvent (EvKey (KChar 'l') [])) -- reload balance
       EvKey key _modifiers ->
-        if unlockKeys s
-          then
+        case currentScreen s of
+          CreateRaffleScreen ->
+            let f = createRaffleForm s
+                createRaffleForm_state = formState f
+                invalid_fields = invalidFields f
+             in case key of
+                  KEnter ->
+                    do
+                      if null invalid_fields
+                        then do
+                          liftIO clearScreen
+                          txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
+                          let nid = (cfgNetworkId . fromJust . atlasConfig) s
+                          continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
+                        else continue s
+                  _ -> do
+                    updated_form <- handleFormEvent e (createRaffleForm s)
+
+                    let fieldValidations = []
+                    let validated_form = foldr' ($) updated_form fieldValidations
+                    continue s {createRaffleForm = validated_form}
+          MintTokenScreen ->
             let f = mintTokenForm s
                 mintTokensForm_state = formState f
                 invalid_fields = invalidFields f
@@ -157,13 +193,13 @@ handleEvent s e =
                         then do
                           liftIO clearScreen
                           let tn = _tokenNameField mintTokensForm_state
-                          let amount = _mintAmount mintTokensForm_state
-                          txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s)) (unpack tn) (fromIntegral amount)
+                          let minamnt = _mintAmount mintTokensForm_state
+                          txOutRef <- liftIO $ mintTestTokens (fromJust (adminSkey s)) (Data.Text.unpack tn) (fromIntegral minamnt)
                           let nid = (cfgNetworkId . fromJust . atlasConfig) s
                           continue
                             s
                               { message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> showLink nid "tx" txOutRef
-                              , unlockKeys = False
+                              , currentScreen = MainScreen
                               }
                         else continue s
                   _ -> do
@@ -172,7 +208,7 @@ handleEvent s e =
                     let fieldValidations = [setFieldValid (Data.Text.length tnfield <= tokenNameMaxLength) TokenNameField]
                     let validated_form = foldr' ($) updated_form fieldValidations
                     continue s {mintTokenForm = validated_form}
-          else case key of
+          MainScreen -> case key of
             KDown -> do
               let vscroll = viewportScroll ValueItemsViewPort
               vScrollBy vscroll 1
@@ -182,7 +218,6 @@ handleEvent s e =
               vScrollBy vscroll (-1)
               continue s
             (KChar c) -> case c of
-              'm' -> continue s {unlockKeys = True}
               'q' -> halt s
               'r' -> continue s {message = "Refresh Screen"}
               'g' -> do
@@ -196,20 +231,19 @@ handleEvent s e =
                 if isNothing (adminSkey s)
                   then continue s
                   else case c of
+                    'm' -> continue s {currentScreen = MintTokenScreen}
+                    'c' -> continue s {currentScreen = CreateRaffleScreen}
                     'l' -> do
                       let skey = fromMaybe (error "No skey") $ adminSkey s
                       (addr, val) <- liftIO $ getAddressAndValue skey
-                      continue s {adminAddress = Just addr, adminBalance = Just val}
+                      let createRaffleForm_state = formState (createRaffleForm s)
+                      let newCreateRaffleForm = mkCreateRaffleForm (createRaffleForm_state {_availableAssets = Data.Vector.fromList (flattenValue val)})
+                      continue s {connectedWalletAddr = Just addr, adminBalance = Just val, createRaffleForm = newCreateRaffleForm}
                     'd' -> do
                       liftIO clearScreen
                       liftIO deployValidators
                       s' <- liftIO $ updateFromConfigFiles s
                       continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " ++ show raffleizeValidatorsConfig}
-                    'c' -> do
-                      liftIO clearScreen
-                      txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
-                      let nid = (cfgNetworkId . fromJust . atlasConfig) s
-                      continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <>   showLink nid "tx" txOutRef}
                     _ -> continue s
             _ -> continue s
       _ -> continue s
@@ -236,6 +270,7 @@ theMap =
     , ("warning", fg red)
     , ("good", fg green)
     , ("action", fg yellow)
+    , ("selected", bg blue)
     , (focusedFormInputAttr, fg blue)
     , (invalidFormInputAttr, white `on` red)
     ]
@@ -244,9 +279,24 @@ drawUI :: RaffleizeUI -> [Widget NameResources]
 drawUI s =
   joinBorders . withBorderStyle unicode . borderWithLabel (str "RAFFLEIZE - C.A.R.D.A.N.A")
     <$> [ if null (message s) then emptyWidget else center (withAttr "highlight" $ str (message s)) <=> str "[ESC] - Close"
-        , if not (unlockKeys s) then emptyWidget else mintTestTokensScreen s
+        , if currentScreen s == MintTokenScreen then mintTestTokensScreen s else emptyWidget
+        , if currentScreen s == CreateRaffleScreen then createRaffleScreen s else emptyWidget
         , mainMenu s
         ]
+
+createRaffleScreen :: RaffleizeUI -> Widget NameResources
+createRaffleScreen s =
+  let ivfs = invalidFields (createRaffleForm s)
+   in center $
+        borderWithLabel (str "CREATE NEWRAFFLE") $
+          vBox $
+            padAll 1
+              <$> [ withAttr formAttr (withAttr invalidFormInputAttr (withAttr focusedFormInputAttr (renderForm $ createRaffleForm s)))
+                  , hBorder
+                  , hCenter $ str (printMTivfs ivfs)
+                  , hBorder
+                  , hCenter $ mintTokenActions (null ivfs)
+                  ]
 
 mintTestTokensScreen :: RaffleizeUI -> Widget NameResources
 mintTestTokensScreen s =
@@ -272,7 +322,7 @@ mintTokenActions isValid =
 
 printMTivf :: NameResources -> String
 printMTivf TokenNameField = "Token name must have maximum " <> show tokenNameMaxLength <> " characters!"
-printMTivf MintAmount = "The minting amount must be an integer value !"
+printMTivf MintAmountField = "The minting amount must be an integer value !"
 printMTivf _ = ""
 
 printMTivfs :: [NameResources] -> String
@@ -301,10 +351,10 @@ bodyWidget s =
     padLeftRight 1
       <$> [ summaryWidget s
           , hBorder
-          , assetsWidget (cfgNetworkId <$> atlasConfig s) (adminSkey s) (adminAddress s) (adminBalance s)
+          , assetsWidget (cfgNetworkId <$> atlasConfig s) (adminSkey s) (connectedWalletAddr s) (adminBalance s)
           ]
 
-summaryWidget :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
+summaryWidget :: RaffleizeUI -> Widget NameResources
 summaryWidget s =
   hCenter $
     hBox
@@ -329,7 +379,7 @@ validatorsWidget mnid mv =
             ]
           _ -> []
 
-walletFlagWidget :: (Ord n, Show n, Data.String.IsString n) => Maybe a -> Widget n
+walletFlagWidget :: Maybe a -> Widget NameResources
 walletFlagWidget mkey =
   borderWithLabel (str "WALLET") $
     renderTable $
@@ -403,11 +453,14 @@ assetClassItemWidget cs tn = str (show cs) <=> hBorder <=> str (toString tn)
 valueItemWidget :: Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
 valueItemWidget hasFocus (cs, tn, i) = vLimit 5 $ hLimit 100 (border (assetClassItemWidget cs tn <+> vBorder <+> center (str (show i))))
 
+valueItemWidgetTwo :: Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
+valueItemWidgetTwo hasFocus (cs, tn, i) = (if hasFocus then withAttr "selected" else id) $ (hBox [str (show cs), str (toString tn), hCenter (str (show i))])
+
 addressWidget :: GYNetworkId -> GYAddress -> Widget n
 addressWidget nid addr = withAttr "good" $ txt $ addressToText addr
 
 assetsWidget :: Maybe GYNetworkId -> Maybe a -> Maybe GYAddress -> Maybe Value -> Widget NameResources
-assetsWidget (Just nid) (Just key) (Just addr) (Just val) =
+assetsWidget (Just nid) (Just _key) (Just addr) (Just val) =
   borderWithLabel (str "WALLET") $
     hBox
       [ assetsAdaWidget nid addr val
@@ -416,7 +469,7 @@ assetsWidget (Just nid) (Just key) (Just addr) (Just val) =
       ]
 assetsWidget _ _ _ _ = emptyWidget
 
-assetsAdaWidget :: (Ord n, Show n, Data.String.IsString n) => GYNetworkId -> GYAddress -> Value -> Widget n
+assetsAdaWidget :: GYNetworkId -> GYAddress -> Value -> Widget NameResources
 assetsAdaWidget nid addr val =
   renderTable $
     table
