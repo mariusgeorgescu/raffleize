@@ -74,7 +74,7 @@ mkMintTokenForm :: MintTokenForm -> Form MintTokenForm e NameResources
 mkMintTokenForm =
   newForm
     [ (str "Name: " <+>) @@= editTextField tokenNameField TokenNameField (Just 1)
-    , (str "Amount: " <+>) @@= editShowableField mintAmount MintAmount 
+    , (str "Amount: " <+>) @@= editShowableField mintAmount MintAmount
     ]
 
 ------------------------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ handleEvent s e =
               vScrollBy vscroll (-1)
               continue s
             (KChar c) -> case c of
-              'p' -> continue s {unlockKeys = True}
+              'm' -> continue s {unlockKeys = True}
               'q' -> halt s
               'r' -> continue s {message = "Refresh Screen"}
               'g' -> do
@@ -279,21 +279,20 @@ bodyWidget :: RaffleizeUI -> Widget NameResources
 bodyWidget s =
   vBox $
     padLeftRight 1
-      <$> [ leftBodyWidget s
+      <$> [ summaryWidget s
           , hBorder
           , assetsWidget (cfgNetworkId <$> atlasConfig s) (adminSkey s) (adminAddress s) (adminBalance s)
           ]
 
-leftBodyWidget :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
-leftBodyWidget s =
+summaryWidget :: (Ord n, Show n, Data.String.IsString n) => RaffleizeUI -> Widget n
+summaryWidget s =
   hCenter $
-    hBox $
-      padLeftRight 1
-        <$> [ availableActionsWidget s
-            , providersWidget (atlasConfig s)
-            , validatorsWidget (cfgNetworkId <$> atlasConfig s) (validatorsConfig s)
-            , walletFlagWidget (adminSkey s)
-            ]
+    hBox
+      [ availableActionsWidget s
+      , providersWidget (atlasConfig s)
+      , validatorsWidget (cfgNetworkId <$> atlasConfig s) (validatorsConfig s)
+      , walletFlagWidget (adminSkey s) 
+      ]
 
 symbolWidget :: Bool -> Widget n
 symbolWidget v = if v then withAttr "good" $ str "✔" else withAttr "warning" $ str "X"
@@ -391,7 +390,7 @@ assetsWidget :: Maybe GYNetworkId -> Maybe a -> Maybe GYAddress -> Maybe Value -
 assetsWidget (Just nid) (Just key) (Just addr) (Just val) =
   borderWithLabel (str "WALLET") $
     hBox
-      [ assetsAdaWidget nid addr val
+      [ assetsAdaWidget nid addr val 
       , vBorder
       , assetsBalanceWidget val
       ]
@@ -414,7 +413,7 @@ availableActionsWidget s =
             (not . null)
             ( ( if isNothing . adminSkey $ s
                   then ["[G] - Generate new admin skey"]
-                  else ["[D] - Deploy Raffleize Validators", "[L] - Get wallet balance", "[C] - Create raffle", "[T] - Mint some test tokens"]
+                  else ["[D] - Deploy Raffleize Validators", "[L] - Get wallet balance", "[C] - Create raffle", "[M] - Mint some test tokens"]
               )
                 ++ [ "[R] - Refresh screen"
                    , "[E] - Export validators"
