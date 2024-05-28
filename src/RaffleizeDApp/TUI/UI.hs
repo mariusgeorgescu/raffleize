@@ -147,7 +147,7 @@ buildInitialState = do
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   skey <- readPaymentKeyFile operationSkeyFilePath
-  let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 0)
+  let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
   case skey of
     Nothing -> do
       let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 mempty Nothing 0)
@@ -221,7 +221,11 @@ handleEvent s e =
                   _ -> do
                     updated_form <- handleFormEvent e f
                     let tnfield = _tokenNameField (formState updated_form)
-                    let fieldValidations = [setFieldValid (Data.Text.length tnfield <= tokenNameMaxLength) TokenNameField]
+                    let mintamnt = _mintAmount (formState updated_form)
+                    let fieldValidations =
+                          [ setFieldValid (Data.Text.length tnfield <= tokenNameMaxLength) TokenNameField
+                          , setFieldValid (0 < mintamnt) MintAmountField
+                          ]
                     let validated_form = foldr' ($) updated_form fieldValidations
                     continue s {mintTokenForm = validated_form}
           MainScreen -> case key of
@@ -340,7 +344,7 @@ formActionsWidget isValid s =
 
 printMTivf :: NameResources -> String
 printMTivf TokenNameField = "Token name must have maximum " <> show tokenNameMaxLength <> " characters!"
-printMTivf MintAmountField = "The minting amount must be an integer value !"
+printMTivf MintAmountField = "The minting amount must be a natural number!"
 printMTivf _ = ""
 
 printMTivfs :: [NameResources] -> String
