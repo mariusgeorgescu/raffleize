@@ -22,14 +22,16 @@ import RaffleizeDApp.TUI.Utils
 deployValidators :: IO ()
 deployValidators = do
   skey <- fromMaybe (error "Skey File Missing") <$> readPaymentKeyFile operationSkeyFilePath
-  validators <- runContextWithCfgProviders "deploy raffle validator" $ deployRaffleizeValidators skey
+  let msg = "Deploying validators"
+  liftIO $ print msg
+  validators <- runContextWithCfgProviders (fromString msg) $ deployRaffleizeValidators skey
   liftIO $ B.writeFile raffleizeValidatorsConfig (encode . toJSON $ validators)
 
 getAdminAddress :: GYPaymentSigningKey -> IO GYAddress
 getAdminAddress skey = runContextWithCfgProviders "get addmin address" $ queryGetAddressFromSkey skey
 
-getAdminUTxOs :: GYAddress -> IO GYUTxOs
-getAdminUTxOs addr = runContextWithCfgProviders "get addmin utxos" $ queryGetUTxOs addr
+getAddrUTxOs :: GYAddress -> IO GYUTxOs
+getAddrUTxOs addr = runContextWithCfgProviders "get addmin utxos" $ queryGetUTxOs addr
 
 getAdaBalance :: GYUTxOs -> Ada
 getAdaBalance = fromValue . getValueBalance
@@ -40,7 +42,7 @@ getValueBalance = valueToPlutus . foldMapUTxOs utxoValue
 getAddressAndValue :: GYPaymentSigningKey -> IO (GYAddress, PlutusLedgerApi.V1.Value)
 getAddressAndValue skey = do
   addr <- getAdminAddress skey
-  utxos <- getAdminUTxOs addr
+  utxos <- getAddrUTxOs addr
   return (addr, getValueBalance utxos)
 
 mintTestTokens :: GYPaymentSigningKey -> String -> Integer -> IO String
@@ -59,4 +61,4 @@ createRaffle skey = do
   let msg = "Create raffle"
   liftIO $ print msg
   r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle_config
-  return $  Data.Text.unpack $ showTxOutRef r
+  return $ Data.Text.unpack $ showTxOutRef r

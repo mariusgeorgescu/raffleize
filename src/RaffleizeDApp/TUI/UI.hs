@@ -124,7 +124,7 @@ app :: App RaffleizeUI RaffleizeEvent NameResources
 app =
   App
     { appDraw = drawUI
-    , appChooseCursor = neverShowCursor
+    , appChooseCursor = showFirstCursor
     , appHandleEvent = handleEvent
     , appStartEvent = return $ liftIO buildInitialState
     , appAttrMap = const theMap

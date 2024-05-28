@@ -83,7 +83,7 @@ submitTxBodyAndWaitForConfirmation skey m = do
   liftIO $ printf (greenColorString "Built, signed and submitted transaction: %s\n Waiting for confirmation ...") gyTxId
   let txId = txIdToApi gyTxId
   ctxProviders <- asks ctxProviders
-  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 10 30000000 1) gyTxId
+  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 30 10000000 1) gyTxId
   let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
   return txOutRef
 
