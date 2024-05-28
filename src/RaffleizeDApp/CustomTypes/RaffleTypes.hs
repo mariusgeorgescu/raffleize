@@ -13,8 +13,7 @@ import PlutusTx.AssocMap
 import RaffleizeDApp.Constants (
   metadataVersion,
   raffleDescription,
-  raffleImageURI,
-  raffleName,
+  raffleName, raffleImageURI,
  )
 import RaffleizeDApp.CustomTypes.Types (Metadata)
 import RaffleizeDApp.OnChain.Utils (
@@ -138,7 +137,6 @@ data RaffleInfo = RaffleInfo
   , riAvailableActions :: [RaffleizeActionLabel]
   }
   deriving (Generic, ToJSON, FromJSON)
-
 
 -------------------------------------------------------------------------------
 

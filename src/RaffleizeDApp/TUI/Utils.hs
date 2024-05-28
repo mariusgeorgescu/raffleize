@@ -2,6 +2,7 @@ module RaffleizeDApp.TUI.Utils where
 
 import Data.Aeson
 import GeniusYield.Types
+
 import System.Directory.Extra
 
 readPaymentKeyFile :: FilePath -> IO (Maybe GYPaymentSigningKey)

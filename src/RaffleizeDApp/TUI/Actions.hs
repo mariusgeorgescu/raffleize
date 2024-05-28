@@ -8,10 +8,9 @@ import RaffleizeDApp.TxBuilding.Transactions
 
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as B
-import Data.Csv (toField)
 import Data.String (fromString)
 import Data.Text qualified
-import GeniusYield.Types (Ada, GYAddress, GYPaymentSigningKey, GYUTxO (utxoValue), GYUTxOs, foldMapUTxOs, fromValue, valueToPlutus, showTxOutRef)
+import GeniusYield.Types (Ada, GYAddress, GYPaymentSigningKey, GYUTxO (utxoValue), GYUTxOs, foldMapUTxOs, fromValue, showTxOutRef, valueToPlutus)
 import PlutusLedgerApi.V1 qualified
 import RaffleizeDApp.Constants (
   operationSkeyFilePath,
@@ -60,4 +59,4 @@ createRaffle skey = do
   let msg = "Create raffle"
   liftIO $ print msg
   r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle_config
-  return $ show $ toField r
+  return $  Data.Text.unpack $ showTxOutRef r
