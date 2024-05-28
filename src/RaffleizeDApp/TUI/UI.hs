@@ -171,7 +171,6 @@ handleEvent s e =
         case currentScreen s of
           CreateRaffleScreen ->
             let f = createRaffleForm s
-                createRaffleForm_state = formState f
                 invalid_fields = invalidFields f
              in case key of
                   KEnter ->
@@ -184,10 +183,19 @@ handleEvent s e =
                           continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
                         else continue s
                   _ -> do
-                    updated_form <- handleFormEvent e (createRaffleForm s)
+                    updated_form <- handleFormEvent e f
 
+                    let updated_form' =
+                          if key `elem` [KUp, KDown]
+                            then do
+                              let updated_form_state = formState updated_form
+                              let currentAmount = _amount updated_form_state
+                              let selectedElementAmount = maybe (0 :: Int) (\(_, _, i) -> fromIntegral i) (_selectedAsset updated_form_state)
+                              let updated_form_state_again = updated_form_state {_amount = selectedElementAmount}
+                              if selectedElementAmount /= currentAmount then updateFormState updated_form_state_again updated_form else updated_form
+                            else updated_form
                     let fieldValidations = []
-                    let validated_form = foldr' ($) updated_form fieldValidations
+                    let validated_form = foldr' ($) updated_form' fieldValidations
                     continue s {createRaffleForm = validated_form}
           MintTokenScreen ->
             let f = mintTokenForm s
@@ -210,7 +218,7 @@ handleEvent s e =
                               }
                         else continue s
                   _ -> do
-                    updated_form <- handleFormEvent e (mintTokenForm s)
+                    updated_form <- handleFormEvent e f
                     let tnfield = _tokenNameField (formState updated_form)
                     let fieldValidations = [setFieldValid (Data.Text.length tnfield <= tokenNameMaxLength) TokenNameField]
                     let validated_form = foldr' ($) updated_form fieldValidations
