@@ -27,6 +27,7 @@ import Graphics.Vty
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.Constants
 import RaffleizeDApp.TUI.Actions
+
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Utils
@@ -69,8 +70,8 @@ mkMintTokenForm =
 ------------------------------------------------------------------------------------------------
 
 data CreateRaffleFormState = CreateRaffleFormState
-  { _commitDdl :: String
-  , _revealDdl :: String
+  { _commitDdl :: Text
+  , _revealDdl :: Text
   , _minNoTickets :: Int
   , _availableAssets :: Data.Vector.Vector (CurrencySymbol, TokenName, Integer)
   , _selectedAsset :: Maybe (CurrencySymbol, TokenName, Integer)
@@ -83,8 +84,8 @@ makeLenses ''CreateRaffleFormState
 mkCreateRaffleForm :: CreateRaffleFormState -> Form CreateRaffleFormState e NameResources
 mkCreateRaffleForm =
   newForm
-    [ (str "Commit deadline: " <+>) @@= editShowableField commitDdl CommitDDL
-    , (str "Reveal deadline: " <+>) @@= editShowableField revealDdl RevealDDL
+    [ (str "Commit deadline: " <+>) @@= editTextField commitDdl CommitDDL (Just 1)
+    , (str "Reveal deadline: " <+>) @@= editTextField revealDdl RevealDDL (Just 1)
     , (str "Min. no. of tickets: " <+>) @@= editShowableField minNoTickets MinNoTokens
     , (str "Select Asset" <+>) @@= listField _availableAssets selectedAsset (valueItemWidget True) 5 StakeValue
     , (str "Amount: " <+>) @@= editShowableField amount StakeAmount
@@ -185,7 +186,7 @@ handleEvent s e =
                   _ -> do
                     updated_form <- handleFormEvent e f
 
-                    let updated_form' =
+                    let updated_form2 =
                           if key `elem` [KUp, KDown]
                             then do
                               let updated_form_state = formState updated_form
@@ -194,8 +195,8 @@ handleEvent s e =
                               let updated_form_state_again = updated_form_state {_amount = selectedElementAmount}
                               if selectedElementAmount /= currentAmount then updateFormState updated_form_state_again updated_form else updated_form
                             else updated_form
-                    let fieldValidations = []
-                    let validated_form = foldr' ($) updated_form' fieldValidations
+                    let fieldValidations = [setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (_commitDdl (formState updated_form2)))) CommitDDL]
+                    let validated_form = foldr' ($) updated_form2 fieldValidations
                     continue s {createRaffleForm = validated_form}
           MintTokenScreen ->
             let f = mintTokenForm s
