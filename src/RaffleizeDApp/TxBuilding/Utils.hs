@@ -22,7 +22,7 @@ gySlotFromPOSIXTime :: GYTxQueryMonad m => POSIXTime -> m GYSlot
 gySlotFromPOSIXTime ptime = do
   enclosingSlotFromTime' (timeFromPlutus ptime)
 
-showLink :: GYNetworkId -> String -> String -> String
+showLink :: GYNetworkId -> Text -> Text -> Text
 showLink nid s content = case nid of
   GYMainnet -> cexplorerMainnet <> s <> "/" <> content <> " "
   GYTestnetPreprod -> cexplorerPreprod <> s <> "/" <> content <> " "

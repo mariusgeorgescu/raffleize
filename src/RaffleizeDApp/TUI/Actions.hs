@@ -1,23 +1,16 @@
 module RaffleizeDApp.TUI.Actions where
 
-import Data.Aeson
-
-import RaffleizeDApp.TxBuilding.Context
-
-import RaffleizeDApp.TxBuilding.Transactions
-
 import Control.Monad.IO.Class
+import Data.Aeson
 import Data.ByteString.Lazy qualified as B
-import Data.String (fromString)
-import Data.Text qualified
-import GeniusYield.Types (Ada, GYAddress, GYPaymentSigningKey, GYUTxO (utxoValue), GYUTxOs, foldMapUTxOs, fromValue, showTxOutRef, valueToPlutus)
+import Data.String
+import GeniusYield.Types
 import PlutusLedgerApi.V1 qualified
-import RaffleizeDApp.Constants (
-  operationSkeyFilePath,
-  raffleizeValidatorsConfig,
- )
+import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.TUI.Utils
+import RaffleizeDApp.TxBuilding.Context
+import RaffleizeDApp.TxBuilding.Transactions
 
 deployValidators :: IO ()
 deployValidators = do
@@ -45,14 +38,14 @@ getAddressAndValue skey = do
   utxos <- getAddrUTxOs addr
   return (addr, getValueBalance utxos)
 
-mintTestTokens :: GYPaymentSigningKey -> String -> Integer -> IO String
+mintTestTokens :: GYPaymentSigningKey -> String -> Integer -> IO Text
 mintTestTokens skey tn amount = do
   let msg = "Minting test tokens"
   liftIO $ print msg
   r <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTransaction skey tn amount
-  return $ Data.Text.unpack $ showTxOutRef r
+  return $ showTxOutRef r
 
-createRaffle :: GYPaymentSigningKey -> IO String
+createRaffle :: GYPaymentSigningKey -> IO Text
 createRaffle skey = do
   bs <- B.readFile "raffleconfig.json"
   let raffle_config = fromJust $ decode @RaffleConfig bs
@@ -61,4 +54,4 @@ createRaffle skey = do
   let msg = "Create raffle"
   liftIO $ print msg
   r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle_config
-  return $ Data.Text.unpack $ showTxOutRef r
+  return $ showTxOutRef r

@@ -51,9 +51,9 @@ mintingPolicyFile = "raffleizeMintingPolicy.plutus"
 
 --- Links
 
-cexplorerPreview :: String
+cexplorerPreview :: Text
 cexplorerPreview = "https://preview.cexplorer.io/"
-cexplorerPreprod :: String
+cexplorerPreprod :: Text
 cexplorerPreprod = "https://preprod.cexplorer.io/"
-cexplorerMainnet :: String
+cexplorerMainnet :: Text
 cexplorerMainnet = "https://cexplorer.io/"
