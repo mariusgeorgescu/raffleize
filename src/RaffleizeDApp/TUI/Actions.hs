@@ -45,13 +45,11 @@ mintTestTokens skey tn amount = do
   r <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTransaction skey tn amount
   return $ showTxOutRef r
 
-createRaffle :: GYPaymentSigningKey -> IO Text
-createRaffle skey = do
-  bs <- B.readFile "raffleconfig.json"
-  let raffle_config = fromJust $ decode @RaffleConfig bs
+createRaffle :: GYPaymentSigningKey -> RaffleConfig -> IO Text
+createRaffle skey raffle = do
   print emptyString
-  print raffle_config
+  print raffle
   let msg = "Create raffle"
   liftIO $ print msg
-  r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle_config
+  r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle
   return $ showTxOutRef r

@@ -16,10 +16,14 @@ import Brick.Widgets.Center
 import Brick.Widgets.Core
 import Brick.Widgets.List
 import Brick.Widgets.Table
+
 import Control.Lens
 import Control.Monad.IO.Class
 import Data.List qualified
 import Data.Text qualified
+
+import Data.Time (addUTCTime, getCurrentTime)
+import Data.Time.Format.ISO8601
 import Data.Vector qualified
 import GeniusYield.GYConfig
 import GeniusYield.Types
@@ -27,6 +31,8 @@ import Graphics.Vty
 import PlutusLedgerApi.V1.Value
 import PlutusPrelude (showText)
 import RaffleizeDApp.Constants
+import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Interactions
@@ -42,11 +48,12 @@ import System.IO.Extra (readFile)
 ------------------------------------------------------------------------------------------------
 
 data NameResources
-  = CommitDDL
-  | RevealDDL
-  | MinNoTokens
-  | StakeValue
-  | StakeAmount
+  = CommitDdlField
+  | RevealDdlField
+  | MinNoTokensField
+  | StakeValueListField
+  | StakeAmountField
+  | TicketPriceField
   | ValueItemsList
   | ValueItemsViewPort
   | TokenNameField
@@ -84,6 +91,7 @@ mkMintTokenForm =
 data CreateRaffleFormState = CreateRaffleFormState
   { _commitDdl :: Text
   , _revealDdl :: Text
+  , _ticketPrice :: Int
   , _minNoTickets :: Int
   , _availableAssets :: Data.Vector.Vector (CurrencySymbol, TokenName, Integer)
   , _selectedAsset :: Maybe (CurrencySymbol, TokenName, Integer)
@@ -96,12 +104,28 @@ makeLenses ''CreateRaffleFormState
 mkCreateRaffleForm :: CreateRaffleFormState -> Form CreateRaffleFormState e NameResources
 mkCreateRaffleForm =
   newForm
-    [ (txt "Commit deadline: " <+>) @@= editTextField commitDdl CommitDDL (Just 1)
-    , (txt "Reveal deadline: " <+>) @@= editTextField revealDdl RevealDDL (Just 1)
-    , (txt "Min. no. of tickets: " <+>) @@= editShowableField minNoTickets MinNoTokens
-    , (txt "Select Asset" <+>) @@= listField _availableAssets selectedAsset (valueItemWidget True) 5 StakeValue
-    , (txt "Amount: " <+>) @@= editShowableField amount StakeAmount
+    [ (txt "Commit deadline: " <+>) @@= editTextField commitDdl CommitDdlField (Just 1)
+    , (txt "Reveal deadline: " <+>) @@= editTextField revealDdl RevealDdlField (Just 1)
+    , (txt "Ticket price ₳ : " <+>) @@= editShowableField ticketPrice TicketPriceField
+    , (txt "Min. no. of tickets: " <+>) @@= editShowableField minNoTickets MinNoTokensField
+    , (txt "Select Asset" <+>) @@= listField _availableAssets selectedAsset (valueItemWidget True) 5 StakeValueListField
+    , (txt "Amount: " <+>) @@= editShowableField amount StakeAmountField
     ]
+
+raffleFormToConfig :: CreateRaffleFormState -> Maybe RaffleConfig
+raffleFormToConfig CreateRaffleFormState {..} = do
+  cddl <- timeToPlutus <$> gyIso8601ParseM @Maybe (Data.Text.unpack _commitDdl)
+  rddl <- timeToPlutus <$> gyIso8601ParseM @Maybe (Data.Text.unpack _revealDdl)
+  stake <- _selectedAsset
+  return $
+    RaffleConfig
+      { rCommitDDL = cddl
+      , rRevealDDL = rddl
+      , rTicketPrice = toLovelace $ fromIntegral _ticketPrice
+      , rMinTickets = fromIntegral _minNoTickets
+      , rStake = unFlattenValue [stake]
+      }
+
 
 ------------------------------------------------------------------------------------------------
 
@@ -166,11 +190,17 @@ buildInitialState = do
   let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
   case skey of
     Nothing -> do
-      let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 mempty Nothing 0)
+      let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0)
       return (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm MainScreen)
     Just skey' -> do
       (addr, val) <- liftIO $ getAddressAndValue skey'
-      let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 (Data.Vector.fromList (flattenValue val)) Nothing 0)
+      let flattenedVal = flattenValue val
+      now <- getCurrentTime
+      let icd = addUTCTime 864000 now -- + 10 days
+      let ird = addUTCTime 864000 icd
+      let commitSuggestion = Data.Text.pack . iso8601Show $ icd
+      let revealSuggestion = Data.Text.pack . iso8601Show $ ird
+      let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0)
       return (RaffleizeUI atlasConfig validatorsConfig skey (Just addr) (Just val) logo mempty mintTokenForm createRaffleForm MainScreen)
 
 ------------------------------------------------------------------------------------------------
@@ -187,32 +217,40 @@ handleEvent s e =
       EvKey key _modifiers ->
         case currentScreen s of
           CreateRaffleScreen ->
-            let f = createRaffleForm s
-                invalid_fields = invalidFields f
+            let crForm = createRaffleForm s
+                invalid_fields = invalidFields crForm
              in case key of
                   KEnter ->
                     do
-                      if null invalid_fields
+                      let mraffle = raffleFormToConfig (formState crForm)
+                      if null invalid_fields && isJust mraffle
                         then do
                           liftIO clearScreen
-                          txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s))
+                          let raffle = fromJust mraffle
+                          txOutRef <- liftIO $ createRaffle (fromJust (adminSkey s)) raffle
                           let nid = (cfgNetworkId . fromJust . atlasConfig) s
                           continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
                         else continue s
                   _ -> do
-                    updated_form <- handleFormEvent e f
-
-                    let updated_form2 =
+                    crForm1 <- handleFormEvent e crForm
+                    let crFormState1 = formState crForm1
+                    let selectedElementAmount = maybe (0 :: Int) (\(_, _, i) -> fromIntegral i) (crFormState1 ^. selectedAsset)
+                    let crForm2 =
                           if key `elem` [KUp, KDown]
                             then do
-                              let updated_form_state = formState updated_form
-                              let currentAmount = _amount updated_form_state
-                              let selectedElementAmount = maybe (0 :: Int) (\(_, _, i) -> fromIntegral i) (_selectedAsset updated_form_state)
-                              let updated_form_state_again = updated_form_state {_amount = selectedElementAmount}
-                              if selectedElementAmount /= currentAmount then updateFormState updated_form_state_again updated_form else updated_form
-                            else updated_form
-                    let fieldValidations = [setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (_commitDdl (formState updated_form2)))) CommitDDL]
-                    let validated_form = foldr' ($) updated_form2 fieldValidations
+                              let currentAmount = crFormState1 ^. amount
+                              let updated_form_state_again = crFormState1 {_amount = selectedElementAmount}
+                              if selectedElementAmount /= currentAmount then updateFormState updated_form_state_again crForm1 else crForm1
+                            else crForm1
+                    let crFormState2 = formState crForm2
+                    let fieldValidations =
+                          [ setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState2 ^. commitDdl))) CommitDdlField
+                          , setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState2 ^. revealDdl))) RevealDdlField
+                          , setFieldValid (crFormState2 ^. ticketPrice > 0) TicketPriceField
+                          , setFieldValid (crFormState2 ^. minNoTickets > 0) MinNoTokensField
+                          , setFieldValid (crFormState2 ^. amount <= selectedElementAmount) StakeAmountField
+                          ]
+                    let validated_form = foldr' ($) crForm2 fieldValidations
                     continue s {createRaffleForm = validated_form}
           MintTokenScreen ->
             let mtForm = mintTokenForm s
@@ -479,18 +517,7 @@ availableActionsWidget s =
 ------------------------------------------------------------------------------------------------
 
 createRaffleScreen :: RaffleizeUI -> Widget NameResources
-createRaffleScreen s =
-  let ivfs = invalidFields (createRaffleForm s)
-   in center $
-        borderWithLabel (txt " CREATE A NEW RAFFLE ") $
-          vBox $
-            padAll 1
-              <$> [ withAttr formAttr (withAttr invalidFormInputAttr (withAttr focusedFormInputAttr (renderForm $ createRaffleForm s)))
-                  , hBorder
-                  , hCenter $ txt (printMTivfs ivfs)
-                  , hBorder
-                  , hCenter $ formActionsWidget (null ivfs) "Create raffle"
-                  ]
+createRaffleScreen = mkFormScreen " CREATE NEW RAFFLE " " CREATE NEW RAFFLE " createRaffleForm
 
 ------------------------------------------------------------------------------------------------
 
@@ -499,17 +526,26 @@ createRaffleScreen s =
 ------------------------------------------------------------------------------------------------
 
 mintTestTokensScreen :: RaffleizeUI -> Widget NameResources
-mintTestTokensScreen s =
-  let ivfs = invalidFields (mintTokenForm s)
+mintTestTokensScreen = mkFormScreen " MINT TEST TOKENS " " MINT TEST TOKENS " mintTokenForm
+
+------------------------------------------------------------------------------------------------
+
+-- **  Form Screens
+
+------------------------------------------------------------------------------------------------
+
+mkFormScreen :: Text -> Text -> (RaffleizeUI -> Form s e NameResources) -> RaffleizeUI -> Widget NameResources
+mkFormScreen title actionsDesc raffleizeForm s =
+  let ivfs = invalidFields (raffleizeForm s)
    in center $
-        borderWithLabel (txt " MINT TEST TOKENS ") $
+        borderWithLabel (txt title) $
           vBox $
             padAll 1
-              <$> [ withAttr formAttr (withAttr invalidFormInputAttr (withAttr focusedFormInputAttr (renderForm $ mintTokenForm s)))
+              <$> [ withAttr formAttr (withAttr invalidFormInputAttr (withAttr focusedFormInputAttr (renderForm $ raffleizeForm s)))
                   , hBorder
-                  , hCenter $ withAttr "warning" $ txt (printMTivfs ivfs)
+                  , hCenter $ invalidFieldsWidget ivfs
                   , hBorder
-                  , hCenter $ formActionsWidget (null ivfs) "Mint tokens"
+                  , hCenter $ formActionsWidget (null ivfs) actionsDesc
                   ]
 
 formActionsWidget :: Bool -> Text -> Widget n
@@ -520,13 +556,19 @@ formActionsWidget isValid s =
       , if isValid then txt ("[Enter] - " <> s) else emptyWidget
       ]
 
-printMTivf :: NameResources -> Text
-printMTivf TokenNameField = "Token name must have maximum " <> showText tokenNameMaxLength <> " characters!"
-printMTivf MintAmountField = "The minting amount must be a natural number!"
-printMTivf _ = ""
+invalidFieldText :: NameResources -> Text
+invalidFieldText t = case t of
+  TokenNameField -> "Token name must have maximum " <> showText tokenNameMaxLength <> " characters!"
+  MintAmountField -> "The minting amount must be a natural number!"
+  CommitDdlField -> "Commit deadline must be yyyy-mm-ddThh:mm:ss[.ss]Z (eg. 1970-01-01T00:00:00Z"
+  RevealDdlField -> "Reveal deadline must be yyyy-mm-ddThh:mm:ss[.ss]Z (eg. 1970-01-01T00:00:00Z"
+  MinNoTokensField -> "The minimum number of tokens must be a natural number!"
+  StakeAmountField -> "The amount field must be lower or equal to the available amount of the selected asset"
+  TicketPriceField -> "The ticket price must be a natural number!"
+  _ -> ""
 
-printMTivfs :: [NameResources] -> Text
-printMTivfs x = Data.Text.intercalate "\n" $ printMTivf <$> x
+invalidFieldsWidget :: [NameResources] -> Widget n
+invalidFieldsWidget ivfs = withAttr "warning" $ txt (Data.Text.intercalate "\n" $ invalidFieldText <$> ivfs)
 
 tokenNameMaxLength :: Int
 tokenNameMaxLength = 32
@@ -549,3 +591,5 @@ theMap =
     , (focusedFormInputAttr, fg brightBlue)
     , (invalidFormInputAttr, white `on` red)
     ]
+
+---------

@@ -88,9 +88,6 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake `geq` mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
