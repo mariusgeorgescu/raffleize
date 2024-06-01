@@ -97,7 +97,8 @@ left side
 ** .. <<mandatory>>
 ***: VALUE
 ====
-(₳) TicketPrice Value;<<value>>
+💰 (₳) TicketPrice Value
+(₳) Ticket Collateral Value ;<<value>>
 
 ** .. <<opt>>
 *** .. <<value>>
