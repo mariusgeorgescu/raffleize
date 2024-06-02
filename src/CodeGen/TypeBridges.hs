@@ -9,6 +9,7 @@ posixTimeBridge = do
   typeName ^== "POSIXTime"
   return psNumber 
 
+
 plutusIntegerBridge :: BridgePart
 plutusIntegerBridge = do
   typeName ^== "Integer"
@@ -18,6 +19,7 @@ plutusValueBridge :: BridgePart
 plutusValueBridge = do
   typeName ^== "Value"
   psClientType
+
 
 plutusBuiltinByteStringBridge :: BridgePart
 plutusBuiltinByteStringBridge = do

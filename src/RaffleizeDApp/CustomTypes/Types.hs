@@ -103,4 +103,3 @@ instance FromJSON ScriptHash where
     let s = parseJSON @BuiltinByteString v
      in ScriptHash <$> s
 
-

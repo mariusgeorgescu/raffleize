@@ -108,6 +108,7 @@ gyDatumToRSD gyDatum = raffleStateData <$> (fromBuiltinData @RaffleDatum . datum
 gyGetImageFromRaffleDatum :: GYDatum -> Maybe BuiltinByteString
 gyGetImageFromRaffleDatum gyDatum = raffleImage <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
 
+
 gyDatumToTSD :: GYDatum -> Maybe TicketStateData
 gyDatumToTSD gyDatum = ticketStateData <$> (fromBuiltinData @TicketDatum . datumToPlutus' $ gyDatum)
 

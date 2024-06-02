@@ -1,3 +1,4 @@
+
 {-# LANGUAGE DerivingVia #-}
 
 module RaffleizeDApp.CustomTypes.RaffleTypes where
@@ -25,7 +26,7 @@ import RaffleizeDApp.OnChain.Utils (
  )
 import Test.QuickCheck.Arbitrary.Generic (Arbitrary (arbitrary))
 
--------------------------------------------------------------------------------
+-----------------------------------------------------------------
 
 -- * Raffle Type  Declarations
 
@@ -43,8 +44,10 @@ data RaffleConfig = RaffleConfig
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
 
+
 instance Arbitrary RaffleConfig where
   arbitrary = RaffleConfig <$> (POSIXTime <$> arbitrary) <*> (POSIXTime <$> arbitrary) <*> arbitrary <*> arbitrary <*> (adaValueFromLovelaces <$> arbitrary)
+
 
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 
@@ -80,6 +83,7 @@ data RaffleStateData = RaffleStateData
   , rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
+
 
 unstableMakeIsData ''RaffleStateData --- TODO must be changed with stable version
 

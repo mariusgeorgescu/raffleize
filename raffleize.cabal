@@ -131,6 +131,7 @@ library
     , vty
     , vector
 
+
   default-extensions:
     DataKinds
     DeriveAnyClass

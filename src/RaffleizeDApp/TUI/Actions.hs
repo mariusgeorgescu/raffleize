@@ -78,3 +78,4 @@ getActiveRaffles = do
   let msg = "Getting active raffles"
   liftIO $ print msg
   runContextWithCfgProviders (fromString msg) queryRafflesInfos
+

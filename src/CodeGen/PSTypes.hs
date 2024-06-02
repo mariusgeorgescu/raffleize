@@ -7,15 +7,6 @@ import Language.PureScript.Bridge.TypeInfo
 import Prelude
 
 
--- -- | ....
--- psInstant :: TypeInfo 'PureScript
--- psInstant = TypeInfo {
---     _typePackage = ""
---   , _typeModule = "Data.DateTime.Instant"
---   , _typeName = "Instant"
---   , _typeParameters = []
---   }
-
 
 -- | Use type definition in Raffleize.Types
 psClientType :: MonadReader BridgeData m => m PSType
@@ -29,3 +20,4 @@ psClientType = do
       , _typeName = inType ^. typeName
       , _typeParameters = params
       }
+
