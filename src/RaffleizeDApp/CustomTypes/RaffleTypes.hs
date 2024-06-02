@@ -13,7 +13,8 @@ import PlutusTx.AssocMap
 import RaffleizeDApp.Constants (
   metadataVersion,
   raffleDescription,
-  raffleName, raffleImageURI,
+  raffleImageURI,
+  raffleName,
  )
 import RaffleizeDApp.CustomTypes.Types (Metadata)
 import RaffleizeDApp.OnChain.Utils (
@@ -78,7 +79,7 @@ data RaffleStateData = RaffleStateData
   , rRefundedTickets :: Integer --- ^  The current number of tickets refunded.
   , rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
   }
-  deriving (Generic, ToJSON, FromJSON)
+  deriving (Generic, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''RaffleStateData --- TODO must be changed with stable version
 
@@ -136,7 +137,7 @@ data RaffleInfo = RaffleInfo
   , riStateLabel :: String
   , riAvailableActions :: [RaffleizeActionLabel]
   }
-  deriving (Generic, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 -------------------------------------------------------------------------------
 
