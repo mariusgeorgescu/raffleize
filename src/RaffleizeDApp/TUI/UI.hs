@@ -196,8 +196,8 @@ drawRaffleInfo RaffleInfo {..} =
       <=> hBox
         ( joinBorders
             <$> [ drawRaffleConfig (rConfig riRsd)
-                , drawRaffeStats riRsd
                 , drawRaffleLockedValue riValue
+                , drawRaffeStats riRsd
                 ]
         )
 
