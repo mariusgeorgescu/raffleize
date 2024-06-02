@@ -14,7 +14,7 @@ import RaffleizeDApp.TxBuilding.Context
 
 myTypes :: [SumType 'Haskell]
 myTypes =
-  [ mkSumType (Proxy :: Proxy RaffleConfig)
+  [ let p = (Proxy :: Proxy RaffleConfig ) in equal p (mkSumType p) 
   , mkSumType (Proxy :: Proxy RaffleParam)
   , mkSumType (Proxy :: Proxy RaffleStateData)
   , mkSumType (Proxy :: Proxy TicketStateData)
@@ -25,6 +25,7 @@ myTypes =
   , mkSumType (Proxy :: Proxy RaffleizeAction)
   , mkSumType (Proxy :: Proxy UserAddresses)
   , mkSumType (Proxy :: Proxy RaffleizeInteraction)
+  , mkSumType (Proxy :: Proxy RaffleInfo)
   ]
 
 main :: IO ()

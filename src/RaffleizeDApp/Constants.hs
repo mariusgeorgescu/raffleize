@@ -7,7 +7,7 @@ metadataVersion :: Integer
 metadataVersion = 1
 
 raffleImageURI :: BuiltinString
-raffleImageURI = "ipfs://QmTmZCrE6PCCn1cUrxjEzcZEE73PEUh7eqCCCPhs1KwMH6"
+raffleImageURI = "ipfs://QmTmZCrE6PCCn1cUrxjEzcZEE73PEUh7eqCCCPhs1KwMH6" --- http://ipfs.io/ipfs/QmTmZCrE6PCCn1cUrxjEzcZEE73PEUh7eqCCCPhs1KwMH6" --"
 
 raffleDescription :: BuiltinString
 raffleDescription = "This is a tokenized raffle"
@@ -48,3 +48,12 @@ ticketValidatorFile = "ticketValidator.plutus"
 
 mintingPolicyFile :: FilePath
 mintingPolicyFile = "raffleizeMintingPolicy.plutus"
+
+--- Links
+
+cexplorerPreview :: Text
+cexplorerPreview = "https://preview.cexplorer.io/"
+cexplorerPreprod :: Text
+cexplorerPreprod = "https://preprod.cexplorer.io/"
+cexplorerMainnet :: Text
+cexplorerMainnet = "https://cexplorer.io/"

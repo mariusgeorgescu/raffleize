@@ -1,13 +1,32 @@
+
+{-# LANGUAGE DerivingVia #-}
+
 module RaffleizeDApp.CustomTypes.RaffleTypes where
 
 import PlutusLedgerApi.V1.Value (AssetClass)
-import PlutusLedgerApi.V3
-import PlutusTx
-import RaffleizeDApp.Constants
-import RaffleizeDApp.CustomTypes.Types
-import RaffleizeDApp.OnChain.Utils
+import PlutusLedgerApi.V3 (
+  POSIXTime (..),
+  ScriptHash,
+  Value,
+ )
+import PlutusTx (makeLift, unstableMakeIsData)
+import PlutusTx.AssocMap
+import RaffleizeDApp.Constants (
+  metadataVersion,
+  raffleDescription,
+  raffleImageURI,
+  raffleName,
+ )
+import RaffleizeDApp.CustomTypes.Types (Metadata)
+import RaffleizeDApp.OnChain.Utils (
+  adaValueFromLovelaces,
+  encodeUtf8KV,
+  showValue,
+  wrapTitle,
+ )
+import Test.QuickCheck.Arbitrary.Generic (Arbitrary (arbitrary))
 
--------------------------------------------------------------------------------
+-----------------------------------------------------------------
 
 -- * Raffle Type  Declarations
 
@@ -24,6 +43,11 @@ data RaffleConfig = RaffleConfig
   , rStake :: Value --- ^ The raffle stake value.
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
+
+
+instance Arbitrary RaffleConfig where
+  arbitrary = RaffleConfig <$> (POSIXTime <$> arbitrary) <*> (POSIXTime <$> arbitrary) <*> arbitrary <*> arbitrary <*> (adaValueFromLovelaces <$> arbitrary)
+
 
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 
@@ -58,7 +82,8 @@ data RaffleStateData = RaffleStateData
   , rRefundedTickets :: Integer --- ^  The current number of tickets refunded.
   , rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
   }
-  deriving (Generic, ToJSON, FromJSON)
+  deriving (Generic, Eq, ToJSON, FromJSON)
+
 
 unstableMakeIsData ''RaffleStateData --- TODO must be changed with stable version
 
@@ -84,6 +109,10 @@ raffleStateData :: RaffleDatum -> RaffleStateData
 raffleStateData = extra
 {-# INLINEABLE raffleStateData #-}
 
+-- | Functon to get the image link from metadata
+raffleImage :: RaffleDatum -> BuiltinByteString
+raffleImage datum = fromMaybe @BuiltinByteString "" $ lookup (encodeUtf8 "image") (metadata datum)
+
 -- | Functon to construct a @RaffleDatum@, from a  @RaffleStateData@.
 mkRaffleDatum :: RaffleStateData -> RaffleDatum
 mkRaffleDatum rsd =
@@ -101,7 +130,18 @@ mkRaffleDatum rsd =
 {-# INLINEABLE mkRaffleDatum #-}
 
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
-type RaffleStateLabel = Integer -- TODO : check if any data encoding works bette on Plutus V3
+type RaffleStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
+
+type RaffleizeActionLabel = (String, String)
+
+data RaffleInfo = RaffleInfo
+  { riRsd :: RaffleStateData
+  , riValue :: Value
+  , riImage :: String
+  , riStateLabel :: String
+  , riAvailableActions :: [RaffleizeActionLabel]
+  }
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 -------------------------------------------------------------------------------
 

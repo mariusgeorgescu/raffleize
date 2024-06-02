@@ -357,7 +357,10 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 **Postconditions:**
 1. The raffle stake value, raffle collateral, raffle reference NFT and the raffle accumulated amount (increased with the raffle ticket price) must be locked to the raffle's validator address with updated datum (with increased no. of tickets sold). 
-2. The raffle user NFT is locked to the address when constructing the transaction.
+2. Ticket reference NFT is minted.
+2. Ticket user NFT is minted.
+4. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid  datum.
+3. The ticket user NFT is locked to the address indicated  when constructing the transaction.
 
 **Transaction:**
 ![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/2.Mindmap-U-BuyTicket-Transaction.puml)

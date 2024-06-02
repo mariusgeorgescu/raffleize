@@ -1,13 +1,14 @@
 module CodeGen.TypeBridges where
 
-import CodeGen.PSTypes (psClientType, psCslValue)
+import CodeGen.PSTypes (psClientType)
 import Language.PureScript.Bridge
 import Language.PureScript.Bridge.PSTypes
 
 posixTimeBridge :: BridgePart
 posixTimeBridge = do
   typeName ^== "POSIXTime"
-  return psInt
+  return psNumber 
+
 
 plutusIntegerBridge :: BridgePart
 plutusIntegerBridge = do
@@ -17,7 +18,8 @@ plutusIntegerBridge = do
 plutusValueBridge :: BridgePart
 plutusValueBridge = do
   typeName ^== "Value"
-  return psCslValue
+  psClientType
+
 
 plutusBuiltinByteStringBridge :: BridgePart
 plutusBuiltinByteStringBridge = do

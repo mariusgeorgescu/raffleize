@@ -4,17 +4,13 @@ import GeniusYield.TxBuilder
 import GeniusYield.Types
 
 import PlutusLedgerApi.V2
-import RaffleizeDApp.TxBuilding.Exceptions
-import RaffleizeDApp.TxBuilding.Lookups
+import RaffleizeDApp.Constants
 
 ------------------------
 
 -- * Utilities
 
 ------------------------
-
-gyGetInlineDatumAndValue' :: MonadError GYTxMonadException m => GYUTxO -> m (GYDatum, GYValue)
-gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ gyGetInlineDatumAndValue utxo
 
 pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime
 pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . slotFromApi . fromInteger
@@ -25,3 +21,11 @@ pPOSIXTimeFromGYSlot = (timeToPlutus <$>) . slotToBeginTime
 gySlotFromPOSIXTime :: GYTxQueryMonad m => POSIXTime -> m GYSlot
 gySlotFromPOSIXTime ptime = do
   enclosingSlotFromTime' (timeFromPlutus ptime)
+
+showLink :: GYNetworkId -> Text -> Text -> Text
+showLink nid s content = case nid of
+  GYMainnet -> cexplorerMainnet <> s <> "/" <> content <> " "
+  GYTestnetPreprod -> cexplorerPreprod <> s <> "/" <> content <> " "
+  GYTestnetPreview -> cexplorerPreview <> s <> "/" <> content <> " "
+  GYTestnetLegacy -> content
+  GYPrivnet -> content

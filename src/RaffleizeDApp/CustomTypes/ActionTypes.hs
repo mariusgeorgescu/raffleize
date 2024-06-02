@@ -1,9 +1,13 @@
+{-# LANGUAGE DerivingVia #-}
+
 module RaffleizeDApp.CustomTypes.ActionTypes where
 
 import PlutusLedgerApi.V1.Value
 import PlutusTx
+import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import Test.QuickCheck.Arbitrary.Generic
 
 -------------------------------------------------------------------------------
 
@@ -11,12 +15,16 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 
 -------------------------------------------------------------------------------
 
+instance Arbitrary BuiltinByteString where
+  arbitrary = stringToBuiltinByteString <$> arbitrary
+
 -- | Datatype representng the actions that can be peformed by any user.
 data UserAction
   = CreateRaffle RaffleConfig
   | BuyTicket
       SecretHash --- ^ The hash of the secret to be used in commt-reveal-schemme.
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Arbitrary) via GenericArbitrary UserAction
 
 unstableMakeIsData ''UserAction --- TODO must be changed with stable version
 
@@ -29,6 +37,7 @@ data TicketOwnerAction
   | RefundTicketExtra
   | RefundCollateralLosing
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Arbitrary) via GenericArbitrary TicketOwnerAction
 
 unstableMakeIsData ''TicketOwnerAction --- TODO must be changed with stable version
 
@@ -42,12 +51,14 @@ data RaffleOwnerAction
   | CollectAmount
   | GetCollateraOfExpiredTicket
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Arbitrary) via GenericArbitrary RaffleOwnerAction
 
 unstableMakeIsData ''RaffleOwnerAction --- TODO must be changed with stable version
 
 -- | Datatype representng the actions that can be peformed by the Admin.
 data AdminAction = CloseRaffle ---
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Arbitrary) via GenericArbitrary AdminAction
 
 unstableMakeIsData ''AdminAction --- TODO must be changed with stable version
 
@@ -65,6 +76,7 @@ data RaffleizeAction
   | Admin
       AdminAction --- ^ Action that can be peformed by Admin.
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Arbitrary) via GenericArbitrary RaffleizeAction
 
 unstableMakeIsData ''RaffleizeAction --- TODO must be changed with stable version
 

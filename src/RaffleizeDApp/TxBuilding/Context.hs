@@ -11,6 +11,9 @@ import GeniusYield.Types
 import RaffleizeDApp.Constants
 import System.Environment
 
+instance ToJSON GYTxOutRefCbor where
+  toJSON  = toJSON . getTxOutRefHex 
+
 data UserAddresses = UserAddresses
   { usedAddresses :: [GYAddress]
   -- ^ User's used addresses.
@@ -19,7 +22,9 @@ data UserAddresses = UserAddresses
   , reservedCollateral :: Maybe GYTxOutRefCbor
   -- ^ Browser wallet's reserved collateral (if set).
   }
-  deriving (Show, Generic, FromJSON)
+  deriving (Show, Generic, FromJSON, ToJSON)
+
+
 
 -- | Our Context.
 data ProviderCtx = ProviderCtx

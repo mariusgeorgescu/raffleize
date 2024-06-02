@@ -6,19 +6,18 @@
 @reload:
   direnv reload
 
-# codium editor
-@code DIRECTORY='.':
-  if [ "{{ DIRECTORY }}" = "." ] || [ -d "{{ DIRECTORY }}" ]; then \
-    if [ "${VIM_MODE}" = 'true' ]; then \
-      codium {{ DIRECTORY }}; \
-    else codium {{ DIRECTORY }} --disable-extension asvetliakov.vscode-neovim; \
-    fi \
-  else echo "Invalid directory: {{ DIRECTORY }}"; \
-  fi
-
-# jamb cli
+#  cli
 @cli *OPTS:
   cabal run . -- {{ OPTS }} 2>&1 || true
+
+#  cli
+@server :
+  cabal run server 
+@tui :
+  cabal run tui 
+@psgen :
+  cabal run psgen 
+
 
 # cabal repl
 @repl:
@@ -37,9 +36,6 @@ hls-bin := `which haskell-language-server`
     ln -s -f "{{ hls-bin }}" .vscode/haskell-language-server.link; \
   else echo "haskell-language-server not found!"; \
   fi
-
-
-
 
 
 # clean nix store
