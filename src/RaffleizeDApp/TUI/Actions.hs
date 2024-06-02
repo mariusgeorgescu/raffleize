@@ -13,6 +13,8 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Transactions
 
 import Data.Text qualified
+import PlutusLedgerApi.V1.Value (AssetClass)
+import RaffleizeDApp.TxBuilding.Interactions (RaffleizeTxBuildingContext)
 
 deployValidators :: IO ()
 deployValidators = do
@@ -53,13 +55,22 @@ mintTestTokens skey tn amount = do
   r <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTransaction skey tn amount
   return $ showTxOutRef r
 
-createRaffle :: GYPaymentSigningKey -> RaffleConfig -> IO Text
-createRaffle skey raffle = do
+createRaffle :: GYPaymentSigningKey -> RaffleConfig -> RaffleizeTxBuildingContext -> IO Text
+createRaffle skey raffle validatorsTxOutRefs = do
   print emptyString
   print raffle
   let msg = "Create raffle"
   liftIO $ print msg
-  r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle
+  r <- runContextWithCfgProviders (fromString msg) $ createRaffleTransaction skey raffle validatorsTxOutRefs
+  return $ showTxOutRef r
+
+buyTicket :: GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> RaffleizeTxBuildingContext -> IO Text
+buyTicket skey secretString raffleId mRecipient validatorsTxOutRefs = do
+  print emptyString
+  print secretString
+  let msg = "Buy ticket"
+  liftIO $ print msg
+  r <- runContextWithCfgProviders (fromString msg) $ buyTicketTransaction skey secretString raffleId mRecipient validatorsTxOutRefs
   return $ showTxOutRef r
 
 getActiveRaffles :: IO [RaffleInfo]
