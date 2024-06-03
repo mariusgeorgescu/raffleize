@@ -155,7 +155,7 @@ makeLenses ''ActiveRafflesFormState
 
 drawValueWidget :: Value -> Widget NameResources
 drawValueWidget val =
-  vLimit 30 $
+  vLimit 30 $ hLimit 60 $
     vBox $
       valueItemWidget False False <$> flattenValue val
 
