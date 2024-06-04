@@ -26,3 +26,5 @@ generateNewAdminSkey path = do
     else do
       skey <- generatePaymentSigningKey
       writePaymentSigningKey path skey
+
+

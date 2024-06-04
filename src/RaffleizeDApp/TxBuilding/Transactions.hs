@@ -19,6 +19,8 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Lookups (getRaffleStateDataAndValue, gyGetRaffleInfo, gyOutHasValidRefToken)
 import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
+import RaffleizeDApp.OnChain.RaffleizeLogic (deriveRefFromUserAC)
+import qualified Data.Set
 
 ------------------------------------------------------------------------------------------------
 
@@ -66,6 +68,20 @@ queryRafflesInfos = do
   let validUTxOs = filterUTxOs gyOutHasValidRefToken allUTxOs
   runQuery $ mapM gyGetRaffleInfo (utxosToList validUTxOs)
 
+-- | ---
+queryRafflesInfosByIds :: [AssetClass] -> ReaderT ProviderCtx IO [RaffleInfo]
+queryRafflesInfosByIds raffleUserACs = do
+  let rIds = deriveRefFromUserAC <$> raffleUserACs
+  allRaffles <- queryRafflesInfos
+  let myRaffles = filter (\ri -> rRaffleID (riRsd ri) `elem` rIds) allRaffles
+  return myRaffles
+
+queryMyRaffles :: GYAddress -> ReaderT ProviderCtx IO [RaffleInfo]
+queryMyRaffles addr = do
+  gyVal <- runQuery $ queryBalance addr
+  let raffleUserACs =  assetClassToPlutus  <$> Data.Set.toList (valueAssets gyVal)
+  let rIds = deriveRefFromUserAC <$> raffleUserACs
+  queryRafflesInfosByIds rIds
 -----------------
 -----------------
 -----------------

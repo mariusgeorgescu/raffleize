@@ -7,7 +7,7 @@ metadataVersion :: Integer
 metadataVersion = 1
 
 raffleImageURI :: BuiltinString
-raffleImageURI = "ipfs://QmTmZCrE6PCCn1cUrxjEzcZEE73PEUh7eqCCCPhs1KwMH6" --- http://ipfs.io/ipfs/QmTmZCrE6PCCn1cUrxjEzcZEE73PEUh7eqCCCPhs1KwMH6" --"
+raffleImageURI = "ipfs://bafybeiags6zsy42iplwkvj4m4crno57merd4a6uzkg62hdwli6qgl4n2ue" --- http://ipfs.io/ipfs/QmTmZCrE6PCCn1cUrxjEzcZEE73PEUh7eqCCCPhs1KwMH6" --"
 
 raffleDescription :: BuiltinString
 raffleDescription = "This is a tokenized raffle"

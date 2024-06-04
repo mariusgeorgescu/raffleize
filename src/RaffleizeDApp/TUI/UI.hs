@@ -66,6 +66,7 @@ data NameResources
   | StakeAmountField
   | TicketPriceField
   | ActiveRafflesListField
+  | MyRafflesListField
   | ValueItemsList
   | ValueItemsViewPort
   | TokenNameField
@@ -155,9 +156,10 @@ makeLenses ''ActiveRafflesFormState
 
 drawValueWidget :: Value -> Widget NameResources
 drawValueWidget val =
-  vLimit 30 $ hLimit 60 $
-    vBox $
-      valueItemWidget False False <$> flattenValue val
+  vLimit 30 $
+    hLimit 60 $
+      vBox $
+        valueItemWidget False False <$> flattenValue val
 
 drawRaffleLockedValue :: Value -> Widget NameResources
 drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ drawValueWidget riValue
@@ -211,6 +213,24 @@ mkActiveRafflesForm =
 
 ------------------------------------------------------------------------------------------------
 
+-- **  My Raffles Form
+
+------------------------------------------------------------------------------------------------
+data MyRafflesFormState = MyRafflesFormState
+  { _myRaffles :: Data.Vector.Vector RaffleInfo
+  , _selectedMyRaffle :: Maybe RaffleInfo
+  }
+  deriving (Show)
+
+makeLenses ''MyRafflesFormState
+
+mkMyRafflesForm :: MyRafflesFormState -> Form MyRafflesFormState e NameResources
+mkMyRafflesForm =
+  newForm
+    [(txt mempty <=>) @@= listField _myRaffles selectedMyRaffle drawRaffleInfoListItem 10 MyRafflesListField]
+
+------------------------------------------------------------------------------------------------
+
 -- **  BuyTicket Form
 
 ------------------------------------------------------------------------------------------------
@@ -240,6 +260,7 @@ data Screen
   | CreateRaffleScreen
   | MintTokenScreen
   | ActiveRafflesScreen
+  | MyRafflesScreen
   | BuyTicketScreen
   deriving (Eq, Ord, Enum, Show)
 
@@ -256,6 +277,7 @@ data RaffleizeUI = RaffleizeUI
   , mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources
   , createRaffleForm :: Form CreateRaffleFormState RaffleizeEvent NameResources
   , activeRafflesForm :: Form ActiveRafflesFormState RaffleizeEvent NameResources
+  , myRafflesForm :: Form MyRafflesFormState RaffleizeEvent NameResources
   , buyTicketForm :: Form BuyTicketFormState RaffleizeEvent NameResources
   , currentScreen :: Screen
   }
@@ -294,18 +316,22 @@ buildInitialState = do
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
   validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   skey <- readPaymentKeyFile operationSkeyFilePath
-  raffleinfos <- case atlasConfig of
+  allRafflesInfo <- case atlasConfig of
     Nothing -> return []
     Just _c -> getActiveRaffles
   let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
   let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
-  let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList raffleinfos) Nothing)
+  let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
   case skey of
     Nothing -> do
+      let myRafflesForm = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
       let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0)
-      return (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm activeRafflesForm buyTicketForm MainScreen)
+      return (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm MainScreen)
     Just skey' -> do
       (addr, val) <- liftIO $ getAddressAndValue skey'
+      let myRafflesIds = getMyRaffleIdsFromValue val
+      let myRafflesInfo =   filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
+      -- myRafflesInfo <- getMyRaffles addr
       let flattenedVal = flattenValue val
       now <- getCurrentTime
       let icd = addUTCTime 864000 now -- + 10 days
@@ -313,7 +339,8 @@ buildInitialState = do
       let commitSuggestion = Data.Text.pack . iso8601Show $ icd
       let revealSuggestion = Data.Text.pack . iso8601Show $ ird
       let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0)
-      return (RaffleizeUI atlasConfig validatorsConfig skey (Just addr) (Just val) logo mempty mintTokenForm createRaffleForm activeRafflesForm buyTicketForm MainScreen)
+      let myRafflesForm = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
+      return (RaffleizeUI atlasConfig validatorsConfig skey (Just addr) (Just val) logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm MainScreen)
 
 ------------------------------------------------------------------------------------------------
 
@@ -355,6 +382,9 @@ handleEvent s e =
                   _ -> do
                     updated_form <- handleFormEvent e btForm
                     continue s {buyTicketForm = updated_form}
+          MyRafflesScreen -> do
+            mrForm <- handleFormEvent e (myRafflesForm s)
+            continue s {myRafflesForm = mrForm}
           ActiveRafflesScreen ->
             case key of
               KChar 'b' -> do
@@ -449,7 +479,7 @@ handleEvent s e =
               continue s
             (KChar c) -> case c of
               'q' -> halt s
-              'r' -> continue s {message = "Refresh Screen"}
+              'R' -> continue s {message = "Refresh Screen"}
               'g' -> do
                 liftIO $ generateNewAdminSkey operationSkeyFilePath
                 s' <- liftIO $ updateFromConfigFiles s
@@ -458,6 +488,7 @@ handleEvent s e =
                 liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
                 continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
               'v' -> continue s {currentScreen = ActiveRafflesScreen}
+              'r' -> continue s {currentScreen = MyRafflesScreen}
               _ ->
                 if isJust (walletSkey s)
                   then do
@@ -501,6 +532,7 @@ drawUI s =
         , if currentScreen s == CreateRaffleScreen then createRaffleScreen s else emptyWidget
         , if currentScreen s == BuyTicketScreen then buyTicketScreen s else emptyWidget
         , if currentScreen s == ActiveRafflesScreen then drawActiveRafflesScreen s else emptyWidget
+        , if currentScreen s == MyRafflesScreen then drawMyRafflesScreen s else emptyWidget
         , mainScreen s
         ]
 
@@ -683,6 +715,7 @@ drawRaffleActionLabel :: RaffleizeActionLabel -> Widget NameResources
 drawRaffleActionLabel (_, "BuyTicket") = txt "[B]     - Buy a ticket for the selected raffle"
 drawRaffleActionLabel _ = emptyWidget
 
+
 drawActiveRafflesScreen :: RaffleizeUI -> Widget NameResources
 drawActiveRafflesScreen s =
   let arForm = activeRafflesForm s
@@ -696,6 +729,39 @@ drawActiveRafflesScreen s =
                   , hBorder
                   , hCenter $ drawRaffleActionsWidget currentActions
                   ]
+
+------------------------------------------------------------------------------------------------
+
+-- **  My Raffles Screen
+
+------------------------------------------------------------------------------------------------
+
+drawMyRafflesScreen :: RaffleizeUI -> Widget NameResources
+drawMyRafflesScreen s =
+  let mrForm = myRafflesForm s
+      mrFormState = formState mrForm
+      currentActions = riAvailableActions <$> (mrFormState ^. selectedMyRaffle)
+   in center $
+        borderWithLabel (txt " MY RAFFLES ") $
+          vBox $
+            padAll 1
+              <$> [ center $ renderForm mrForm
+                  , hBorder
+                  , hCenter $ drawMyRaffleActionsWidget currentActions
+                  ]
+
+drawMyRaffleActionsWidget :: Maybe [RaffleizeActionLabel] -> Widget NameResources
+drawMyRaffleActionsWidget mActions =
+  withAttr "action" $
+    borderWithLabel (txt "AVAILABLE ACTIONS") $
+      vBox $
+        maybe [] (drawMyRaffleActionLabel <$>) mActions
+          ++ [txt "[ESC]   - Close          "]
+
+drawMyRaffleActionLabel :: RaffleizeActionLabel -> Widget NameResources
+drawMyRaffleActionLabel ("RaffleOwner", what) = txt (Data.Text.pack what)
+drawMyRaffleActionLabel _ = emptyWidget
+
 
 ------------------------------------------------------------------------------------------------
 

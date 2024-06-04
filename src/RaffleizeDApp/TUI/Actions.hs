@@ -79,3 +79,8 @@ getActiveRaffles = do
   liftIO $ print msg
   runContextWithCfgProviders (fromString msg) queryRafflesInfos
 
+getMyRaffles :: GYAddress -> IO [RaffleInfo]
+getMyRaffles addr = do
+  let msg = "Getting my raffles"
+  liftIO $ print msg
+  runContextWithCfgProviders (fromString msg) (queryMyRaffles addr)

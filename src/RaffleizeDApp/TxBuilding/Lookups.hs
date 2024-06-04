@@ -93,13 +93,18 @@ gyOutHasValidRefToken :: GYUTxO -> Bool
 gyOutHasValidRefToken gyOut =
   let gyValue = utxoValue gyOut
       gyAssets = valueAssets gyValue
-   in any isRaffleizeAC gyAssets
+   in any isRaffleizeRefAC gyAssets
 
 -- | This function checks if a 'GYAssetClass' is of a reference token minted by Raffleize Minting Policy
-isRaffleizeAC :: GYAssetClass -> Bool
-isRaffleizeAC (GYToken gyMP gyTN) =
+isRaffleizeRefAC :: GYAssetClass -> Bool
+isRaffleizeRefAC (GYToken gyMP gyTN) =
   (gyMP == mintingPolicyId raffleizeMintingPolicyGY)
     && hasRefPrefix (tokenNameToPlutus gyTN)
+isRaffleizeRefAC _ = False
+
+-- | This function checks if a 'GYAssetClass' is of a token minted by Raffleize Minting Policy
+isRaffleizeAC :: GYAssetClass -> Bool
+isRaffleizeAC (GYToken gyMP _gyTN) = gyMP == mintingPolicyId raffleizeMintingPolicyGY
 isRaffleizeAC _ = False
 
 gyDatumToRSD :: GYDatum -> Maybe RaffleStateData

@@ -3,8 +3,11 @@ module RaffleizeDApp.TxBuilding.Utils where
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 
+import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import RaffleizeDApp.Constants
+import RaffleizeDApp.TxBuilding.Validators
+import RaffleizeDApp.OnChain.RaffleizeLogic
 
 ------------------------
 
@@ -29,3 +32,13 @@ showLink nid s content = case nid of
   GYTestnetPreview -> cexplorerPreview <> s <> "/" <> content <> " "
   GYTestnetLegacy -> content
   GYPrivnet -> content
+
+
+getMyRaffleIdsFromValue :: Value -> [AssetClass]
+getMyRaffleIdsFromValue val =
+  let
+    raffleizeCS = mintingPolicyCurrencySymbol raffleizeMintingPolicyGY
+   in
+    [AssetClass (cs, deriveRefFromUserTN tn) | (cs, tn, _) <-  flattenValue val, raffleizeCS == cs ]
+
+----
