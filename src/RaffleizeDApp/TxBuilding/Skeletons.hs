@@ -8,6 +8,7 @@ import PlutusLedgerApi.V2
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
+import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
@@ -48,7 +49,7 @@ txMustSpendStateFromRefScriptWithRedeemer :: (HasCallStack, GYTxMonad m, ToData 
 txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyValidator =
   do
     let gyRedeemer = redeemerFromPlutusData redeemer
-    stateUTxO <- lookuptUTxOWithStateToken stateTokenId gyValidator
+    stateUTxO <- getUTxOWithStateToken stateTokenId gyValidator
     (gyDatum, _v) <- gyGetInlineDatumAndValue' stateUTxO
     return $
       mustHaveInput
@@ -56,16 +57,19 @@ txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyVali
           { gyTxInTxOutRef = utxoRef stateUTxO
           , gyTxInWitness = GYTxInWitnessScript (GYInReference refScript $ validatorToScript gyValidator) gyDatum gyRedeemer
           }
+  where
+    gyGetInlineDatumAndValue' :: MonadError GYTxMonadException m => GYUTxO -> m (GYDatum, GYValue)
+    gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getInlineDatumAndValue utxo
 
 txMustHaveStateAsRefInput :: (HasCallStack, GYTxMonad m) => AssetClass -> GYValidator 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
 txMustHaveStateAsRefInput stateTokenId gyValidator = do
-  stateUTxO <- lookuptUTxOWithStateToken stateTokenId gyValidator
+  stateUTxO <- getUTxOWithStateToken stateTokenId gyValidator
   return $ mustHaveRefInput (utxoRef stateUTxO)
 
 txMustSpendFromAddress :: (HasCallStack, GYTxMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV2)
 txMustSpendFromAddress tokenId addrs = do
   do
-    tokenUtxo <- lookupTxOWithTokenAtAddresses tokenId addrs
+    tokenUtxo <- getUTxOWithStateTokenAtAddresses tokenId addrs
     return $
       mustHaveInput
         GYTxIn
@@ -103,7 +107,7 @@ txNFTAction redeemer = do
           , mustMint (GYMintScript raffleizeMintingPolicyGY) gyRedeemer gyRaffleUserTN 1
           ]
     MintTicket raffleRefAC -> do
-      (raffle, _) <- lookupRaffleStateDataAndValue raffleRefAC
+      (raffle, _) <- getRaffleStateDataAndValue raffleRefAC
       let (ticketRefAC, ticketUserAC) = getNextTicketToMintAssetClasses raffle -- Generate ticket tokens based on no. of tickets sold.
       gyTicketRefTN <- tokenNameFromPlutus' (snd . unAssetClass $ ticketRefAC)
       gyTicketUserTN <- tokenNameFromPlutus' (snd . unAssetClass $ ticketUserAC)

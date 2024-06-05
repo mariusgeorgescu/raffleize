@@ -50,7 +50,7 @@ assetClassItemWidget :: CurrencySymbol -> TokenName -> Widget n
 assetClassItemWidget cs tn = str (show cs) <=> hBorder <=> str (toString tn)
 
 valueItemWidget :: Bool -> Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
-valueItemWidget selectable hasFocus (cs, tn, i) = (if hasFocus && selectable then withAttr "selected" else id) $ vLimit 5 $ hLimit 100 (border (assetClassItemWidget cs tn <+> vBorder <+> center (str (show i))))
+valueItemWidget selectable hasFocus (cs, tn, i) = (if hasFocus && selectable then withAttr "selected" else id) $ vLimit 5 $ hLimit 150 (border (assetClassItemWidget cs tn <+> vBorder <+> center (str (show i))))
 
 ------------------------------------------------------------------------------------------------
 
@@ -330,7 +330,7 @@ buildInitialState = do
     Just skey' -> do
       (addr, val) <- liftIO $ getAddressAndValue skey'
       let myRafflesIds = getMyRaffleIdsFromValue val
-      let myRafflesInfo =   filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
+      let myRafflesInfo = filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
       -- myRafflesInfo <- getMyRaffles addr
       let flattenedVal = flattenValue val
       now <- getCurrentTime
@@ -373,8 +373,9 @@ handleEvent s e =
                             liftIO clearScreen
                             txOutRef <- liftIO $ buyTicket (fromJust (walletSkey s)) secretString contextNFT mRecipient validatorsTxOutRefs
                             let nid = (cfgNetworkId . fromJust . atlasConfig) s
+                            initialState <- liftIO buildInitialState
                             continue
-                              s
+                              initialState
                                 { message = "TICKET BOUGHT SUCCESFULLY!\n" <> showLink nid "tx" txOutRef <> "\n FOR RAFFLE " <> showText contextNFT
                                 , currentScreen = MainScreen
                                 }
@@ -409,7 +410,8 @@ handleEvent s e =
                             let raffle = fromJust mraffle
                             txOutRef <- liftIO $ createRaffle (fromJust (walletSkey s)) raffle validatorsTxOutRefs
                             let nid = (cfgNetworkId . fromJust . atlasConfig) s
-                            continue s {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
+                            initialState <- liftIO buildInitialState
+                            continue initialState {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
                           else continue s
                   _ -> do
                     crForm1 <- handleFormEvent e crForm
@@ -503,8 +505,8 @@ handleEvent s e =
                       'd' -> do
                         liftIO clearScreen
                         liftIO deployValidators
-                        s' <- liftIO $ updateFromConfigFiles s
-                        continue s' {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
+                        initialState <- liftIO buildInitialState
+                        continue initialState {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
                       _ -> continue s
                   else continue s
             _ -> continue s
@@ -636,14 +638,14 @@ assetsBalanceWidget :: Value -> Widget NameResources
 assetsBalanceWidget val =
   let valueItemsList = Brick.Widgets.List.list ValueItemsList (flattenValue val) 5
    in vLimit 100 $
-        hLimit 100 $
+        hLimit 150 $
           borderWithLabel (txt "ASSETS") $
             visible $
               withVScrollBarHandles $
                 withVScrollBars OnRight $
                   viewport ValueItemsViewPort Vertical $
                     vLimit 300 $
-                      hLimit 110 $
+                      hLimit 150 $
                         renderList (valueItemWidget False) False valueItemsList
 
 addressWidget :: GYNetworkId -> GYAddress -> Widget n
@@ -715,7 +717,6 @@ drawRaffleActionLabel :: RaffleizeActionLabel -> Widget NameResources
 drawRaffleActionLabel (_, "BuyTicket") = txt "[B]     - Buy a ticket for the selected raffle"
 drawRaffleActionLabel _ = emptyWidget
 
-
 drawActiveRafflesScreen :: RaffleizeUI -> Widget NameResources
 drawActiveRafflesScreen s =
   let arForm = activeRafflesForm s
@@ -761,7 +762,6 @@ drawMyRaffleActionsWidget mActions =
 drawMyRaffleActionLabel :: RaffleizeActionLabel -> Widget NameResources
 drawMyRaffleActionLabel ("RaffleOwner", what) = txt (Data.Text.pack what)
 drawMyRaffleActionLabel _ = emptyWidget
-
 
 ------------------------------------------------------------------------------------------------
 

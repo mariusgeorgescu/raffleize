@@ -143,6 +143,9 @@ data RaffleInfo = RaffleInfo
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
+
+
+
 -------------------------------------------------------------------------------
 
 -- *  Show Instances

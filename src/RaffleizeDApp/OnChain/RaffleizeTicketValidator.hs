@@ -30,7 +30,7 @@ import RaffleizeDApp.CustomTypes.Types (
  )
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   deriveUserFromRefAC,
-  evalTicketState2,
+  evalTicketState,
   evaluateRaffleState,
   generateTicketACFromTicket,
   getRaffleStateDatumAndValue,
@@ -74,7 +74,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                   ---- RAFFLE STATE FROM REF INPUT
                   (rValue, rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs
                   rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                  currentTicketState = evalTicketState2 tsd (rRandomSeed rsd) rStateId
+                  currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                in pand
                     [ currentTicketState #== 97 -- BURNABLE_BY_RAFFLE_OWNER (UNREVEALED_EXPIRED)
                     , isBurningNFT ticketRefAC txInfoMint -- Transaction burns 1 ticketRef.
@@ -85,7 +85,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                 ---- RAFFLE STATE FROM REF INPUT
                 (rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction has the raffleRef as reference input
                 rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                currentTicketState = evalTicketState2 tsd (rRandomSeed rsd) rStateId
+                currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                in
                 pand
                   [ currentTicketState #== 95 -- LOSING
@@ -97,7 +97,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
               -- rsd must be strict to ensure that raffle state is spent
               let (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
                   rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                  currentTicketState = evalTicketState2 tsd (rRandomSeed rsd) rStateId
+                  currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                   !ticketValidatorAddr = txOutAddress ownInput
                   hasOnly1InputFromValidator = case findTxInWith noConstraint (#== ticketValidatorAddr) txInfoInputs of
                     [_x] -> True

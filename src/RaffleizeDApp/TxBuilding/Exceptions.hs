@@ -19,3 +19,8 @@ instance IsGYApiError TicketDatumNotFound
 data InlineDatumNotFound = InlineDatumNotFound deriving (Show, Typeable)
 instance Exception InlineDatumNotFound
 instance IsGYApiError InlineDatumNotFound
+
+
+data TooManyUTxOs = TooManyUTxOs deriving (Show, Typeable)
+instance Exception TooManyUTxOs
+instance IsGYApiError TooManyUTxOs

@@ -8,19 +8,22 @@ import GeniusYield.GYConfig
 import GeniusYield.Types
 import GeniusYield.Types.Key.Class
 
+import Data.Maybe (catMaybes)
+import Data.Set qualified
 import GeniusYield.Imports (IsString (..))
 import GeniusYield.TxBuilder
 import PlutusLedgerApi.V1 qualified
 import PlutusLedgerApi.V1.Value (AssetClass)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.OnChain.RaffleizeLogic (deriveRefFromUserAC)
 import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
-import RaffleizeDApp.TxBuilding.Lookups (getRaffleStateDataAndValue, gyGetRaffleInfo, gyOutHasValidRefToken)
-import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
-import RaffleizeDApp.OnChain.RaffleizeLogic (deriveRefFromUserAC)
-import qualified Data.Set
+
+import RaffleizeDApp.TxBuilding.Lookups (lookupRaffleInfoRefAC)
+import RaffleizeDApp.TxBuilding.Utils
+import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
 
@@ -57,31 +60,29 @@ queryRaffleizeValidatorUTxOs = do
 queryRaffles :: ReaderT ProviderCtx IO [(RaffleStateData, PlutusLedgerApi.V1.Value)]
 queryRaffles = do
   allUTxOs <- queryRaffleizeValidatorUTxOs
-  let validUTxOs = filterUTxOs gyOutHasValidRefToken allUTxOs
-  let raffles = mapMaybe getRaffleStateDataAndValue (utxosToList validUTxOs)
+  let validUTxOs = filterUTxOs hasValidRefToken allUTxOs
+  let raffles = mapMaybe rsdAndValueFromUTxO (utxosToList validUTxOs)
   return raffles
 
 -- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
 queryRafflesInfos :: ReaderT ProviderCtx IO [RaffleInfo]
 queryRafflesInfos = do
   allUTxOs <- queryRaffleizeValidatorUTxOs
-  let validUTxOs = filterUTxOs gyOutHasValidRefToken allUTxOs
-  runQuery $ mapM gyGetRaffleInfo (utxosToList validUTxOs)
+  let validUTxOs = filterUTxOs hasValidRefToken allUTxOs
+  runQuery $ catMaybes <$> mapM lookupRaffleInfoAtUTxO (utxosToList validUTxOs)
 
 -- | ---
-queryRafflesInfosByIds :: [AssetClass] -> ReaderT ProviderCtx IO [RaffleInfo]
-queryRafflesInfosByIds raffleUserACs = do
-  let rIds = deriveRefFromUserAC <$> raffleUserACs
-  allRaffles <- queryRafflesInfos
-  let myRaffles = filter (\ri -> rRaffleID (riRsd ri) `elem` rIds) allRaffles
-  return myRaffles
+queryRafflesInfosByRefAC :: [AssetClass] -> ReaderT ProviderCtx IO [RaffleInfo]
+queryRafflesInfosByRefAC raffleRefACs = do
+  runQuery $ catMaybes <$> mapM lookupRaffleInfoRefAC raffleRefACs
 
 queryMyRaffles :: GYAddress -> ReaderT ProviderCtx IO [RaffleInfo]
 queryMyRaffles addr = do
   gyVal <- runQuery $ queryBalance addr
-  let raffleUserACs =  assetClassToPlutus  <$> Data.Set.toList (valueAssets gyVal)
-  let rIds = deriveRefFromUserAC <$> raffleUserACs
-  queryRafflesInfosByIds rIds
+  let raffleUserACs = assetClassToPlutus <$> Data.Set.toList (valueAssets gyVal)
+  let raffleRefACs = deriveRefFromUserAC <$> raffleUserACs
+  queryRafflesInfosByRefAC raffleRefACs
+
 -----------------
 -----------------
 -----------------

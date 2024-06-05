@@ -4,6 +4,7 @@ import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import PlutusTx
 
+import PlutusTx.AssocMap
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils
@@ -65,8 +66,14 @@ ticketStateData :: TicketDatum -> TicketStateData
 ticketStateData = extra
 {-# INLINEABLE ticketStateData #-}
 
+-- | Functon to get the image link from metadata
+ticketImage :: TicketDatum -> BuiltinByteString
+ticketImage datum = fromMaybe @BuiltinByteString "" $ lookup (encodeUtf8 "image") (metadata datum)
+
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
-type TicketStateLabel = Integer -- TODO : check if any data encoding works bette on Plutus V3
+type TicketStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
+
+type TicketStateLabel = String
 
 -- data TicketStateLabel2 = COMITTED | FULLY_REFUNDABLE | REVEALABLE | REVEALED | WINNING | LOSING | EXTRA_REFUNDABLE | UNREVEALED_EXPIRED
 --   deriving (Generic, Eq, ToJSON, FromJSON)

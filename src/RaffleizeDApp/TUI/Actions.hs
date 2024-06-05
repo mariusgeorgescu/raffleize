@@ -10,11 +10,11 @@ import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Context
-import RaffleizeDApp.TxBuilding.Transactions
 
 import Data.Text qualified
 import PlutusLedgerApi.V1.Value (AssetClass)
 import RaffleizeDApp.TxBuilding.Interactions (RaffleizeTxBuildingContext)
+import RaffleizeDApp.TxBuilding.Transactions
 
 deployValidators :: IO ()
 deployValidators = do
