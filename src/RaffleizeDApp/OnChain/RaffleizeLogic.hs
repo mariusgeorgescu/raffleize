@@ -33,10 +33,10 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
   RaffleParam (..),
   RaffleStateData (..),
   RaffleStateId,
-  RaffleizeActionLabel,
   raffleStateData,
  )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateLabel, ticketStateData)
+import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude hiding (error)
 
@@ -88,6 +88,9 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake `geq` mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
@@ -281,22 +284,73 @@ evaluateRaffleState (time_range, rsd@RaffleStateData {rConfig, rSoldTickets, rRe
                           (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
 {-# INLINEABLE evaluateRaffleState #-}
 
-evalTicketState :: TicketStateData -> RaffleStateId -> TicketStateLabel
-evalTicketState TicketStateData {tSecret = Just _} _ = 6 --  ==> BURNABLE_BY_TICKET_OWNER
-evalTicketState TicketStateData {tSecret = Nothing} rs
-  | rs #== 3 = 5 -- ticket is unrevealed & raffle is in revealing ==> REVEALABLE
-  | rs
-      `pelem` [ 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-              , 21 -- UNDERFUNDED_LOCKED_REFUNDS
-              ] =
-      6 -- -ticket is unrevealed & raffle is underfunded  ==> BURNABLE_BY_TICKET_OWNER
-  | rs
-      `pelem` [ 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-              , 31 -- UNREVEALED_LOCKED_REFUNDS
-              ] =
-      7 -- ticket is unrevealed & raffle is unrevealed  ==> BURNABLE_BY_RAFFLE_OWNER
-  | otherwise = 0 -- LOCKED ==> UNSPENDABLE
-{-# INLINEABLE evalTicketState #-}
+-- evalTicketState :: TicketStateData -> RaffleStateId -> TicketStateLabel
+-- evalTicketState TicketStateData {tSecret = Just _} _ = 6 --  ==> BURNABLE_BY_TICKET_OWNER
+-- evalTicketState TicketStateData {tSecret = Nothing} rs
+--   | rs #== 3 = 5 -- ticket is unrevealed & raffle is in revealing ==> REVEALABLE
+--   | rs
+--       `pelem` [ 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+--               , 21 -- UNDERFUNDED_LOCKED_REFUNDS
+--               ] =
+--       6 -- -ticket is unrevealed & raffle is underfunded  ==> BURNABLE_BY_TICKET_OWNER
+--   | rs
+--       `pelem` [ 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
+--               , 31 -- UNREVEALED_LOCKED_REFUNDS
+--               ] =
+--       7 -- ticket is unrevealed & raffle is unrevealed  ==> BURNABLE_BY_RAFFLE_OWNER
+--   | otherwise = 0 -- LOCKED ==> UNSPENDABLE
+-- {-# INLINEABLE evalTicketState #-}
+
+-- showTicketStateLabel :: TicketStateLabel -> String
+-- showTicketStateLabel r = case r of
+--   5 -> "REVEALABLE"
+--   6 -> "BURNABLE_BY_TICKET_OWNER"
+--   0 -> "LOCKED"
+--   _ -> mempty
+
+evalTicketState2 :: TicketStateData -> Integer -> RaffleStateId -> TicketStateLabel
+evalTicketState2 TicketStateData {tNumber, tSecret} randomSeed raffleStateId
+  | raffleStateId #== 2 = 9 -- COMITTED
+  | raffleStateId #== 10 = 91 -- FULLY_REFUNDABLE
+  | raffleStateId #== 20 = 91 -- FULLY_REFUNDABLE
+  | raffleStateId #== 21 = 91 -- FULLY_REFUNDABLE
+  | raffleStateId #== 3 =
+      if isNothing tSecret
+        then 92 -- REVEALABLE
+        else 93 -- REVEALED
+  | raffleStateId #== 40 || raffleStateId #== 42 =
+      if randomSeed #== tNumber
+        then 94 -- WINNING
+        else 95 -- LOSING
+  | raffleStateId #== 30 || raffleStateId #== 31 =
+      if isJust tSecret
+        then 96 -- EXTRA_REFUNDABLE
+        else 97 -- UNREVEALED_EXPIRED
+  | raffleStateId #== 1 = traceError "Raffle cannot be NEW"
+  | raffleStateId #== 11 = traceError "Raffle cannot be EXPIRED_FINAL"
+  | raffleStateId #== 22 = traceError "Raffle cannot be UNDERFUNDED_LOCKED_STAKE"
+  | raffleStateId #== 23 = traceError "Raffle cannot be UNDERFUNDED_FINAL"
+  | raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
+  | raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
+  | raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
+  | raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
+  | raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
+evalTicketState2 _ _ _ = traceError "invalid state"
+{-# INLINEABLE evalTicketState2 #-}
+
+validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateLabel]
+validTicketStatesForRaffleizeAction ra = case ra of
+  RaffleOwner roa -> case roa of
+    GetCollateraOfExpiredTicket -> [97] ---- UNREVEALED_EXPIRED   | ticket action only,  not on raffle state
+    _ -> []
+  TicketOwner toa -> case toa of
+    (RevealTicketSecret _) -> [92] -- REVEALABLE
+    CollectStake -> [94] -- WINNING
+    RefundTicket -> [91] -- FULLY_REFUNDABLE
+    RefundTicketExtra -> [96] -- EXTRA_REFUNDABLE
+    RefundCollateralLosing -> [95] -- -- LOSING    | ticket action only, not on raffle state
+  User _ -> []
+  Admin _ -> []
 
 getRaffleStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, RaffleStateData)
 getRaffleStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, raffleStateData $ unsafeFromBuiltinData b)

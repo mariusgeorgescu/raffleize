@@ -3,6 +3,7 @@ module RaffleizeDApp.CustomTypes.TicketTypes where
 import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
 import PlutusTx
+
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils
@@ -27,7 +28,7 @@ data TicketStateData = TicketStateData
   , tRaffle :: AssetClass --- ^ The raffle id of the raffle to which the ticket is associated.
   , tRaffleValidator :: ScriptHash --- ^ The validator hash of the validation logic for spending the raffle state UTxO.
   }
-  deriving (Generic, ToJSON, FromJSON)
+  deriving (Generic, Eq, ToJSON, FromJSON)
 
 unstableMakeIsData ''TicketStateData ---  must be changed with stable version
 
@@ -66,6 +67,26 @@ ticketStateData = extra
 
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
 type TicketStateLabel = Integer -- TODO : check if any data encoding works bette on Plutus V3
+
+-- data TicketStateLabel2 = COMITTED | FULLY_REFUNDABLE | REVEALABLE | REVEALED | WINNING | LOSING | EXTRA_REFUNDABLE | UNREVEALED_EXPIRED
+--   deriving (Generic, Eq, ToJSON, FromJSON)
+
+-- unstableMakeIsData ''TicketStateLabel2 ---  must be changed with stable version
+
+-- instance P.Eq TicketStateLabel2 where
+--   (==) :: TicketStateLabel2 -> TicketStateLabel2 -> Bool
+--   x == y = toBuiltinData x #== toBuiltinData y
+
+data TicketInfo = TicketInfo
+  { tiTsd :: TicketStateData
+  , tiValue :: Value
+  , tiImage :: String
+  , tiStateLabel :: TicketStateLabel
+  , tiAvailableActions :: [RaffleizeActionLabel]
+  }
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+
+-------------------------------------------------------------------
 
 -------------------------------------------------------------------------------
 
