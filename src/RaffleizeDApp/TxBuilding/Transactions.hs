@@ -19,11 +19,11 @@ import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
 
+import PlutusTx.Builtins (blake2b_256)
 import RaffleizeDApp.CustomTypes.TicketTypes (TicketInfo)
-import RaffleizeDApp.TxBuilding.Lookups (lookupRaffleInfoRefAC, lookupTicketInfoByUserAC)
+import RaffleizeDApp.TxBuilding.Lookups (lookupRaffleInfosByACs, lookupTicketInfosByACs)
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
-import PlutusTx.Builtins (blake2b_256)
 
 ------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ queryRafflesInfos = do
 -- | ---
 queryRafflesInfosByRefAC :: [AssetClass] -> ReaderT ProviderCtx IO [RaffleInfo]
 queryRafflesInfosByRefAC raffleRefACs = do
-  runQuery $ catMaybes <$> mapM lookupRaffleInfoRefAC raffleRefACs
+  runQuery $ lookupRaffleInfosByACs raffleRefACs
 
 queryMyRaffles :: GYAddress -> ReaderT ProviderCtx IO [RaffleInfo]
 queryMyRaffles addr = do
@@ -83,14 +83,14 @@ queryMyRaffles addr = do
   let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue pVal
   queryRafflesInfosByRefAC raffleizeUserTokens
 
+
 -----------------
 -----------------
 -----------------
 
 queryTicketInfosByUserAC :: [AssetClass] -> ReaderT ProviderCtx IO [TicketInfo]
 queryTicketInfosByUserAC userACs = do
-  
-  runQuery $ catMaybes <$> mapM lookupTicketInfoByUserAC userACs
+  runQuery $ lookupTicketInfosByACs userACs
 
 queryMyTickets :: GYAddress -> ReaderT ProviderCtx IO [TicketInfo]
 queryMyTickets addr = do
@@ -157,7 +157,7 @@ buildBuyTicketTx :: GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddre
 buildBuyTicketTx skey secretString raffleId mRecipient validatorsTxOutRefs = do
   my_addr <- queryGetAddressFromSkey skey
   let useraddrs = UserAddresses [my_addr] my_addr Nothing
-  let secretHash =  blake2b_256 $ fromString @BuiltinByteString secretString
+  let secretHash = blake2b_256 $ fromString @BuiltinByteString secretString
   let buyTicketInteraction = RaffleizeInteraction (Just raffleId) (User (BuyTicket secretHash)) useraddrs mRecipient
   runReader (interactionToTxBody buyTicketInteraction) validatorsTxOutRefs
 

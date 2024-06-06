@@ -6,6 +6,7 @@ import GeniusYield.Types
 import PlutusLedgerApi.V1.Interval qualified
 import PlutusLedgerApi.V1.Value
 
+import PlutusLedgerApi.V3 (POSIXTimeRange)
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
@@ -62,6 +63,54 @@ getTicketStateDataAndValueAndImage ticketId =
     ticketValidatorAddr <- scriptAddress ticketValidatorGY
     utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
     maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdValueAndImageFromUTxO utxo
+
+------------------------------------------------------------------------------------------------
+
+-- * Search BULKD
+
+------------------------------------------------------------------------------------------------
+
+lookupUTxOsByStateTokens :: (GYTxQueryMonad m) => [AssetClass] -> GYAddress -> m GYUTxOs
+lookupUTxOsByStateTokens acs addr = do
+  gyRefACs <- mapM assetClassFromPlutus' acs
+  gyUTxOs <- utxosAtAddress addr Nothing
+  return $ filterUTxOs (hasAnyOfTheAssets gyRefACs) gyUTxOs
+
+lookupRaffleInfosByACs :: (GYTxQueryMonad m) => [AssetClass] -> m [RaffleInfo]
+lookupRaffleInfosByACs acs = do
+  now <- slotOfCurrentBlock
+  nowposix <- pPOSIXTimeFromGYSlot now
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+  raffleUTxOs <- utxosToList <$> lookupUTxOsByStateTokens acs raffleValidatorAddr
+  return $ mapMaybe (`raffleInfoFromUTxO` tr) raffleUTxOs
+
+lookupTicketInfosByACs :: (GYTxQueryMonad m) => [AssetClass] -> m [TicketInfo]
+lookupTicketInfosByACs uACs = do
+  let rACs = deriveRefFromUserAC <$> uACs
+  ticketValidatorAddr <- scriptAddress ticketValidatorGY
+  tcketUTxOs <- utxosToList <$> lookupUTxOsByStateTokens rACs ticketValidatorAddr
+  let tickets = mapMaybe tsdValueAndImageFromUTxO tcketUTxOs
+  let rafflesACs = fmap (\(tsd, _, _) -> tRaffle tsd) tickets
+  raffles <- lookupRaffleInfosByACs rafflesACs
+  now <- slotOfCurrentBlock
+  nowposix <- pPOSIXTimeFromGYSlot now
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  let ticketsInfos = mkTicketsInfo tr tickets raffles
+  return ticketsInfos
+  where
+    mkTicketsInfo :: POSIXTimeRange -> [(TicketStateData, Value, String)] -> [RaffleInfo] -> [TicketInfo]
+    mkTicketsInfo tr ((tsd, tVal, tImg) : tis) ris = case find ((tRaffle tsd ==) . rRaffleID . riRsd) ris of
+      Nothing -> mkTicketsInfo tr tis ris
+      Just (RaffleInfo {..}) ->
+        let
+          raffleStateId = evaluateRaffleState (tr, riRsd, riValue)
+          ticketStateId = evalTicketState tsd (rRandomSeed riRsd) raffleStateId
+          ticketStateLabel = showTicketStateLabel ticketStateId
+          actions = validActionLabelsForTicketState ticketStateId
+         in
+          TicketInfo tsd tVal tImg ticketStateLabel actions : mkTicketsInfo tr tis ris
+    mkTicketsInfo _ _ _ = []
 
 ------------------------------------------------------------------------------------------------
 

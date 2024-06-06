@@ -47,6 +47,12 @@ hasValidRefToken gyOut =
       gyAssets = valueAssets gyValue
    in any isRaffleizeRefAC gyAssets
 
+hasAnyOfTheAssets :: [GYAssetClass] -> GYUTxO -> Bool
+hasAnyOfTheAssets acs gyOut =
+  let gyValue = utxoValue gyOut
+      gyAssets = valueAssets gyValue
+   in any (`elem` acs) gyAssets
+
 -- -- ------------------------------------------------------------------------------------------
 
 -- * Raffle Validator Utils
