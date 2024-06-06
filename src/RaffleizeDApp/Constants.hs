@@ -16,7 +16,7 @@ raffleName :: BuiltinString
 raffleName = "RAFFLEIZE: RAFFLE OWNER NFT"
 
 ticketImageURI :: BuiltinString
-ticketImageURI = "ipfs://QmYWtPVSDCfZp2KAtqZCfLP21WDSUrLB6rfmvByTcDqPJf"
+ticketImageURI = "ipfs://bafybeid4u7fhlmw6mmha7hur7xojxqp26bxuxkpwke2a44qeeevnfvcgpy"
 
 ticketDescription :: BuiltinString
 ticketDescription = "This is a tokenized raffle ticket"
