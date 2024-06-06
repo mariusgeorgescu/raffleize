@@ -128,9 +128,6 @@ lookupRaffleInfoRefAC raffleRefAC = do
 
 lookupTicketInfoByUserAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe TicketInfo)
 lookupTicketInfoByUserAC ticketUserAC = do
-  now <- slotOfCurrentBlock
-  nowposix <- pPOSIXTimeFromGYSlot now
-  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
   let ticketRefAC = deriveRefFromUserAC ticketUserAC
   mticket <- lookupTickeStateValueAndImage ticketRefAC
   case mticket of
@@ -140,6 +137,9 @@ lookupTicketInfoByUserAC ticketUserAC = do
       case mraffle of
         Nothing -> return Nothing
         Just (rsd, rVal) -> do
+          now <- slotOfCurrentBlock
+          nowposix <- pPOSIXTimeFromGYSlot now
+          let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
           let raffleStateId = evaluateRaffleState (tr, rsd, rVal)
           let ticketStateId = evalTicketState tsd (rRandomSeed rsd) raffleStateId
           let ticketStateLabel = showTicketStateLabel ticketStateId

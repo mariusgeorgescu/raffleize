@@ -36,18 +36,16 @@ import PlutusLedgerApi.V1.Value
 import PlutusPrelude (showText)
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.CustomTypes.Types
-
-import Data.Aeson (ToJSON (toJSON))
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.TUI.Actions
-
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
+import Data.Aeson (ToJSON(toJSON))
 
 assetClassItemWidget :: CurrencySymbol -> TokenName -> Widget n
 assetClassItemWidget cs tn = str (show cs) <=> hBorder <=> str (toString tn)
@@ -160,13 +158,11 @@ makeLenses ''ActiveRafflesFormState
 
 drawValueWidget :: Value -> Widget NameResources
 drawValueWidget val =
-  vLimit 30 $
-    hLimit 60 $
-      vBox $
-        valueItemWidget False False <$> flattenValue val
+  vBox $
+    valueItemWidget False False <$> flattenValue val
 
 drawRaffleLockedValue :: Value -> Widget NameResources
-drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ drawValueWidget riValue
+drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 60 $ drawValueWidget riValue
 
 drawRaffeStats :: RaffleStateData -> Widget NameResources
 drawRaffeStats RaffleStateData {..} =
@@ -266,30 +262,30 @@ data MyTicketsFormState = MyTicketsFormState
 
 makeLenses ''MyTicketsFormState
 
-drawTicketState :: TicketStateData -> Widget NameResources
-drawTicketState TicketStateData {..} =
-  borderWithLabel (txt " TICKET ") $
-    renderTable $
-      table
-        [ [txt "Secret Hash: ", str (show (toJSON tSecretHash))]
-        , [txt "Revealed Secret: ", str (show (toJSON tSecret))]
-        , [txt "Raffle: ", str (show tRaffle)]
-        ]
+drawTicketState :: TicketStateData -> TicketStateLabel -> Widget NameResources
+drawTicketState TicketStateData {..} state =
+  renderTable $
+    table
+      [ [txt "Ticket State: ", txt (showText state)]
+      , [txt "Secret Hash: ", txt ( showText $ toJSON tSecretHash)]
+      , [txt "Revealed Secret: ", txt (showText tSecret)]
+      , [txt "Raffle ID (TN): ", txt (showText (snd . unAssetClass $ tRaffle))]
+      ]
 
 drawTicketLockedValue :: Value -> Widget NameResources
-drawTicketLockedValue tiValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ drawValueWidget tiValue
+drawTicketLockedValue tiValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 130 $ drawValueWidget tiValue
 
 drawTicketInfo :: TicketInfo -> Widget NameResources
 drawTicketInfo TicketInfo {..} =
   joinBorders
-    <$> borderWithLabel (str (" Ticket no. " <> show (tNumber tiTsd) <> " "))
-    $ str tiStateLabel
-      <=> hBox
-        ( joinBorders
-            <$> [ drawTicketState tiTsd
-                , drawTicketLockedValue tiValue
-                ]
-        )
+    <$> borderWithLabel
+      (txt (" Ticket no. [" <> showText (tNumber tiTsd) <> "] "))
+    $ hBox
+      ( joinBorders
+          <$> [ drawTicketState tiTsd tiStateLabel
+              , drawTicketLockedValue tiValue
+              ]
+      )
 
 drawTicketInfoListItem :: Bool -> TicketInfo -> Widget NameResources
 drawTicketInfoListItem isSelected ti = if isSelected then withAttr "action" $ drawTicketInfo ti else drawTicketInfo ti
@@ -797,7 +793,7 @@ drawActiveRafflesScreen s =
 
 ------------------------------------------------------------------------------------------------
 
--- **  My Raffles Screen
+-- **  My Tickets Screen
 
 ------------------------------------------------------------------------------------------------
 
@@ -812,7 +808,7 @@ drawMyTicketsScreen s =
             padAll 1
               <$> [ center $ renderForm mtForm
                   , hBorder
-                  , hCenter $ drawMyRaffleActionsWidget currentActions
+                  , hCenter $ drawMyTicketsActionsWidget currentActions
                   ]
 
 drawMyTicketsActionsWidget :: Maybe [RaffleizeActionLabel] -> Widget NameResources
@@ -820,7 +816,7 @@ drawMyTicketsActionsWidget mActions =
   withAttr "action" $
     borderWithLabel (txt "AVAILABLE ACTIONS") $
       vBox $
-        maybe [] (drawMyRaffleActionLabel <$>) mActions
+        maybe [] (drawMyTicketActionLabel <$>) mActions
           ++ [txt "[ESC]   - Close          "]
 
 drawMyTicketActionLabel :: RaffleizeActionLabel -> Widget NameResources

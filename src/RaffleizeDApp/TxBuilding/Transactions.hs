@@ -23,6 +23,7 @@ import RaffleizeDApp.CustomTypes.TicketTypes (TicketInfo)
 import RaffleizeDApp.TxBuilding.Lookups (lookupRaffleInfoRefAC, lookupTicketInfoByUserAC)
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
+import PlutusTx.Builtins (blake2b_256)
 
 ------------------------------------------------------------------------------------------------
 
@@ -88,6 +89,7 @@ queryMyRaffles addr = do
 
 queryTicketInfosByUserAC :: [AssetClass] -> ReaderT ProviderCtx IO [TicketInfo]
 queryTicketInfosByUserAC userACs = do
+  
   runQuery $ catMaybes <$> mapM lookupTicketInfoByUserAC userACs
 
 queryMyTickets :: GYAddress -> ReaderT ProviderCtx IO [TicketInfo]
@@ -155,8 +157,8 @@ buildBuyTicketTx :: GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddre
 buildBuyTicketTx skey secretString raffleId mRecipient validatorsTxOutRefs = do
   my_addr <- queryGetAddressFromSkey skey
   let useraddrs = UserAddresses [my_addr] my_addr Nothing
-  let secret = fromString @BuiltinByteString secretString
-  let buyTicketInteraction = RaffleizeInteraction (Just raffleId) (User (BuyTicket secret)) useraddrs mRecipient
+  let secretHash =  blake2b_256 $ fromString @BuiltinByteString secretString
+  let buyTicketInteraction = RaffleizeInteraction (Just raffleId) (User (BuyTicket secretHash)) useraddrs mRecipient
   runReader (interactionToTxBody buyTicketInteraction) validatorsTxOutRefs
 
 buyTicketTransaction :: GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> RaffleizeTxBuildingContext -> ReaderT ProviderCtx IO GYTxOutRef
