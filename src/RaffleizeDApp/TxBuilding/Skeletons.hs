@@ -49,7 +49,8 @@ txMustSpendStateFromRefScriptWithRedeemer :: (HasCallStack, GYTxMonad m, ToData 
 txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyValidator =
   do
     let gyRedeemer = redeemerFromPlutusData redeemer
-    stateUTxO <- getUTxOWithStateToken stateTokenId gyValidator
+    validatorAddr <- scriptAddress gyValidator
+    stateUTxO <- getUTxOWithStateToken stateTokenId validatorAddr
     (gyDatum, _v) <- gyGetInlineDatumAndValue' stateUTxO
     return $
       mustHaveInput
@@ -63,7 +64,8 @@ txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyVali
 
 txMustHaveStateAsRefInput :: (HasCallStack, GYTxMonad m) => AssetClass -> GYValidator 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
 txMustHaveStateAsRefInput stateTokenId gyValidator = do
-  stateUTxO <- getUTxOWithStateToken stateTokenId gyValidator
+  validatorAddr <- scriptAddress gyValidator
+  stateUTxO <- getUTxOWithStateToken stateTokenId validatorAddr
   return $ mustHaveRefInput (utxoRef stateUTxO)
 
 txMustSpendFromAddress :: (HasCallStack, GYTxMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV2)

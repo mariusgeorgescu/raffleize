@@ -9,19 +9,18 @@ import GeniusYield.Types
 import GeniusYield.Types.Key.Class
 
 import Data.Maybe (catMaybes)
-import Data.Set qualified
 import GeniusYield.Imports (IsString (..))
 import GeniusYield.TxBuilder
 import PlutusLedgerApi.V1 qualified
 import PlutusLedgerApi.V1.Value (AssetClass)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (deriveRefFromUserAC)
 import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
 
-import RaffleizeDApp.TxBuilding.Lookups (lookupRaffleInfoRefAC)
+import RaffleizeDApp.CustomTypes.TicketTypes (TicketInfo)
+import RaffleizeDApp.TxBuilding.Lookups (lookupRaffleInfoRefAC, lookupTicketInfoByUserAC)
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 
@@ -79,9 +78,24 @@ queryRafflesInfosByRefAC raffleRefACs = do
 queryMyRaffles :: GYAddress -> ReaderT ProviderCtx IO [RaffleInfo]
 queryMyRaffles addr = do
   gyVal <- runQuery $ queryBalance addr
-  let raffleUserACs = assetClassToPlutus <$> Data.Set.toList (valueAssets gyVal)
-  let raffleRefACs = deriveRefFromUserAC <$> raffleUserACs
-  queryRafflesInfosByRefAC raffleRefACs
+  let pVal = valueToPlutus gyVal
+  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue pVal
+  queryRafflesInfosByRefAC raffleizeUserTokens
+
+-----------------
+-----------------
+-----------------
+
+queryTicketInfosByUserAC :: [AssetClass] -> ReaderT ProviderCtx IO [TicketInfo]
+queryTicketInfosByUserAC userACs = do
+  runQuery $ catMaybes <$> mapM lookupTicketInfoByUserAC userACs
+
+queryMyTickets :: GYAddress -> ReaderT ProviderCtx IO [TicketInfo]
+queryMyTickets addr = do
+  gyVal <- runQuery $ queryBalance addr
+  let pVal = valueToPlutus gyVal
+  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue pVal
+  queryTicketInfosByUserAC raffleizeUserTokens
 
 -----------------
 -----------------

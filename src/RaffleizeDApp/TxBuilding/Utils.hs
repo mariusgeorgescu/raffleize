@@ -173,11 +173,11 @@ showLink nid s content = case nid of
   GYTestnetLegacy -> content
   GYPrivnet -> content
 
-getMyRaffleIdsFromValue :: Value -> [AssetClass]
-getMyRaffleIdsFromValue val =
+getMyRaffleizeUserTokensFromValue :: Value -> [AssetClass]
+getMyRaffleizeUserTokensFromValue val =
   let
     raffleizeCS = mintingPolicyCurrencySymbol raffleizeMintingPolicyGY
    in
     [AssetClass (cs, deriveRefFromUserTN tn) | (cs, tn, _) <- flattenValue val, raffleizeCS == cs]
 
-----
+-- ----

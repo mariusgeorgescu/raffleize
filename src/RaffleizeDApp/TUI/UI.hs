@@ -25,7 +25,7 @@ import Control.Monad.IO.Class
 import Data.List qualified
 import Data.Text qualified
 
-import Data.Time (addUTCTime, getCurrentTime)
+import Data.Time
 import Data.Time.Format.ISO8601
 import Data.Vector qualified
 import GeniusYield.GYConfig
@@ -38,7 +38,10 @@ import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.Types
 
+import Data.Aeson (ToJSON (toJSON))
+import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.TUI.Actions
+
 import RaffleizeDApp.TUI.Utils
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Utils
@@ -67,6 +70,7 @@ data NameResources
   | TicketPriceField
   | ActiveRafflesListField
   | MyRafflesListField
+  | MyTicketsListField
   | ValueItemsList
   | ValueItemsViewPort
   | TokenNameField
@@ -169,10 +173,10 @@ drawRaffeStats RaffleStateData {..} =
   borderWithLabel (txt " PROGRESS ") $
     renderTable $
       table
-        [ [txt "Sold Tickets", txt (showText rSoldTickets)]
-        , [txt "Revealed Tickets", txt (showText rRevealedTickets)]
-        , [txt "Refunded Tickets", txt (showText rRefundedTickets)]
-        , [txt "Accumulated Random", txt (showText rRandomSeed)]
+        [ [txt "Sold Tickets: ", txt (showText rSoldTickets)]
+        , [txt "Revealed Tickets: ", txt (showText rRevealedTickets)]
+        , [txt "Refunded Tickets: ", txt (showText rRefundedTickets)]
+        , [txt "Accumulated Random: ", txt (showText rRandomSeed)]
         ]
 
 drawPOSIX :: PlutusLedgerApi.V1.Time.POSIXTime -> Widget NameResources
@@ -183,11 +187,11 @@ drawRaffleConfig RaffleConfig {..} =
   borderWithLabel (txt " CONFIGURATION ") $
     renderTable $
       table
-        [ [txt "Commit Deadline", drawPOSIX rCommitDDL]
-        , [txt "Reveal Deadline", drawPOSIX rRevealDDL]
-        , [txt "Ticket Price | ₳ |", txt (showText $ lovelaceOf rTicketPrice)]
-        , [txt "Min. Tickets", txt (showText rMinTickets)]
-        , [txt "Raffle Stake", drawValueWidget rStake]
+        [ [txt "Commit Deadline: ", drawPOSIX rCommitDDL]
+        , [txt "Reveal Deadline: ", drawPOSIX rRevealDDL]
+        , [txt "Ticket Price | ₳ |: ", txt (showText $ lovelaceOf rTicketPrice)]
+        , [txt "Min. Tickets: ", txt (showText rMinTickets)]
+        , [txt "Raffle Stake: ", drawValueWidget rStake]
         ]
 
 drawRaffleInfo :: RaffleInfo -> Widget NameResources
@@ -251,6 +255,52 @@ mkBuyTicketForm =
 
 ------------------------------------------------------------------------------------------------
 
+-- **  My Tickets Form
+
+------------------------------------------------------------------------------------------------
+data MyTicketsFormState = MyTicketsFormState
+  { _myTickets :: Data.Vector.Vector TicketInfo
+  , _selectedTicket :: Maybe TicketInfo
+  }
+  deriving (Show)
+
+makeLenses ''MyTicketsFormState
+
+drawTicketState :: TicketStateData -> Widget NameResources
+drawTicketState TicketStateData {..} =
+  borderWithLabel (txt " TICKET ") $
+    renderTable $
+      table
+        [ [txt "Secret Hash: ", str (show (toJSON tSecretHash))]
+        , [txt "Revealed Secret: ", str (show (toJSON tSecret))]
+        , [txt "Raffle: ", str (show tRaffle)]
+        ]
+
+drawTicketLockedValue :: Value -> Widget NameResources
+drawTicketLockedValue tiValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ drawValueWidget tiValue
+
+drawTicketInfo :: TicketInfo -> Widget NameResources
+drawTicketInfo TicketInfo {..} =
+  joinBorders
+    <$> borderWithLabel (str (" Ticket no. " <> show (tNumber tiTsd) <> " "))
+    $ str tiStateLabel
+      <=> hBox
+        ( joinBorders
+            <$> [ drawTicketState tiTsd
+                , drawTicketLockedValue tiValue
+                ]
+        )
+
+drawTicketInfoListItem :: Bool -> TicketInfo -> Widget NameResources
+drawTicketInfoListItem isSelected ti = if isSelected then withAttr "action" $ drawTicketInfo ti else drawTicketInfo ti
+
+mkMyTicketsForm :: MyTicketsFormState -> Form MyTicketsFormState e NameResources
+mkMyTicketsForm =
+  newForm
+    [(txt mempty <=>) @@= listField _myTickets selectedTicket drawTicketInfoListItem 10 MyTicketsListField]
+
+------------------------------------------------------------------------------------------------
+
 -- *   Main State
 
 ------------------------------------------------------------------------------------------------
@@ -262,6 +312,7 @@ data Screen
   | ActiveRafflesScreen
   | MyRafflesScreen
   | BuyTicketScreen
+  | MyTicketsScreen
   deriving (Eq, Ord, Enum, Show)
 
 type RaffleizeEvent = ()
@@ -279,6 +330,7 @@ data RaffleizeUI = RaffleizeUI
   , activeRafflesForm :: Form ActiveRafflesFormState RaffleizeEvent NameResources
   , myRafflesForm :: Form MyRafflesFormState RaffleizeEvent NameResources
   , buyTicketForm :: Form BuyTicketFormState RaffleizeEvent NameResources
+  , myTicketsForm :: Form MyTicketsFormState RaffleizeEvent NameResources
   , currentScreen :: Screen
   }
 
@@ -314,33 +366,38 @@ buildInitialState = do
   liftIO $ print ("BUILDING INITIAL STATE" :: String)
   logo <- readFile raffleizeLogoPath
   atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
-  validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  skey <- readPaymentKeyFile operationSkeyFilePath
-  allRafflesInfo <- case atlasConfig of
-    Nothing -> return []
-    Just _c -> getActiveRaffles
-  let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
-  let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
-  let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
-  case skey of
-    Nothing -> do
-      let myRafflesForm = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
-      let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0)
-      return (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm MainScreen)
-    Just skey' -> do
-      (addr, val) <- liftIO $ getAddressAndValue skey'
-      let myRafflesIds = getMyRaffleIdsFromValue val
-      let myRafflesInfo = filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
-      -- myRafflesInfo <- getMyRaffles addr
-      let flattenedVal = flattenValue val
-      now <- getCurrentTime
-      let icd = addUTCTime 864000 now -- + 10 days
-      let ird = addUTCTime 864000 icd
-      let commitSuggestion = Data.Text.pack . iso8601Show $ icd
-      let revealSuggestion = Data.Text.pack . iso8601Show $ ird
-      let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0)
-      let myRafflesForm = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
-      return (RaffleizeUI atlasConfig validatorsConfig skey (Just addr) (Just val) logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm MainScreen)
+  case atlasConfig of
+    Nothing -> error ("altas_config.json not defined" :: String)
+    Just _c -> do
+      validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
+      skey <- readPaymentKeyFile operationSkeyFilePath
+      allRafflesInfo <- getActiveRaffles
+
+      let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
+      let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
+      let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
+      case skey of
+        Nothing -> do
+          let myRafflesForm = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
+          let myTicketsForm = mkMyTicketsForm (MyTicketsFormState mempty Nothing)
+          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0)
+          return (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
+        Just skey' -> do
+          (addr, val) <- liftIO $ getAddressAndValue skey'
+          -- let myRafflesIds = getMyRaffleIdsFromValue val
+          -- let myRafflesInfo = filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
+          myRafflesInfo <- getMyRaffles addr
+          myTicketsInfo <- getMyTickets addr
+          let flattenedVal = flattenValue val
+          now <- getCurrentTime
+          let icd = addUTCTime 864000 now -- + 10 days
+          let ird = addUTCTime 864000 icd
+          let commitSuggestion = Data.Text.pack . iso8601Show $ icd
+          let revealSuggestion = Data.Text.pack . iso8601Show $ ird
+          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0)
+          let myRafflesForm = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
+          let myTicketsForm = mkMyTicketsForm (MyTicketsFormState (Data.Vector.fromList myTicketsInfo) Nothing)
+          return (RaffleizeUI atlasConfig validatorsConfig skey (Just addr) (Just val) logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
 
 ------------------------------------------------------------------------------------------------
 
@@ -355,6 +412,9 @@ handleEvent s e =
       EvKey KEsc [] -> continue s {message = "", currentScreen = MainScreen}
       EvKey key _modifiers ->
         case currentScreen s of
+          MyTicketsScreen -> do
+            mtForm <- handleFormEvent e (myTicketsForm s)
+            continue s {myTicketsForm = mtForm}
           BuyTicketScreen ->
             let btForm = buyTicketForm s
                 btFormState = formState btForm
@@ -490,7 +550,6 @@ handleEvent s e =
                 liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
                 continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
               'v' -> continue s {currentScreen = ActiveRafflesScreen}
-              'r' -> continue s {currentScreen = MyRafflesScreen}
               _ ->
                 if isJust (walletSkey s)
                   then do
@@ -507,6 +566,10 @@ handleEvent s e =
                         liftIO deployValidators
                         initialState <- liftIO buildInitialState
                         continue initialState {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
+                      'r' -> do
+                        continue s {currentScreen = MyRafflesScreen}
+                      't' -> do
+                        continue s {currentScreen = MyTicketsScreen}
                       _ -> continue s
                   else continue s
             _ -> continue s
@@ -535,6 +598,7 @@ drawUI s =
         , if currentScreen s == BuyTicketScreen then buyTicketScreen s else emptyWidget
         , if currentScreen s == ActiveRafflesScreen then drawActiveRafflesScreen s else emptyWidget
         , if currentScreen s == MyRafflesScreen then drawMyRafflesScreen s else emptyWidget
+        , if currentScreen s == MyTicketsScreen then drawMyTicketsScreen s else emptyWidget
         , mainScreen s
         ]
 
@@ -730,6 +794,38 @@ drawActiveRafflesScreen s =
                   , hBorder
                   , hCenter $ drawRaffleActionsWidget currentActions
                   ]
+
+------------------------------------------------------------------------------------------------
+
+-- **  My Raffles Screen
+
+------------------------------------------------------------------------------------------------
+
+drawMyTicketsScreen :: RaffleizeUI -> Widget NameResources
+drawMyTicketsScreen s =
+  let mtForm = myTicketsForm s
+      mtFormState = formState mtForm
+      currentActions = tiAvailableActions <$> (mtFormState ^. selectedTicket)
+   in center $
+        borderWithLabel (txt " MY TICKETS ") $
+          vBox $
+            padAll 1
+              <$> [ center $ renderForm mtForm
+                  , hBorder
+                  , hCenter $ drawMyRaffleActionsWidget currentActions
+                  ]
+
+drawMyTicketsActionsWidget :: Maybe [RaffleizeActionLabel] -> Widget NameResources
+drawMyTicketsActionsWidget mActions =
+  withAttr "action" $
+    borderWithLabel (txt "AVAILABLE ACTIONS") $
+      vBox $
+        maybe [] (drawMyRaffleActionLabel <$>) mActions
+          ++ [txt "[ESC]   - Close          "]
+
+drawMyTicketActionLabel :: RaffleizeActionLabel -> Widget NameResources
+drawMyTicketActionLabel ("TicketOwner", what) = txt (Data.Text.pack what)
+drawMyTicketActionLabel _ = emptyWidget
 
 ------------------------------------------------------------------------------------------------
 

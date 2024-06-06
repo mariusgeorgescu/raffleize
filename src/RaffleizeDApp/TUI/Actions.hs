@@ -13,6 +13,7 @@ import RaffleizeDApp.TxBuilding.Context
 
 import Data.Text qualified
 import PlutusLedgerApi.V1.Value (AssetClass)
+import RaffleizeDApp.CustomTypes.TicketTypes (TicketInfo)
 import RaffleizeDApp.TxBuilding.Interactions (RaffleizeTxBuildingContext)
 import RaffleizeDApp.TxBuilding.Transactions
 
@@ -84,3 +85,9 @@ getMyRaffles addr = do
   let msg = "Getting my raffles"
   liftIO $ print msg
   runContextWithCfgProviders (fromString msg) (queryMyRaffles addr)
+
+getMyTickets :: GYAddress -> IO [TicketInfo]
+getMyTickets addr = do
+  let msg = "Getting my tickets"
+  liftIO $ print msg
+  runContextWithCfgProviders (fromString msg) (queryMyTickets addr)

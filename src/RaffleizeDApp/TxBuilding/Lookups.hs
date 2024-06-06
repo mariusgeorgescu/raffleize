@@ -30,33 +30,37 @@ getUTxOWithStateTokenAtAddresses refAC addresses = do
 {- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at a given validator addres.
 If no UTxO is found the function fails.
 -}
-getUTxOWithStateToken :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> GYValidator 'PlutusV2 -> m GYUTxO
-getUTxOWithStateToken refAC gyValidator = do
-  gyValidatorAddressGY <- scriptAddress gyValidator
-  getUTxOWithStateTokenAtAddresses refAC [gyValidatorAddressGY]
+getUTxOWithStateToken :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> GYAddress -> m GYUTxO
+getUTxOWithStateToken refAC addr = do
+  utxo <- lookupUTxOWithStateToken refAC addr
+  maybe (throwError (GYQueryUTxOException (GYNoUtxosAtAddress [addr]))) return utxo
 
 getRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (RaffleStateData, Value)
 getRaffleStateDataAndValue raffleId =
   do
-    utxo <- getUTxOWithStateToken raffleId raffleizeValidatorGY
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
     maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdAndValueFromUTxO utxo
 
 getRaffleStateValueAndImage :: GYTxQueryMonad m => AssetClass -> m (RaffleStateData, Value, String)
 getRaffleStateValueAndImage raffleId =
   do
-    utxo <- getUTxOWithStateToken raffleId raffleizeValidatorGY
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
     maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdValueAndImageFromUTxO utxo
 
 getTicketStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (TicketStateData, Value)
 getTicketStateDataAndValue ticketId =
   do
-    utxo <- getUTxOWithStateToken ticketId ticketValidatorGY
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
     maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdAndValueFromUTxO utxo
 
 getTicketStateDataAndValueAndImage :: GYTxQueryMonad m => AssetClass -> m (TicketStateData, Value, String)
 getTicketStateDataAndValueAndImage ticketId =
   do
-    utxo <- getUTxOWithStateToken ticketId ticketValidatorGY
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
     maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdValueAndImageFromUTxO utxo
 
 ------------------------------------------------------------------------------------------------
@@ -77,33 +81,41 @@ lookupUTxOWithStateTokenAtAddresses refAC addresses = do
     [x] -> return $ Just x
     _ -> throwError (GYApplicationException TooManyUTxOs)
 
-lookupUTxOWithStateToken :: (GYTxQueryMonad m) => AssetClass -> GYValidator 'PlutusV2 -> m (Maybe GYUTxO)
-lookupUTxOWithStateToken refAC gyValidator = do
-  gyValidatorAddressGY <- scriptAddress gyValidator
-  lookupUTxOWithStateTokenAtAddresses refAC [gyValidatorAddressGY]
+lookupUTxOWithStateToken :: (GYTxQueryMonad m) => AssetClass -> GYAddress -> m (Maybe GYUTxO)
+lookupUTxOWithStateToken refAC addr = do
+  gyRefAC <- assetClassFromPlutus' refAC
+  utxos <- utxosToList <$> utxosAtAddress addr (Just gyRefAC)
+  case utxos of
+    [] -> return Nothing
+    [x] -> return $ Just x
+    _ -> throwError (GYApplicationException TooManyUTxOs)
 
 lookupRaffleStateDataAndValue :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (RaffleStateData, Value))
 lookupRaffleStateDataAndValue raffleId =
   do
-    utxo <- lookupUTxOWithStateToken raffleId raffleizeValidatorGY
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- lookupUTxOWithStateToken raffleId raffleValidatorAddr
     return $ utxo >>= rsdAndValueFromUTxO
 
 lookupRaffleStateValueAndImage :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (RaffleStateData, Value, String))
 lookupRaffleStateValueAndImage raffleId =
   do
-    utxo <- lookupUTxOWithStateToken raffleId raffleizeValidatorGY
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- lookupUTxOWithStateToken raffleId raffleValidatorAddr
     return $ utxo >>= rsdValueAndImageFromUTxO
 
 lookupTicketStateDataAndValue :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (TicketStateData, Value))
 lookupTicketStateDataAndValue ticketId =
   do
-    utxo <- lookupUTxOWithStateToken ticketId ticketValidatorGY
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- lookupUTxOWithStateToken ticketId ticketValidatorAddr
     return $ utxo >>= tsdAndValueFromUTxO
 
 lookupTickeStateValueAndImage :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (TicketStateData, Value, String))
 lookupTickeStateValueAndImage ticketId =
   do
-    utxo <- lookupUTxOWithStateToken ticketId ticketValidatorGY
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- lookupUTxOWithStateToken ticketId ticketValidatorAddr
     return $ utxo >>= tsdValueAndImageFromUTxO
 
 lookupRaffleInfoRefAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe RaffleInfo)
