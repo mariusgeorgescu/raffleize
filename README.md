@@ -791,12 +791,27 @@ This project uses the Nix package manager to build
 ```
 direnv allow
 
+cabal update
+
 cabal build
 
 cabal test
 
 cabal run tui
 
-cabal run server
+```
 
+
+![Print screen from the terminal user interface](TUIimage.png)
+
+For running the server 
+```
+cabal run server
+```
+
+
+For running the purescript bridge generator
+
+```
+cabal run psgen
 ```
