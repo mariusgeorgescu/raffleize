@@ -25,6 +25,7 @@ import Control.Monad.IO.Class
 import Data.List qualified
 import Data.Text qualified
 
+import Data.Aeson (ToJSON (toJSON))
 import Data.Time
 import Data.Time.Format.ISO8601
 import Data.Vector qualified
@@ -45,13 +46,19 @@ import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
-import Data.Aeson (ToJSON(toJSON))
 
 assetClassItemWidget :: CurrencySymbol -> TokenName -> Widget n
 assetClassItemWidget cs tn = str (show cs) <=> hBorder <=> str (toString tn)
 
 valueItemWidget :: Bool -> Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
-valueItemWidget selectable hasFocus (cs, tn, i) = (if hasFocus && selectable then withAttr "selected" else id) $ vLimit 5 $ hLimit 150 (border (assetClassItemWidget cs tn <+> vBorder <+> center (str (show i))))
+valueItemWidget selectable hasFocus (cs, tn, i) =
+  (if hasFocus && selectable then withAttr "selected" else id) $
+    vLimit 5 $ hLimit 130 $
+      border
+          ( assetClassItemWidget cs tn
+              <+> vBorder
+              <+> center (str (show i))
+          )
 
 ------------------------------------------------------------------------------------------------
 
@@ -162,7 +169,7 @@ drawValueWidget val =
     valueItemWidget False False <$> flattenValue val
 
 drawRaffleLockedValue :: Value -> Widget NameResources
-drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 60 $ drawValueWidget riValue
+drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 70 $ drawValueWidget riValue
 
 drawRaffeStats :: RaffleStateData -> Widget NameResources
 drawRaffeStats RaffleStateData {..} =
@@ -187,7 +194,7 @@ drawRaffleConfig RaffleConfig {..} =
         , [txt "Reveal Deadline: ", drawPOSIX rRevealDDL]
         , [txt "Ticket Price | ₳ |: ", txt (showText $ lovelaceOf rTicketPrice)]
         , [txt "Min. Tickets: ", txt (showText rMinTickets)]
-        , [txt "Raffle Stake: ", drawValueWidget rStake]
+        , [txt "Raffle Stake: ", vLimit 30 $ hLimit 70 $ drawValueWidget rStake]
         ]
 
 drawRaffleInfo :: RaffleInfo -> Widget NameResources
@@ -264,26 +271,28 @@ makeLenses ''MyTicketsFormState
 
 drawTicketState :: TicketStateData -> TicketStateLabel -> Widget NameResources
 drawTicketState TicketStateData {..} state =
-  renderTable $
-    table
-      [ [txt "Ticket State: ", txt (showText state)]
-      , [txt "Secret Hash: ", txt ( showText $ toJSON tSecretHash)]
-      , [txt "Revealed Secret: ", txt (showText tSecret)]
-      , [txt "Raffle ID (TN): ", txt (showText (snd . unAssetClass $ tRaffle))]
-      ]
+  vLimit 20 $
+    hLimit 120 $
+      renderTable $
+        table
+          [ [txt "Ticket Number: ", txt (showText tNumber)]
+          , [txt "Ticket State: ", txt (showText state)]
+          , [txt "Secret Hash: ", txt (showText $ toJSON tSecretHash)]
+          , [txt "Revealed Secret: ", txt (showText tSecret)]
+          ]
 
 drawTicketLockedValue :: Value -> Widget NameResources
-drawTicketLockedValue tiValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 130 $ drawValueWidget tiValue
+drawTicketLockedValue tiValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ drawValueWidget tiValue
 
 drawTicketInfo :: TicketInfo -> Widget NameResources
 drawTicketInfo TicketInfo {..} =
   joinBorders
     <$> borderWithLabel
-      (txt (" Ticket no. [" <> showText (tNumber tiTsd) <> "] "))
+      (txt (showText (tRaffle tiTsd)))
     $ hBox
       ( joinBorders
-          <$> [ drawTicketState tiTsd tiStateLabel
-              , drawTicketLockedValue tiValue
+          <$> [ drawTicketLockedValue tiValue
+              , drawTicketState tiTsd tiStateLabel
               ]
       )
 
