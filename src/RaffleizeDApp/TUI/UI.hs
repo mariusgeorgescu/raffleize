@@ -29,6 +29,7 @@ import Data.Aeson (ToJSON (toJSON))
 import Data.Time
 import Data.Time.Format.ISO8601
 import Data.Vector qualified
+import GHC.Real (Integral (div))
 import GeniusYield.GYConfig
 import GeniusYield.Types
 import Graphics.Vty
@@ -53,8 +54,9 @@ assetClassItemWidget cs tn = str (show cs) <=> hBorder <=> str (toString tn)
 valueItemWidget :: Bool -> Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
 valueItemWidget selectable hasFocus (cs, tn, i) =
   (if hasFocus && selectable then withAttr "selected" else id) $
-    vLimit 5 $ hLimit 130 $
-      border
+    vLimit 5 $
+      hLimit 130 $
+        border
           ( assetClassItemWidget cs tn
               <+> vBorder
               <+> center (str (show i))
@@ -82,6 +84,7 @@ data NameResources
   | MintAmountField
   | SecretField
   | SendTicketAddressField
+  | SendRaffleAddressField
   | Other
   deriving (Eq, Ord, Show, Generic)
 
@@ -120,6 +123,7 @@ data CreateRaffleFormState = CreateRaffleFormState
   , _availableAssets :: Data.Vector.Vector (CurrencySymbol, TokenName, Integer)
   , _selectedAsset :: Maybe (CurrencySymbol, TokenName, Integer)
   , _amount :: Int
+  , _raffleRecipient :: Text
   }
   deriving (Show)
 
@@ -134,6 +138,7 @@ mkCreateRaffleForm =
     , (txt "Min. no. of tickets: " <+>) @@= editShowableField minNoTickets MinNoTokensField
     , (txt "Select Asset" <+>) @@= listField _availableAssets selectedAsset (valueItemWidget True) 5 StakeValueListField
     , (txt "Amount: " <+>) @@= editShowableField amount StakeAmountField
+    , (txt "Recipient address: " <=>) @@= editShowableFieldWithValidate raffleRecipient SendRaffleAddressField (liftA2 (||) (isJust . addressFromTextMaybe) Data.Text.null)
     ]
 
 raffleFormToConfig :: CreateRaffleFormState -> Maybe RaffleConfig
@@ -385,7 +390,7 @@ buildInitialState = do
         Nothing -> do
           let myRafflesForm = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
           let myTicketsForm = mkMyTicketsForm (MyTicketsFormState mempty Nothing)
-          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0)
+          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0 mempty)
           return (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
         Just skey' -> do
           (addr, val) <- liftIO $ getAddressAndValue skey'
@@ -399,7 +404,7 @@ buildInitialState = do
           let ird = addUTCTime 864000 icd
           let commitSuggestion = Data.Text.pack . iso8601Show $ icd
           let revealSuggestion = Data.Text.pack . iso8601Show $ ird
-          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0)
+          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0 mempty)
           let myRafflesForm = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
           let myTicketsForm = mkMyTicketsForm (MyTicketsFormState (Data.Vector.fromList myTicketsInfo) Nothing)
           return (RaffleizeUI atlasConfig validatorsConfig skey (Just addr) (Just val) logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
@@ -493,8 +498,8 @@ handleEvent s e =
                     let fieldValidations =
                           [ setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState2 ^. commitDdl))) CommitDdlField
                           , setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState2 ^. revealDdl))) RevealDdlField
-                          , setFieldValid (crFormState2 ^. ticketPrice > 0) TicketPriceField
-                          , setFieldValid (crFormState2 ^. minNoTickets > 0) MinNoTokensField
+                          , setFieldValid (crFormState2 ^. ticketPrice > (fromIntegral (rMinTicketPrice mockRaffleParam) `div` 1000000)) TicketPriceField
+                          , setFieldValid (liftA2 (&&) (> 0) (< fromIntegral (rMaxNoOfTickets mockRaffleParam)) $ crFormState2 ^. minNoTickets) MinNoTokensField
                           , setFieldValid (crFormState2 ^. amount <= selectedElementAmount) StakeAmountField
                           ]
                     let validated_form = foldr' ($) crForm2 fieldValidations
@@ -829,8 +834,14 @@ drawMyTicketsActionsWidget mActions =
           ++ [txt "[ESC]   - Close          "]
 
 drawMyTicketActionLabel :: RaffleizeActionLabel -> Widget NameResources
-drawMyTicketActionLabel ("TicketOwner", what) = txt (Data.Text.pack what)
-drawMyTicketActionLabel _ = emptyWidget
+drawMyTicketActionLabel label = case label of
+  ("TicketOwner", "RefundTicket") -> txt "[R]     - Get full refund"
+  ("TicketOwner", "RevealTicketSecret") -> txt "[S]     - Reveal the ticket secret"
+  ("TicketOwner", "CollectStake") -> txt "[W]     - Redeem the winning ticket"
+  ("TicketOwner", "RefundCollateralLosing") -> txt "[L]     - Get refund of the collateral on losing ticket"
+  ("TicketOwner", "RefundTicketExtra") -> txt "[E]     - Get ticket refund and extra"
+  ("RaffleOwner", "GetCollateraOfExpiredTicket") -> emptyWidget
+  _ -> emptyWidget
 
 ------------------------------------------------------------------------------------------------
 
@@ -927,9 +938,10 @@ invalidFieldText t = case t of
   MintAmountField -> "The minting amount must be a natural number!"
   CommitDdlField -> "Commit deadline must be yyyy-mm-ddThh:mm:ss[.ss]Z (eg. 1970-01-01T00:00:00Z"
   RevealDdlField -> "Reveal deadline must be yyyy-mm-ddThh:mm:ss[.ss]Z (eg. 1970-01-01T00:00:00Z"
-  MinNoTokensField -> "The minimum number of tokens must be a natural number!"
+  MinNoTokensField -> "The minimum number of tokens must be a natural number, lower than " <> showText (rMaxNoOfTickets mockRaffleParam) <> " !"
   StakeAmountField -> "The amount field must be lower or equal to the available amount of the selected asset"
-  TicketPriceField -> "The ticket price must be a natural number!"
+  TicketPriceField -> "The ticket price must be a natural number, lower than " <> showText (rMinTicketPrice mockRaffleParam) <> " !"
+  SendRaffleAddressField -> "Enter a valid address or leave empty to receive the raffle NFT to the current address"
   SendTicketAddressField -> "Enter a valid address or leave empty to receive the ticket to the current address"
   _ -> ""
 
