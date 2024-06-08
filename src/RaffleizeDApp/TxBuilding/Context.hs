@@ -9,10 +9,11 @@ import GeniusYield.TxBuilder
 import GeniusYield.Types
 
 import RaffleizeDApp.Constants
+
 import System.Environment
 
 instance ToJSON GYTxOutRefCbor where
-  toJSON  = toJSON . getTxOutRefHex 
+  toJSON = toJSON . getTxOutRefHex
 
 data UserAddresses = UserAddresses
   { usedAddresses :: [GYAddress]
@@ -24,8 +25,6 @@ data UserAddresses = UserAddresses
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
-
-
 -- | Our Context.
 data ProviderCtx = ProviderCtx
   { ctxCoreCfg :: !GYCoreConfig
@@ -33,7 +32,7 @@ data ProviderCtx = ProviderCtx
   }
 
 -- | To run for simple queries, the one which don't requiring building for transaction skeleton.
-runQuery :: GYTxQueryMonadNode a -> ReaderT ProviderCtx IO a
+runQuery :: (MonadIO m, MonadReader ProviderCtx m) => GYTxQueryMonadNode a -> m a
 runQuery q = do
   ctx <- ask
   let nid = cfgNetworkId $ ctxCoreCfg ctx
@@ -42,10 +41,15 @@ runQuery q = do
 
 -- | Wraps our skeleton under `Identity` and calls `runTxF`.
 runTxI ::
+  (MonadReader ProviderCtx m, MonadIO m) =>
   UserAddresses ->
   GYTxMonadNode (GYTxSkeleton v) ->
-  ReaderT ProviderCtx IO GYTxBody
-runTxI = coerce (runTxF @Identity)
+  m GYTxBody
+runTxI a b =
+  let x = runIdentity <$> (runTxF @Identity) a (Identity <$> b)
+   in do
+        provders <- ask
+        liftIO $ runReaderT x provders
 
 -- | Tries to build for given skeletons wrapped under traversable structure.
 runTxF ::

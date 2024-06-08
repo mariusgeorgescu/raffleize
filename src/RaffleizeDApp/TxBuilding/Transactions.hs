@@ -1,27 +1,22 @@
 module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
-
+import Data.Maybe (catMaybes)
 import GeniusYield.Api.TestTokens (mintTestTokens)
 import GeniusYield.Examples.Limbo (addRefScript')
 import GeniusYield.GYConfig
-import GeniusYield.Types
-import GeniusYield.Types.Key.Class
-
-import Data.Maybe (catMaybes)
 import GeniusYield.Imports (IsString (..))
 import GeniusYield.TxBuilder
+import GeniusYield.Types
+import GeniusYield.Types.Key.Class
 import PlutusLedgerApi.V1 qualified
 import PlutusLedgerApi.V1.Value (AssetClass)
-import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.CustomTypes.TicketTypes (TicketInfo)
 import RaffleizeDApp.Tests.UnitTests (greenColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
-
-import PlutusTx.Builtins (blake2b_256)
-import RaffleizeDApp.CustomTypes.TicketTypes (TicketInfo)
-import RaffleizeDApp.TxBuilding.Lookups (lookupRaffleInfosByACs, lookupTicketInfosByACs)
+import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 
@@ -31,7 +26,7 @@ import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
 
-queryGetAddressFromSkey :: GYPaymentSigningKey -> ReaderT ProviderCtx IO GYAddress
+queryGetAddressFromSkey :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> m GYAddress
 queryGetAddressFromSkey skey = do
   nid <- asks (cfgNetworkId . ctxCoreCfg)
   runQuery $ do
@@ -40,24 +35,24 @@ queryGetAddressFromSkey skey = do
         address = addressFromPubKeyHash nid pub_key_hash
     return address
 
-queryGetAddressFromSkeyFile :: FilePath -> ReaderT ProviderCtx IO ()
+queryGetAddressFromSkeyFile :: (MonadIO m, MonadReader ProviderCtx m) => FilePath -> m ()
 queryGetAddressFromSkeyFile skey_file = do
   skey <- liftIO $ readPaymentSigningKey skey_file
   addr <- queryGetAddressFromSkey skey
   liftIO $ printf "Address: %s" (show addr)
 
-queryGetUTxOs :: GYAddress -> ReaderT ProviderCtx IO GYUTxOs
+queryGetUTxOs :: (MonadIO m, MonadReader ProviderCtx m) => GYAddress -> m GYUTxOs
 queryGetUTxOs addr = do
   providers <- asks ctxProviders
   liftIO $ gyQueryUtxosAtAddress providers addr Nothing
 
-queryRaffleizeValidatorUTxOs :: ReaderT ProviderCtx IO GYUTxOs
+queryRaffleizeValidatorUTxOs :: (MonadIO m, MonadReader ProviderCtx m) => m GYUTxOs
 queryRaffleizeValidatorUTxOs = do
   gyValidatorAddressGY <- runQuery $ scriptAddress raffleizeValidatorGY
   queryGetUTxOs gyValidatorAddressGY
 
 -- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
-queryRaffles :: ReaderT ProviderCtx IO [(RaffleStateData, PlutusLedgerApi.V1.Value)]
+queryRaffles :: (MonadIO m, MonadReader ProviderCtx m) => m [(RaffleStateData, PlutusLedgerApi.V1.Value)]
 queryRaffles = do
   allUTxOs <- queryRaffleizeValidatorUTxOs
   let validUTxOs = filterUTxOs hasValidRefToken allUTxOs
@@ -65,34 +60,33 @@ queryRaffles = do
   return raffles
 
 -- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
-queryRafflesInfos :: ReaderT ProviderCtx IO [RaffleInfo]
+queryRafflesInfos :: (MonadIO m, MonadReader ProviderCtx m) => m [RaffleInfo]
 queryRafflesInfos = do
   allUTxOs <- queryRaffleizeValidatorUTxOs
   let validUTxOs = filterUTxOs hasValidRefToken allUTxOs
   runQuery $ catMaybes <$> mapM lookupRaffleInfoAtUTxO (utxosToList validUTxOs)
 
 -- | ---
-queryRafflesInfosByRefAC :: [AssetClass] -> ReaderT ProviderCtx IO [RaffleInfo]
+queryRafflesInfosByRefAC :: (MonadIO m, MonadReader ProviderCtx m) => [AssetClass] -> m [RaffleInfo]
 queryRafflesInfosByRefAC raffleRefACs = do
   runQuery $ lookupRaffleInfosByACs raffleRefACs
 
-queryMyRaffles :: GYAddress -> ReaderT ProviderCtx IO [RaffleInfo]
+queryMyRaffles :: (MonadIO m, MonadReader ProviderCtx m) => GYAddress -> m [RaffleInfo]
 queryMyRaffles addr = do
   gyVal <- runQuery $ queryBalance addr
   let pVal = valueToPlutus gyVal
   let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue pVal
   queryRafflesInfosByRefAC raffleizeUserTokens
 
-
 -----------------
 -----------------
 -----------------
 
-queryTicketInfosByUserAC :: [AssetClass] -> ReaderT ProviderCtx IO [TicketInfo]
+queryTicketInfosByUserAC :: (MonadIO m, MonadReader ProviderCtx m) => [AssetClass] -> m [TicketInfo]
 queryTicketInfosByUserAC userACs = do
   runQuery $ lookupTicketInfosByACs userACs
 
-queryMyTickets :: GYAddress -> ReaderT ProviderCtx IO [TicketInfo]
+queryMyTickets :: (MonadIO m, MonadReader ProviderCtx m) => GYAddress -> m [TicketInfo]
 queryMyTickets addr = do
   gyVal <- runQuery $ queryBalance addr
   let pVal = valueToPlutus gyVal
@@ -101,69 +95,54 @@ queryMyTickets addr = do
 
 -----------------
 -----------------
+
+-- | This function receives a 'RaffleizeInteraction' and a 'RaffleizeTxBuildingContext' and builds the coresponding transaction.
+buildRaffleizeTxBody :: (MonadIO m, MonadReader ProviderCtx m) => RaffleizeInteraction -> RaffleizeTxBuildingContext -> m GYTxBody
+buildRaffleizeTxBody raffleizeInteraction txb = do
+  liftIO $ printf (greenColorString "Building rafllize transaction body...")
+  runReader (interactionToTxBody raffleizeInteraction) txb
+
+-----------------
+-----------------
 -----------------
 -----------------
 -----------------
 
-submitTxBody :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m GYTxId
-submitTxBody skey m = do
-  txBody <- m
+submitTxAndWaitForConfirmation :: (MonadIO m, MonadReader ProviderCtx m) => GYTx -> m GYTxOutRef
+submitTxAndWaitForConfirmation gyTx = do
   ctxProviders <- asks ctxProviders
-  liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
-
-submitTxBodyAndWaitForConfirmation :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> m GYTxBody -> m GYTxOutRef
-submitTxBodyAndWaitForConfirmation skey m = do
-  gyTxId <- submitTxBody skey m
-  liftIO $ printf (greenColorString "Built, signed and submitted transaction: %s\n Waiting for confirmation ...") gyTxId
+  gyTxId <- liftIO $ gySubmitTx ctxProviders gyTx
+  liftIO $ printf (greenColorString "Submitted transaction: %s\n Waiting for confirmation ...") gyTxId
   let txId = txIdToApi gyTxId
-  ctxProviders <- asks ctxProviders
   liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 30 10000000 1) gyTxId
   let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
   return txOutRef
 
+submitTxBodyAndWaitForConfirmation :: (ToShelleyWitnessSigningKey a, MonadIO m, MonadReader ProviderCtx m) => a -> GYTxBody -> m GYTxOutRef
+submitTxBodyAndWaitForConfirmation skey txBody = do
+  ctxProviders <- asks ctxProviders
+  gyTxId <- liftIO $ gySubmitTx ctxProviders $ signGYTxBody txBody [skey]
+  liftIO $ printf (greenColorString "Built, signed and submitted transaction: %s\n Waiting for confirmation ...") gyTxId
+  let txId = txIdToApi gyTxId
+  liftIO $ gyAwaitTxConfirmed ctxProviders (GYAwaitTxParameters 30 10000000 1) gyTxId
+  let txOutRef = txOutRefFromApiTxIdIx txId (wordToApiIx 0)
+  return txOutRef
+
+------------------------------------------------------------------------------------------------
+
+-- *  Mint Test Tokens Transactions
+
+------------------------------------------------------------------------------------------------
+
 -- | Build a transaction for minting test tokens
-buildMintTestTokensTx :: GYPaymentSigningKey -> String -> Integer -> ReaderT ProviderCtx IO GYTxBody
+buildMintTestTokensTx :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> String -> Integer -> m GYTxBody
 buildMintTestTokensTx skey tn amount = do
   my_addr <- queryGetAddressFromSkey skey
   runTxI (UserAddresses [my_addr] my_addr Nothing) $ snd <$> mintTestTokens (fromString tn) (fromInteger amount)
 
---------------------------
---------------------------
---------------------------
-
--- | Build a transaction for creating a new raffle.
-buildCreateRaffleTx :: GYPaymentSigningKey -> RaffleConfig -> RaffleizeTxBuildingContext -> ReaderT ProviderCtx IO GYTxBody
-buildCreateRaffleTx skey raffleConfiguration validatorsTxOutRefs = do
-  my_addr <- queryGetAddressFromSkey skey
-  let useraddrs = UserAddresses [my_addr] my_addr Nothing
-  let createRaffleInteraction = RaffleizeInteraction Nothing (User (CreateRaffle raffleConfiguration)) useraddrs Nothing
-  runReader (interactionToTxBody createRaffleInteraction) validatorsTxOutRefs
-
-createRaffleTransaction :: GYPaymentSigningKey -> RaffleConfig -> RaffleizeTxBuildingContext -> ReaderT ProviderCtx IO GYTxOutRef
-createRaffleTransaction skey raffle_config validatorsTxOutRefs = do
-  submitTxBodyAndWaitForConfirmation skey $ buildCreateRaffleTx skey raffle_config validatorsTxOutRefs
-
-mintTestTokensTransaction :: GYPaymentSigningKey -> String -> Integer -> ReaderT ProviderCtx IO GYTxOutRef
+mintTestTokensTransaction :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> String -> Integer -> m GYTxOutRef
 mintTestTokensTransaction skey tn amount = do
-  submitTxBodyAndWaitForConfirmation skey $ buildMintTestTokensTx skey tn amount
-
-------------------------------------------------------------------------------------------------
-
--- *  Buy Ticket Transaction
-
-------------------------------------------------------------------------------------------------
-
-buildBuyTicketTx :: GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> RaffleizeTxBuildingContext -> ReaderT ProviderCtx IO GYTxBody
-buildBuyTicketTx skey secretString raffleId mRecipient validatorsTxOutRefs = do
-  my_addr <- queryGetAddressFromSkey skey
-  let useraddrs = UserAddresses [my_addr] my_addr Nothing
-  let secretHash = blake2b_256 $ fromString @BuiltinByteString secretString
-  let buyTicketInteraction = RaffleizeInteraction (Just raffleId) (User (BuyTicket secretHash)) useraddrs mRecipient
-  runReader (interactionToTxBody buyTicketInteraction) validatorsTxOutRefs
-
-buyTicketTransaction :: GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> RaffleizeTxBuildingContext -> ReaderT ProviderCtx IO GYTxOutRef
-buyTicketTransaction skey secretString raffleId mRecipient validatorsTxOutRefs = do
-  submitTxBodyAndWaitForConfirmation skey $ buildBuyTicketTx skey secretString raffleId mRecipient validatorsTxOutRefs
+  submitTxBodyAndWaitForConfirmation skey =<< buildMintTestTokensTx skey tn amount
 
 ------------------------------------------------------------------------------------------------
 
@@ -171,22 +150,14 @@ buyTicketTransaction skey secretString raffleId mRecipient validatorsTxOutRefs =
 
 ------------------------------------------------------------------------------------------------
 
-deployReferenceScriptTransaction :: GYPaymentSigningKey -> GYScript 'PlutusV2 -> ReaderT ProviderCtx IO GYTxOutRef
+deployReferenceScriptTransaction :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> GYScript 'PlutusV2 -> m GYTxOutRef
 deployReferenceScriptTransaction skey script = do
-  submitTxBodyAndWaitForConfirmation skey $ do
+  submitTxBodyAndWaitForConfirmation skey =<< do
     my_addr <- queryGetAddressFromSkey skey
     runTxI (UserAddresses [my_addr] my_addr Nothing) $ addRefScript' script
 
--- liftIO $ print =<< gyQueryUtxoAtTxOutRef ctxProviders txOutRef
-
-deployRaffleizeValidators :: GYPaymentSigningKey -> ReaderT ProviderCtx IO RaffleizeTxBuildingContext
+deployRaffleizeValidators :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> m RaffleizeTxBuildingContext
 deployRaffleizeValidators skey = do
   raffleValidatorRef <- deployReferenceScriptTransaction skey (validatorToScript raffleizeValidatorGY)
   ticketValidatoRef <- deployReferenceScriptTransaction skey (validatorToScript ticketValidatorGY)
   return $ RaffleizeTxBuildingContext raffleValidatorRef ticketValidatoRef
-
------------------------
------------------------
------------------------
------------------------
------------------------

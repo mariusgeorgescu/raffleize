@@ -478,7 +478,8 @@ handleEvent s e =
                           then do
                             liftIO clearScreen
                             let raffle = fromJust mraffle
-                            txOutRef <- liftIO $ createRaffle (fromJust (walletSkey s)) raffle validatorsTxOutRefs
+                            let recpient = addressFromTextMaybe $ _raffleRecipient (formState crForm)
+                            txOutRef <- liftIO $ createRaffle (fromJust (walletSkey s)) raffle recpient validatorsTxOutRefs
                             let nid = (cfgNetworkId . fromJust . atlasConfig) s
                             initialState <- liftIO buildInitialState
                             continue initialState {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
