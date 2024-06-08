@@ -50,12 +50,16 @@ getAddressAndValue skey = do
   utxos <- getAddrUTxOs addr
   return (addr, getValueBalance utxos)
 
-mintTestTokens :: GYPaymentSigningKey -> String -> Integer -> IO Text
-mintTestTokens skey tn amount = do
-  let msg = "Minting test tokens"
+mintTestTokens :: GYPaymentSigningKey -> GYAddress -> String -> Integer -> IO Text
+mintTestTokens skey addr tn amount = do
+  let msg = "Minting test tokens: " <> tn <> " " <> show amount
   liftIO $ print msg
-  r <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTransaction skey tn amount
-  return $ showTxOutRef r
+
+  let userAddrs = UserAddresses [addr] addr Nothing
+  mintTxBody <- runContextWithCfgProviders (fromString msg) $ mintTestTokensTxBody userAddrs tn amount
+  let mintTxSigned = signGYTxBody mintTxBody [skey]
+  txOutRef <- runContextWithCfgProviders (fromString (show msg)) $ submitTxAndWaitForConfirmation mintTxSigned
+  return $ showTxOutRef txOutRef
 
 raffleizeTransaction :: GYPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeTxBuildingContext -> IO Text
 raffleizeTransaction skey raffleizeActon interactionContextNFT optionalRecipient validatorsTxOutRefs = do
@@ -95,3 +99,11 @@ getMyTickets addr = do
   let msg = "Getting my tickets"
   liftIO $ print msg
   runContextWithCfgProviders (fromString msg) (queryMyTickets addr)
+
+----------------
+
+data MyWallet = MyWallet
+  { myWalletSkey :: GYPaymentSigningKey
+  , myWalletAddr :: GYAddress
+  , myWalletBalance :: GYValue
+  }

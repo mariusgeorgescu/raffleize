@@ -134,21 +134,21 @@ submitTxBodyAndWaitForConfirmation skey txBody = do
 
 ------------------------------------------------------------------------------------------------
 
--- | Build a transaction for minting test tokens
-buildMintTestTokensTx :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> String -> Integer -> m GYTxBody
-buildMintTestTokensTx skey tn amount = do
-  my_addr <- queryGetAddressFromSkey skey
-  runTxI (UserAddresses [my_addr] my_addr Nothing) $ snd <$> mintTestTokens (fromString tn) (fromInteger amount)
+{- | This function  'UserAddresses', 'String' representing the token name and an 'Integer' representing the amount,
+| and returns the 'GYTxBody' of a transaction minting the test tokens.
+-}
+mintTestTokensTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> String -> Integer -> m GYTxBody
+mintTestTokensTxBody userAddresses tn amount = do
+  runTxI userAddresses $ snd <$> mintTestTokens (fromString tn) (fromInteger amount)
 
-mintTestTokensTransaction :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> String -> Integer -> m GYTxOutRef
-mintTestTokensTransaction skey tn amount = do
-  submitTxBodyAndWaitForConfirmation skey =<< buildMintTestTokensTx skey tn amount
-
-------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 -- *  Deploy Reference Scripts Transactions
 
 ------------------------------------------------------------------------------------------------
+
+deployReferenceScriptTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> GYScript 'PlutusV2 -> m GYTxBody
+deployReferenceScriptTxBody userAddresses script = runTxI userAddresses $ addRefScript' script
 
 deployReferenceScriptTransaction :: (MonadIO m, MonadReader ProviderCtx m) => GYPaymentSigningKey -> GYScript 'PlutusV2 -> m GYTxOutRef
 deployReferenceScriptTransaction skey script = do

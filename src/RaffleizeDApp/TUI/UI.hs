@@ -328,11 +328,9 @@ data Screen
 type RaffleizeEvent = ()
 
 data RaffleizeUI = RaffleizeUI
-  { atlasConfig :: Maybe GYCoreConfig
+  { atlasConfig :: GYCoreConfig
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
-  , walletSkey :: Maybe GYPaymentSigningKey
-  , connectedWalletAddr :: Maybe GYAddress
-  , walletBalance :: Maybe Value
+  , wallet :: Maybe MyWallet
   , logo :: String
   , message :: Text
   , mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources
@@ -371,43 +369,47 @@ tui = do
 -- *  Building the initial state
 
 ------------------------------------------------------------------------------------------------
+
+getMyWallet :: IO (Maybe MyWallet)
+getMyWallet = do
+  skey <- readPaymentKeyFile operationSkeyFilePath
+  addr <- traverse getWalletAddress skey
+  val <- fmap (foldMapUTxOs utxoValue) <$> traverse getAddrUTxOs addr
+  return (MyWallet <$> skey <*> addr <*> val)
+
 buildInitialState :: IO RaffleizeUI
 buildInitialState = do
   liftIO $ print ("BUILDING INITIAL STATE" :: String)
   logo <- readFile raffleizeLogoPath
-  atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
-  case atlasConfig of
-    Nothing -> error ("altas_config.json not defined" :: String)
-    Just _c -> do
-      validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-      skey <- readPaymentKeyFile operationSkeyFilePath
-      allRafflesInfo <- getActiveRaffles
-
-      let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
-      let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
-      let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
-      case skey of
-        Nothing -> do
-          let myRafflesForm = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
-          let myTicketsForm = mkMyTicketsForm (MyTicketsFormState mempty Nothing)
-          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0 mempty)
-          return (RaffleizeUI atlasConfig validatorsConfig skey Nothing Nothing logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
-        Just skey' -> do
-          (addr, val) <- liftIO $ getAddressAndValue skey'
-          -- let myRafflesIds = getMyRaffleIdsFromValue val
-          -- let myRafflesInfo = filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
-          myRafflesInfo <- getMyRaffles addr
-          myTicketsInfo <- getMyTickets addr
-          let flattenedVal = flattenValue val
-          now <- getCurrentTime
-          let icd = addUTCTime 864000 now -- + 10 days
-          let ird = addUTCTime 864000 icd
-          let commitSuggestion = Data.Text.pack . iso8601Show $ icd
-          let revealSuggestion = Data.Text.pack . iso8601Show $ ird
-          let createRaffleForm = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0 mempty)
-          let myRafflesForm = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
-          let myTicketsForm = mkMyTicketsForm (MyTicketsFormState (Data.Vector.fromList myTicketsInfo) Nothing)
-          return (RaffleizeUI atlasConfig validatorsConfig skey (Just addr) (Just val) logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
+  atlasConfig <- fromMaybe (error ("altas_config.json not defined" :: String)) <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
+  maybeValidatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
+  allRafflesInfo <- getActiveRaffles
+  let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
+  let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
+  let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
+  myWallet <- getMyWallet
+  (myRafflesForm, myTicketsForm, createRaffleForm) <- case myWallet of
+    Nothing -> do
+      let rf = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
+      let tf = mkMyTicketsForm (MyTicketsFormState mempty Nothing)
+      let cf = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0 mempty)
+      return (rf, tf, cf)
+    Just (MyWallet _skey addr val) -> do
+      -- let myRafflesIds = getMyRaffleIdsFromValue val
+      -- let myRafflesInfo = filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
+      myRafflesInfo <- getMyRaffles addr
+      myTicketsInfo <- getMyTickets addr
+      let flattenedVal = flattenValue (valueToPlutus val)
+      now <- getCurrentTime
+      let icd = addUTCTime 864000 now -- + 10 days
+      let ird = addUTCTime 864000 icd
+      let commitSuggestion = Data.Text.pack . iso8601Show $ icd
+      let revealSuggestion = Data.Text.pack . iso8601Show $ ird
+      let cf = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0 mempty)
+      let rf = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
+      let tf = mkMyTicketsForm (MyTicketsFormState (Data.Vector.fromList myTicketsInfo) Nothing)
+      return (rf, tf, cf)
+  return (RaffleizeUI atlasConfig maybeValidatorsConfig myWallet logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
 
 ------------------------------------------------------------------------------------------------
 
@@ -440,9 +442,10 @@ handleEvent s e =
                       do
                         if null invalid_fields
                           then do
+                            let MyWallet mySkey myAddr myVal = fromJust (wallet s)
                             liftIO clearScreen
-                            txOutRef <- liftIO $ buyTicket (fromJust (walletSkey s)) secretString contextNFT mRecipient validatorsTxOutRefs
-                            let nid = (cfgNetworkId . fromJust . atlasConfig) s
+                            txOutRef <- liftIO $ buyTicket mySkey secretString contextNFT mRecipient validatorsTxOutRefs
+                            let nid = (cfgNetworkId . atlasConfig) s
                             initialState <- liftIO buildInitialState
                             continue
                               initialState
@@ -477,10 +480,11 @@ handleEvent s e =
                         if null invalid_fields && isJust mraffle
                           then do
                             liftIO clearScreen
+                            let MyWallet mySkey myAddr myVal = fromJust (wallet s)
                             let raffle = fromJust mraffle
                             let recpient = addressFromTextMaybe $ _raffleRecipient (formState crForm)
-                            txOutRef <- liftIO $ createRaffle (fromJust (walletSkey s)) raffle recpient validatorsTxOutRefs
-                            let nid = (cfgNetworkId . fromJust . atlasConfig) s
+                            txOutRef <- liftIO $ createRaffle mySkey raffle recpient validatorsTxOutRefs
+                            let nid = (cfgNetworkId . atlasConfig) s
                             initialState <- liftIO buildInitialState
                             continue initialState {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
                           else continue s
@@ -517,13 +521,15 @@ handleEvent s e =
                       if null invalid_fields
                         then do
                           liftIO clearScreen
+                          let MyWallet mySkey myAddr myVal = fromJust (wallet s)
                           txOutRef <-
                             liftIO $
                               mintTestTokens
-                                (fromJust (walletSkey s))
+                                mySkey
+                                myAddr
                                 (Data.Text.unpack mtTokenNameField)
                                 (fromIntegral mtAmountField)
-                          let nid = (cfgNetworkId . fromJust . atlasConfig) s
+                          let nid = (cfgNetworkId . atlasConfig) s
                           continue
                             s
                               { message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> showLink nid "tx" txOutRef
@@ -555,14 +561,14 @@ handleEvent s e =
               'R' -> continue s {message = "Refresh Screen"}
               'g' -> do
                 liftIO $ generateNewAdminSkey operationSkeyFilePath
-                s' <- liftIO $ updateFromConfigFiles s
+                s' <- liftIO buildInitialState
                 continue s'
               'e' -> do
                 liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
                 continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
               'v' -> continue s {currentScreen = ActiveRafflesScreen}
               _ ->
-                if isJust (walletSkey s)
+                if isJust (wallet s)
                   then do
                     case c of
                       'm' -> continue s {currentScreen = MintTokenScreen}
@@ -586,13 +592,6 @@ handleEvent s e =
             _ -> continue s
       _ -> continue s
     _ -> continue s
-
-updateFromConfigFiles :: RaffleizeUI -> IO RaffleizeUI
-updateFromConfigFiles s = do
-  skey <- readPaymentKeyFile operationSkeyFilePath
-  atlasConfig <- decodeConfigFile @GYCoreConfig atlasCoreConfig
-  validatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  return $ s {walletSkey = skey, atlasConfig = atlasConfig, validatorsConfig = validatorsConfig}
 
 ------------------------------------------------------------------------------------------------
 
@@ -633,7 +632,7 @@ bodyWidget s =
     padLeftRight 1
       <$> [ summaryWidget s
           , hBorder
-          , assetsWidget (cfgNetworkId <$> atlasConfig s) (walletSkey s) (connectedWalletAddr s) (walletBalance s)
+          , assetsWidget (cfgNetworkId $ atlasConfig s) (wallet s)
           ]
 
 summaryWidget :: RaffleizeUI -> Widget NameResources
@@ -642,20 +641,20 @@ summaryWidget s =
     hBox
       [ availableActionsWidget s
       , providersWidget (atlasConfig s)
-      , validatorsWidget (cfgNetworkId <$> atlasConfig s) (validatorsConfig s)
-      , walletFlagWidget (walletSkey s)
+      , validatorsWidget (cfgNetworkId (atlasConfig s)) (validatorsConfig s)
+      , walletFlagWidget (wallet s)
       ]
 
 symbolWidget :: Bool -> Widget n
 symbolWidget v = if v then withAttr "good" $ txt "✔" else withAttr "warning" $ txt "X"
 
-validatorsWidget :: Maybe GYNetworkId -> Maybe RaffleizeTxBuildingContext -> Widget n
-validatorsWidget mnid mv =
+validatorsWidget :: GYNetworkId -> Maybe RaffleizeTxBuildingContext -> Widget n
+validatorsWidget nid mv =
   borderWithLabel (txt "VALIDATORS") $
     renderTable $
       table $
-        [txt "Deployed: ", symbolWidget (isJust mv)] : case (mnid, mv) of
-          (Just nid, Just (RaffleizeTxBuildingContext {..})) ->
+        [txt "Deployed: ", symbolWidget (isJust mv)] : case mv of
+          (Just (RaffleizeTxBuildingContext {..})) ->
             [ [txt "Raffle Validator", txOutRefWidget nid raffleValidatorRef]
             , [txt "Ticket Validator", txOutRefWidget nid ticketValidatorRef]
             ]
@@ -673,20 +672,15 @@ txOutRefWidget nid t =
   let txoutrefText = showTxOutRef t
    in hyperlink (showLink nid "tx" txoutrefText) $ withAttr "good" $ txt txoutrefText
 
-providersWidget :: Maybe GYCoreConfig -> Widget n
-providersWidget mp =
+providersWidget :: GYCoreConfig -> Widget n
+providersWidget cfg =
   borderWithLabel (txt "BLOCKCHAIN PROVIDER") $
     renderTable $
-      table $
-        [ txt "Loaded: "
-        , symbolWidget (isJust mp)
+      table
+        [ [txt "Loaded: ", symbolWidget True]
+        , [txt "Provider: ", printProvider cfg]
+        , [txt "Network: ", printNetwork cfg]
         ]
-          : case mp of
-            Nothing -> []
-            Just cfg ->
-              [ [txt "Provider: ", printProvider cfg]
-              , [txt "Network: ", printNetwork cfg]
-              ]
 
 printProvider :: GYCoreConfig -> Widget n
 printProvider cfg = withAttr "good" . txt $ case cfgCoreProvider cfg of
@@ -728,15 +722,16 @@ addressWidget nid addr =
   let addrText = addressToText addr
    in hyperlink (showLink nid "address" addrText) $ withAttr "good" $ txt addrText
 
-assetsWidget :: Maybe GYNetworkId -> Maybe a -> Maybe GYAddress -> Maybe Value -> Widget NameResources
-assetsWidget (Just nid) (Just _key) (Just addr) (Just val) =
-  borderWithLabel (txt "WALLET") $
-    hBox
-      [ assetsAdaWidget nid addr val
-      , vBorder
-      , assetsBalanceWidget val
-      ]
-assetsWidget _ _ _ _ = emptyWidget
+assetsWidget :: GYNetworkId -> Maybe MyWallet -> Widget NameResources
+assetsWidget nid (Just (MyWallet _skey addr gyVal)) =
+  let val = valueToPlutus gyVal
+   in borderWithLabel (txt "WALLET") $
+        hBox
+          [ assetsAdaWidget nid addr val
+          , vBorder
+          , assetsBalanceWidget val
+          ]
+assetsWidget _ _ = emptyWidget
 
 assetsAdaWidget :: GYNetworkId -> GYAddress -> Value -> Widget NameResources
 assetsAdaWidget nid addr val =
@@ -753,20 +748,17 @@ availableActionsWidget s =
       ( txt
           <$> filter
             (not . Data.Text.null)
-            ( ( if isNothing . walletSkey $ s
-                  then ["[G] - Generate new admin skey"]
+            ( ( if isNothing (wallet s)
+                  then ["[G] - Generate new wallet skey"]
                   else
-                    if isNothing . atlasConfig $ s
-                      then []
-                      else
-                        [ "[V] - View all active raffles"
-                        , "[R] - View my raffles"
-                        , "[T] - View my tickets"
-                        , "[C] - Create raffle" -- TODO : CHECK ADA BALANCE
-                        , "[M] - Mint some test tokens"
-                        , "[D] - Deploy Raffleize Validators"
-                        , "[L] - Get wallet balance"
-                        ]
+                    [ "[V] - View all active raffles"
+                    , "[R] - View my raffles"
+                    , "[T] - View my tickets"
+                    , "[C] - Create raffle" -- TODO : CHECK ADA BALANCE
+                    , "[M] - Mint some test tokens"
+                    , "[D] - Deploy Raffleize Validators"
+                    , "[L] - Get wallet balance"
+                    ]
               )
                 ++ [ "[E] - Export validators"
                    , "[Q] - Quit"
