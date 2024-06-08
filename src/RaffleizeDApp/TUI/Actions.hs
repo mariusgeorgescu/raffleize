@@ -74,7 +74,7 @@ createRaffle skey config mRecipient validatorsTxOutRefs = do
 
 buyTicket :: GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> RaffleizeTxBuildingContext -> IO Text
 buyTicket skey secretString raffleId mRecipient validatorsTxOutRefs = do
-  liftIO $ print $ "Buying ticket to raffle: " <> show raffleId <> " with secret: " <> show secretString
+  liftIO $ print $ "Buying ticket to raffle: " <> show raffleId <> " with secret: " <> secretString
   let secretHash = blake2b_256 $ fromString @BuiltinByteString secretString
   raffleizeTransaction skey (User (BuyTicket secretHash)) (Just raffleId) mRecipient validatorsTxOutRefs
 
