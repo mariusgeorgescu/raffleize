@@ -26,12 +26,6 @@ data RaffleizeInteraction = RaffleizeInteraction
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
-data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
-  { raffleValidatorRef :: GYTxOutRef
-  , ticketValidatorRef :: GYTxOutRef
-  }
-  deriving (Show, Generic, ToJSON, FromJSON)
-
 interactionToTxSkeleton ::
   (HasCallStack, GYTxMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
   RaffleizeInteraction ->
@@ -67,14 +61,3 @@ interactionToTxSkeleton
             CollectAmount -> collectAmountTX raffleValidatorRef receiveAddr contextNFT
             GetCollateraOfExpiredTicket -> getCollateralOfExpiredTicketTX ticketValidatorRef usedAddrs receiveAddr contextNFT
           Admin CloseRaffle -> undefined -- TODO
-
-interactionToTxBody :: (MonadReader RaffleizeTxBuildingContext r, MonadReader ProviderCtx m, MonadIO m) => RaffleizeInteraction -> r (m GYTxBody)
-interactionToTxBody interaction@RaffleizeInteraction {userAddresses} = do
-  skeleton <- interactionToTxSkeleton interaction
-  return $ runTxI userAddresses (fst <$> skeleton)
-
-interactionToUnsignedTx :: (MonadReader RaffleizeTxBuildingContext r, MonadReader ProviderCtx m, MonadIO m) => RaffleizeInteraction -> r (m GYTx)
-interactionToUnsignedTx = (fmap unsignedTx <$>) . interactionToTxBody
-
-interactionToHexEncodedCBOR :: (MonadReader RaffleizeTxBuildingContext r, MonadReader ProviderCtx m, MonadIO m) => RaffleizeInteraction -> r (m String)
-interactionToHexEncodedCBOR = (fmap txToHex <$>) . interactionToUnsignedTx

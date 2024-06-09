@@ -8,8 +8,6 @@ import GeniusYield.Transaction
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 
-import RaffleizeDApp.Constants
-
 import System.Environment
 
 instance ToJSON GYTxOutRefCbor where
@@ -32,35 +30,30 @@ data ProviderCtx = ProviderCtx
   }
 
 -- | To run for simple queries, the one which don't requiring building for transaction skeleton.
-runQuery :: (MonadIO m, MonadReader ProviderCtx m) => GYTxQueryMonadNode a -> m a
-runQuery q = do
-  ctx <- ask
+runQuery :: ProviderCtx -> GYTxQueryMonadNode a -> IO a
+runQuery ctx q = do
   let nid = cfgNetworkId $ ctxCoreCfg ctx
       providers = ctxProviders ctx
   liftIO $ runGYTxQueryMonadNode nid providers q
 
 -- | Wraps our skeleton under `Identity` and calls `runTxF`.
 runTxI ::
-  (MonadReader ProviderCtx m, MonadIO m) =>
+  ProviderCtx ->
   UserAddresses ->
   GYTxMonadNode (GYTxSkeleton v) ->
-  m GYTxBody
-runTxI a b =
-  let x = runIdentity <$> (runTxF @Identity) a (Identity <$> b)
-   in do
-        provders <- ask
-        liftIO $ runReaderT x provders
+  IO GYTxBody
+runTxI = coerce (runTxF @Identity)
 
 -- | Tries to build for given skeletons wrapped under traversable structure.
 runTxF ::
   Traversable t =>
+  ProviderCtx ->
   UserAddresses ->
   GYTxMonadNode (t (GYTxSkeleton v)) ->
-  ReaderT ProviderCtx IO (t GYTxBody)
-runTxF UserAddresses {usedAddresses, changeAddress, reservedCollateral} skeleton = do
-  ctx <- ask
-  let nid = cfgNetworkId $ ctxCoreCfg ctx
-      providers = ctxProviders ctx
+  IO (t GYTxBody)
+runTxF providerCtx UserAddresses {usedAddresses, changeAddress, reservedCollateral} skeleton = do
+  let nid = cfgNetworkId $ ctxCoreCfg providerCtx
+      providers = ctxProviders providerCtx
   liftIO $
     runGYTxMonadNodeF
       GYRandomImproveMultiAsset
@@ -92,13 +85,43 @@ parseArgs = do
 --   coreCfgPath <- parseArgs
 --   coreConfigIO coreCfgPath
 
--- | Getting path for our core configuration.
-readCoreConfiguration :: IO GYCoreConfig
-readCoreConfiguration = coreConfigIO atlasCoreConfig -- Parsing our core configuration.
+-- -- | Getting path for our core configuration.
+-- readCoreConfiguration :: IO GYCoreConfig
+-- readCoreConfiguration = coreConfigIO atlasCoreConfig -- Parsing our core configuration.
 
-runContextWithCfgProviders :: GYLogNamespace -> ReaderT ProviderCtx IO b -> IO b
-runContextWithCfgProviders s m = do
-  coreConfig <- readCoreConfiguration
-  withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
-    let ctx = ProviderCtx coreConfig providers
-    runReaderT m ctx
+-- runContextWithCfgProviders :: GYLogNamespace -> ReaderT ProviderCtx IO b -> IO b
+-- runContextWithCfgProviders s m = do
+--   coreConfig <- readCoreConfiguration
+--   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
+--     let ctx = ProviderCtx coreConfig providers
+--     runReaderT m ctx
+
+-- runContextWithProviders :: GYLogNamespace -> ReaderT ProviderCtx IO b -> IO b
+-- runContextWithProviders s m = do
+--   coreConfig <- readCoreConfiguration
+--   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
+--     let ctx = ProviderCtx coreConfig providers
+--     runReaderT m ctx
+
+data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
+  { raffleValidatorRef :: GYTxOutRef
+  , ticketValidatorRef :: GYTxOutRef
+  }
+  deriving (Show, Generic, ToJSON, FromJSON)
+
+data RaffleizeOffchainContext = RaffleizeOffchainContext
+  { raffleizeTxBuildingCtx :: RaffleizeTxBuildingContext
+  , providerCtx :: ProviderCtx
+  }
+
+-- runRaffleize :: (MonadIO m) => ReaderT RaffleizeTxBuildingContext (ReaderT ProviderCtx (GYTxMonadNode (GYTxSkeleton v)) a -> RaffleizeOffchainContext -> m b
+-- runRaffleize m RaffleizeOffchainContext {..} =
+--   let withTxBuildingContext = runReaderT m raffleizeTxBuildingCtx
+--    in runRreader withTxBuildingContext providerCtx
+
+-- runRaffleize :: (MonadIO m, MonadReader RaffleizeOffchainContext m) => m a -> IO b
+-- runRaffleize m = do
+--   RaffleizeOffchainContext{..} <- ask
+--   let withRaffleizeTxBuildingCtx = runReader m raffleizeTxBuildingCtx
+--   let withAddr =  runTxI usedAddresses
+--   liftIO $ runTxI withProvider usedAddresses

@@ -42,7 +42,8 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
-import RaffleizeDApp.TxBuilding.Interactions
+
+import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 import System.Console.ANSI (clearScreen)
@@ -328,9 +329,10 @@ data Screen
 type RaffleizeEvent = ()
 
 data RaffleizeUI = RaffleizeUI
-  { atlasConfig :: GYCoreConfig
+  { providersCtx :: ProviderCtx
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
-  , wallet :: Maybe MyWallet
+  , secretKey :: Maybe GYPaymentSigningKey
+  , balance :: Value
   , logo :: String
   , message :: Text
   , mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources
@@ -360,7 +362,12 @@ app =
 
 tui :: IO ()
 tui = do
-  initialState <- buildInitialState
+  putStrLn $ "parsing Config  at " <> show atlasCoreConfig <> "..."
+  -- coreCfg <- coreConfigIO atlasCoreConfig -- Parsing our core configuration
+  atlasConfig <- fromJust <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
+  putStrLn "Loading Providers ..."
+  initialState <- withCfgProviders atlasConfig "terminal user interface" $ \providers -> do
+    buildInitialState providers
   _endState <- defaultMain app initialState
   return ()
 
@@ -370,36 +377,31 @@ tui = do
 
 ------------------------------------------------------------------------------------------------
 
-getMyWallet :: IO (Maybe MyWallet)
-getMyWallet = do
-  skey <- readPaymentKeyFile operationSkeyFilePath
-  addr <- traverse getWalletAddress skey
-  val <- fmap (foldMapUTxOs utxoValue) <$> traverse getAddrUTxOs addr
-  return (MyWallet <$> skey <*> addr <*> val)
-
-buildInitialState :: IO RaffleizeUI
-buildInitialState = do
+buildInitialState :: GYProviders -> IO RaffleizeUI
+buildInitialState providers = do
   liftIO $ print ("BUILDING INITIAL STATE" :: String)
   logo <- readFile raffleizeLogoPath
   atlasConfig <- fromMaybe (error ("altas_config.json not defined" :: String)) <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
+  let pCtx = ProviderCtx atlasConfig providers
   maybeValidatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  allRafflesInfo <- getActiveRaffles
+  allRafflesInfo <- getActiveRaffles pCtx
   let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
   let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
   let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
-  myWallet <- getMyWallet
-  (myRafflesForm, myTicketsForm, createRaffleForm) <- case myWallet of
+  maybeSKey <- readPaymentKeyFile operationSkeyFilePath
+  (myRafflesForm, myTicketsForm, createRaffleForm, balance) <- case maybeSKey of
     Nothing -> do
       let rf = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
       let tf = mkMyTicketsForm (MyTicketsFormState mempty Nothing)
       let cf = mkCreateRaffleForm (CreateRaffleFormState mempty mempty 0 0 mempty Nothing 0 mempty)
-      return (rf, tf, cf)
-    Just (MyWallet _skey addr val) -> do
+      return (rf, tf, cf, mempty)
+    Just sKey -> do
       -- let myRafflesIds = getMyRaffleIdsFromValue val
       -- let myRafflesInfo = filter (\ri -> rRaffleID (riRsd ri) `elem` myRafflesIds) allRafflesInfo
-      myRafflesInfo <- getMyRaffles addr
-      myTicketsInfo <- getMyTickets addr
-      let flattenedVal = flattenValue (valueToPlutus val)
+      (addr, balance) <- getAddressAndValue pCtx sKey
+      myRafflesInfo <- getMyRaffles pCtx addr
+      myTicketsInfo <- getMyTickets pCtx addr
+      let flattenedVal = flattenValue balance
       now <- getCurrentTime
       let icd = addUTCTime 864000 now -- + 10 days
       let ird = addUTCTime 864000 icd
@@ -408,8 +410,8 @@ buildInitialState = do
       let cf = mkCreateRaffleForm (CreateRaffleFormState commitSuggestion revealSuggestion 5 1 (Data.Vector.fromList flattenedVal) (listToMaybe flattenedVal) 0 mempty)
       let rf = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
       let tf = mkMyTicketsForm (MyTicketsFormState (Data.Vector.fromList myTicketsInfo) Nothing)
-      return (rf, tf, cf)
-  return (RaffleizeUI atlasConfig maybeValidatorsConfig myWallet logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
+      return (rf, tf, cf, balance)
+  return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance logo mempty mintTokenForm createRaffleForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm MainScreen)
 
 ------------------------------------------------------------------------------------------------
 
@@ -442,11 +444,10 @@ handleEvent s e =
                       do
                         if null invalid_fields
                           then do
-                            let MyWallet mySkey myAddr myVal = fromJust (wallet s)
                             liftIO clearScreen
-                            txOutRef <- liftIO $ buyTicket mySkey secretString contextNFT mRecipient validatorsTxOutRefs
-                            let nid = (cfgNetworkId . atlasConfig) s
-                            initialState <- liftIO buildInitialState
+                            txOutRef <- liftIO $ buyTicket (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust (secretKey s)) secretString contextNFT mRecipient
+                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
+                            initialState <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
                             continue
                               initialState
                                 { message = "TICKET BOUGHT SUCCESFULLY!\n" <> showLink nid "tx" txOutRef <> "\n FOR RAFFLE " <> showText contextNFT
@@ -480,12 +481,12 @@ handleEvent s e =
                         if null invalid_fields && isJust mraffle
                           then do
                             liftIO clearScreen
-                            let MyWallet mySkey myAddr myVal = fromJust (wallet s)
+
                             let raffle = fromJust mraffle
                             let recpient = addressFromTextMaybe $ _raffleRecipient (formState crForm)
-                            txOutRef <- liftIO $ createRaffle mySkey raffle recpient validatorsTxOutRefs
-                            let nid = (cfgNetworkId . atlasConfig) s
-                            initialState <- liftIO buildInitialState
+                            txOutRef <- liftIO $ createRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust (secretKey s)) raffle recpient
+                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
+                            initialState <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
                             continue initialState {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
                           else continue s
                   _ -> do
@@ -521,15 +522,17 @@ handleEvent s e =
                       if null invalid_fields
                         then do
                           liftIO clearScreen
-                          let MyWallet mySkey myAddr myVal = fromJust (wallet s)
+                          let mySkey = fromJust (secretKey s)
+                          let myAddr = addressFromSkey (providersCtx s) mySkey
                           txOutRef <-
                             liftIO $
                               mintTestTokens
+                                (providersCtx s)
                                 mySkey
                                 myAddr
                                 (Data.Text.unpack mtTokenNameField)
                                 (fromIntegral mtAmountField)
-                          let nid = (cfgNetworkId . atlasConfig) s
+                          let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
                           continue
                             s
                               { message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> showLink nid "tx" txOutRef
@@ -561,14 +564,14 @@ handleEvent s e =
               'R' -> continue s {message = "Refresh Screen"}
               'g' -> do
                 liftIO $ generateNewAdminSkey operationSkeyFilePath
-                s' <- liftIO buildInitialState
+                s' <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
                 continue s'
               'e' -> do
                 liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
                 continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
               'v' -> continue s {currentScreen = ActiveRafflesScreen}
               _ ->
-                if isJust (wallet s)
+                if isJust (secretKey s)
                   then do
                     case c of
                       'm' -> continue s {currentScreen = MintTokenScreen}
@@ -576,12 +579,12 @@ handleEvent s e =
                         continue s {currentScreen = CreateRaffleScreen}
                       'l' -> do
                         liftIO clearScreen
-                        initialState <- liftIO buildInitialState
+                        initialState <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
                         continue initialState {message = "Updated"}
                       'd' -> do
                         liftIO clearScreen
-                        liftIO deployValidators
-                        initialState <- liftIO buildInitialState
+                        liftIO $ deployValidators (providersCtx s) (fromJust (secretKey s))
+                        initialState <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
                         continue initialState {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
                       'r' -> do
                         continue s {currentScreen = MyRafflesScreen}
@@ -632,7 +635,7 @@ bodyWidget s =
     padLeftRight 1
       <$> [ summaryWidget s
           , hBorder
-          , assetsWidget (cfgNetworkId $ atlasConfig s) (wallet s)
+          , assetsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (secretKey s) (balance s)
           ]
 
 summaryWidget :: RaffleizeUI -> Widget NameResources
@@ -640,9 +643,9 @@ summaryWidget s =
   hCenter $
     hBox
       [ availableActionsWidget s
-      , providersWidget (atlasConfig s)
-      , validatorsWidget (cfgNetworkId (atlasConfig s)) (validatorsConfig s)
-      , walletFlagWidget (wallet s)
+      , providersWidget ((ctxCoreCfg . providersCtx) s)
+      , validatorsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (validatorsConfig s)
+      , walletFlagWidget (secretKey s)
       ]
 
 symbolWidget :: Bool -> Widget n
@@ -722,16 +725,16 @@ addressWidget nid addr =
   let addrText = addressToText addr
    in hyperlink (showLink nid "address" addrText) $ withAttr "good" $ txt addrText
 
-assetsWidget :: GYNetworkId -> Maybe MyWallet -> Widget NameResources
-assetsWidget nid (Just (MyWallet _skey addr gyVal)) =
-  let val = valueToPlutus gyVal
+assetsWidget :: GYNetworkId -> Maybe GYPaymentSigningKey -> Value -> Widget NameResources
+assetsWidget nid (Just skey) val =
+  let addr = addressFromPaymentSigningKey nid skey
    in borderWithLabel (txt "WALLET") $
         hBox
           [ assetsAdaWidget nid addr val
           , vBorder
           , assetsBalanceWidget val
           ]
-assetsWidget _ _ = emptyWidget
+assetsWidget _ _ _ = emptyWidget
 
 assetsAdaWidget :: GYNetworkId -> GYAddress -> Value -> Widget NameResources
 assetsAdaWidget nid addr val =
@@ -748,7 +751,7 @@ availableActionsWidget s =
       ( txt
           <$> filter
             (not . Data.Text.null)
-            ( ( if isNothing (wallet s)
+            ( ( if isNothing (secretKey s)
                   then ["[G] - Generate new wallet skey"]
                   else
                     [ "[V] - View all active raffles"

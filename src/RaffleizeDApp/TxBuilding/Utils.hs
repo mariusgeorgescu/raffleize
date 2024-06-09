@@ -13,6 +13,19 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.TxBuilding.Validators
 
+getAdaBalance :: GYUTxOs -> Ada
+getAdaBalance = fromValue . getValueBalance
+
+getValueBalance :: GYUTxOs -> Value
+getValueBalance = valueToPlutus . foldMapUTxOs utxoValue
+
+addressFromPaymentSigningKey :: GYNetworkId -> GYPaymentSigningKey -> GYAddress
+addressFromPaymentSigningKey nid skey =
+  let pub_key = paymentVerificationKey skey
+      pub_key_hash = pubKeyHash pub_key
+      address = addressFromPubKeyHash nid pub_key_hash
+   in address
+
 {--  This function returns a Just tuple of the datum and value of a UTxO if the UTxO has inline datum,
 otherwise returns Nothing
 --}

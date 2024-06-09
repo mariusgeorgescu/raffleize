@@ -70,6 +70,14 @@ getTicketStateDataAndValueAndImage ticketId =
 
 ------------------------------------------------------------------------------------------------
 
+lookupUTxOsAtfAddress :: (GYTxQueryMonad m) => GYAddress -> m GYUTxOs
+lookupUTxOsAtfAddress addr = utxosAtAddress addr Nothing
+
+lookupUTxOsAtValidator :: GYTxQueryMonad m => GYValidator v -> m GYUTxOs
+lookupUTxOsAtValidator validator = do
+  addr <- scriptAddress validator
+  utxosAtAddress addr Nothing
+
 lookupUTxOsByStateTokens :: (GYTxQueryMonad m) => [AssetClass] -> GYAddress -> m GYUTxOs
 lookupUTxOsByStateTokens acs addr = do
   gyRefACs <- mapM assetClassFromPlutus' acs
@@ -194,6 +202,32 @@ lookupTicketInfoByUserAC ticketUserAC = do
           let ticketStateLabel = showTicketStateLabel ticketStateId
           let actions = validActionLabelsForTicketState ticketStateId
           return $ Just $ TicketInfo tsd tVal tImg ticketStateLabel actions
+
+
+-- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
+lookupActiveRaffles :: (GYTxQueryMonad m) => m [RaffleInfo]
+lookupActiveRaffles = do
+  allUTxOs <- lookupUTxOsAtValidator raffleizeValidatorGY
+  let validUTxOs = filterUTxOs hasValidRefToken allUTxOs
+  let raffleUTxOs = utxosToList validUTxOs
+  now <- slotOfCurrentBlock
+  nowposix <- pPOSIXTimeFromGYSlot now
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  return $ mapMaybe (`raffleInfoFromUTxO` tr) raffleUTxOs
+
+lookupTicketsOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [TicketInfo]
+lookupTicketsOfAddress addr = do
+  utxos <- lookupUTxOsAtfAddress addr
+  let val = getValueBalance utxos
+  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
+  lookupTicketInfosByACs raffleizeUserTokens
+
+lookupRafflesOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [RaffleInfo]
+lookupRafflesOfAddress addr = do
+  utxos <- lookupUTxOsAtfAddress addr
+  let val = getValueBalance utxos
+  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
+  lookupRaffleInfosByACs raffleizeUserTokens
 
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
