@@ -43,6 +43,7 @@ import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.Utils
 
+import RaffleizeDApp.Tests.UnitTests (yellowColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
@@ -362,10 +363,9 @@ app =
 
 tui :: IO ()
 tui = do
-  putStrLn $ "parsing Config  at " <> show atlasCoreConfig <> "..."
-  -- coreCfg <- coreConfigIO atlasCoreConfig -- Parsing our core configuration
-  atlasConfig <- fromJust <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
-  putStrLn "Loading Providers ..."
+  putStrLn $ yellowColorString $ "Parsing Config  at " <> show atlasCoreConfig <> "..."
+  atlasConfig <- maybe (error $ "Valid config file not found at " <> show atlasCoreConfig) return =<< decodeConfigFile @GYCoreConfig atlasCoreConfig
+  putStrLn $ yellowColorString "Loading Providers ..."
   initialState <- withCfgProviders atlasConfig "terminal user interface" $ \providers -> do
     buildInitialState providers
   _endState <- defaultMain app initialState
