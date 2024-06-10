@@ -61,6 +61,7 @@ library
     RaffleizeDApp.CustomTypes.ActionTypes
     RaffleizeDApp.CustomTypes.RaffleTypes
     RaffleizeDApp.CustomTypes.TicketTypes
+    RaffleizeDApp.CustomTypes.TransferTypes
     RaffleizeDApp.CustomTypes.Types
     RaffleizeDApp.OnChain.RaffleizeLogic
     RaffleizeDApp.OnChain.RaffleizeMintingPolicy
@@ -128,9 +129,8 @@ library
     , text
     , time
     , turtle
-    , vty
     , vector
-
+    , vty
 
   default-extensions:
     DataKinds

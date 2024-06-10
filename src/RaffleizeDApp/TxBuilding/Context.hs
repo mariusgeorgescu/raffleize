@@ -1,32 +1,28 @@
 module RaffleizeDApp.TxBuilding.Context where
 
-import Control.Monad
 import Control.Monad.Reader
 import GeniusYield.GYConfig
 import GeniusYield.Imports
 import GeniusYield.Transaction
 import GeniusYield.TxBuilder
 import GeniusYield.Types
-
-import System.Environment
-
-instance ToJSON GYTxOutRefCbor where
-  toJSON = toJSON . getTxOutRefHex
-
-data UserAddresses = UserAddresses
-  { usedAddresses :: [GYAddress]
-  -- ^ User's used addresses.
-  , changeAddress :: GYAddress
-  -- ^ User's change address.
-  , reservedCollateral :: Maybe GYTxOutRefCbor
-  -- ^ Browser wallet's reserved collateral (if set).
-  }
-  deriving (Show, Generic, FromJSON, ToJSON)
+import RaffleizeDApp.CustomTypes.TransferTypes
 
 -- | Our Context.
 data ProviderCtx = ProviderCtx
   { ctxCoreCfg :: !GYCoreConfig
   , ctxProviders :: !GYProviders
+  }
+
+data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
+  { raffleValidatorRef :: GYTxOutRef
+  , ticketValidatorRef :: GYTxOutRef
+  }
+  deriving (Show, Generic, ToJSON, FromJSON)
+
+data RaffleizeOffchainContext = RaffleizeOffchainContext
+  { raffleizeTxBuildingCtx :: RaffleizeTxBuildingContext
+  , providerCtx :: ProviderCtx
   }
 
 -- | To run for simple queries, the one which don't requiring building for transaction skeleton.
@@ -71,13 +67,13 @@ runTxF providerCtx UserAddresses {usedAddresses, changeAddress, reservedCollater
       )
       skeleton
 
--- | Getting path for our core configuration.
-parseArgs :: IO FilePath
-parseArgs = do
-  args <- getArgs
-  case args of
-    coreCfg : _ -> return coreCfg
-    _invalidArgument -> fail "Error: wrong arguments, needed a path to the CoreConfig JSON configuration file\n"
+-- -- | Getting path for our core configuration.
+-- parseArgs :: IO FilePath
+-- parseArgs = do
+--   args <- getArgs
+--   case args of
+--     coreCfg : _ -> return coreCfg
+--     _invalidArgument -> fail "Error: wrong arguments, needed a path to the CoreConfig JSON configuration file\n"
 
 -- -- | Getting path for our core configuration.
 -- getCoreConfiguration :: IO GYCoreConfig
@@ -102,26 +98,3 @@ parseArgs = do
 --   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
 --     let ctx = ProviderCtx coreConfig providers
 --     runReaderT m ctx
-
-data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
-  { raffleValidatorRef :: GYTxOutRef
-  , ticketValidatorRef :: GYTxOutRef
-  }
-  deriving (Show, Generic, ToJSON, FromJSON)
-
-data RaffleizeOffchainContext = RaffleizeOffchainContext
-  { raffleizeTxBuildingCtx :: RaffleizeTxBuildingContext
-  , providerCtx :: ProviderCtx
-  }
-
--- runRaffleize :: (MonadIO m) => ReaderT RaffleizeTxBuildingContext (ReaderT ProviderCtx (GYTxMonadNode (GYTxSkeleton v)) a -> RaffleizeOffchainContext -> m b
--- runRaffleize m RaffleizeOffchainContext {..} =
---   let withTxBuildingContext = runReaderT m raffleizeTxBuildingCtx
---    in runRreader withTxBuildingContext providerCtx
-
--- runRaffleize :: (MonadIO m, MonadReader RaffleizeOffchainContext m) => m a -> IO b
--- runRaffleize m = do
---   RaffleizeOffchainContext{..} <- ask
---   let withRaffleizeTxBuildingCtx = runReader m raffleizeTxBuildingCtx
---   let withAddr =  runTxI usedAddresses
---   liftIO $ runTxI withProvider usedAddresses
