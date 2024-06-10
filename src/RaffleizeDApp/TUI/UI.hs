@@ -176,7 +176,7 @@ drawValueWidget val =
     valueItemWidget False False <$> flattenValue val
 
 drawRaffleLockedValue :: Value -> Widget NameResources
-drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 70 $ drawValueWidget riValue
+drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 60 $ drawValueWidget riValue
 
 drawRaffeStats :: RaffleStateData -> Widget NameResources
 drawRaffeStats RaffleStateData {..} =
@@ -201,7 +201,7 @@ drawRaffleConfig RaffleConfig {..} =
         , [txt "Reveal Deadline: ", drawPOSIX rRevealDDL]
         , [txt "Ticket Price | ₳ |: ", txt (showText $ lovelaceOf rTicketPrice)]
         , [txt "Min. Tickets: ", txt (showText rMinTickets)]
-        , [txt "Raffle Stake: ", vLimit 30 $ hLimit 70 $ drawValueWidget rStake]
+        , [txt "Raffle Stake: ", vLimit 30 $ hLimit 60 $ drawValueWidget rStake]
         ]
 
 drawRaffleInfo :: RaffleInfo -> Widget NameResources
@@ -457,9 +457,65 @@ handleEvent s e =
                   _ -> do
                     updated_form <- handleFormEvent e btForm
                     continue s {buyTicketForm = updated_form}
-          MyRafflesScreen -> do
-            mrForm <- handleFormEvent e (myRafflesForm s)
-            continue s {myRafflesForm = mrForm}
+          MyRafflesScreen ->
+            let mrForm = myRafflesForm s
+                mrFormState = formState mrForm
+                msr = mrFormState ^. selectedMyRaffle
+             in case key of
+                  KChar 'c' -> case validatorsConfig s of
+                    Nothing -> continue s {message = "Validators not present at " <> Data.Text.pack raffleizeValidatorsConfig}
+                    Just validatorsTxOutRefs ->
+                      do
+                        case msr of
+                          Just sr -> do
+                            let contextNFT = rRaffleID $ riRsd sr
+                            liftIO clearScreen
+                            txOutRef <- liftIO $ cancelRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ secretKey s) contextNFT Nothing
+                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
+                            initialState <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
+                            continue
+                              initialState
+                                { message = "RAFFLE CANCELLED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
+                                , currentScreen = MainScreen
+                                }
+                          Nothing -> continue s
+                  KChar 'r' -> case validatorsConfig s of
+                    Nothing -> continue s {message = "Validators not present at " <> Data.Text.pack raffleizeValidatorsConfig}
+                    Just validatorsTxOutRefs ->
+                      do
+                        case msr of
+                          Just sr -> do
+                            let contextNFT = rRaffleID $ riRsd sr
+                            liftIO clearScreen
+                            txOutRef <- liftIO $ recoverStakeRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ secretKey s) contextNFT Nothing
+                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
+                            initialState <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
+                            continue
+                              initialState
+                                { message = "RAFFLE STAKE RECOVERED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
+                                , currentScreen = MainScreen
+                                }
+                          Nothing -> continue s
+                  KChar 'e' -> case validatorsConfig s of
+                    Nothing -> continue s {message = "Validators not present at " <> Data.Text.pack raffleizeValidatorsConfig}
+                    Just validatorsTxOutRefs ->
+                      do
+                        case msr of
+                          Just sr -> do
+                            let contextNFT = rRaffleID $ riRsd sr
+                            liftIO clearScreen
+                            txOutRef <- liftIO $ recoverStakeAndAmountRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ secretKey s) contextNFT Nothing
+                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
+                            initialState <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
+                            continue
+                              initialState
+                                { message = "RAFFLE STAKE AND COLLECTED AMOUNT RECOVERED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
+                                , currentScreen = MainScreen
+                                }
+                          Nothing -> continue s
+                  _ -> do
+                    mrForm1 <- handleFormEvent e (myRafflesForm s)
+                    continue s {myRafflesForm = mrForm1}
           ActiveRafflesScreen ->
             case key of
               KChar 'b' -> do
@@ -560,8 +616,8 @@ handleEvent s e =
               vScrollBy vscroll (-1)
               continue s
             (KChar c) -> case c of
-              'q' -> halt s
               'R' -> continue s {message = "Refresh Screen"}
+              'q' -> halt s
               'g' -> do
                 liftIO $ generateNewAdminSkey operationSkeyFilePath
                 s' <- liftIO $ buildInitialState (ctxProviders (providersCtx s))
@@ -784,7 +840,7 @@ drawRaffleActionsWidget mActions =
           ++ [txt "[ESC]   - Close          "]
 
 drawRaffleActionLabel :: RaffleizeActionLabel -> Widget NameResources
-drawRaffleActionLabel (_, "BuyTicket") = txt "[B]     - Buy a ticket for the selected raffle"
+drawRaffleActionLabel ("User", "BuyTicket") = txt "[B]     - Buy a ticket for the selected raffle"
 drawRaffleActionLabel _ = emptyWidget
 
 drawActiveRafflesScreen :: RaffleizeUI -> Widget NameResources
@@ -868,7 +924,11 @@ drawMyRaffleActionsWidget mActions =
           ++ [txt "[ESC]   - Close          "]
 
 drawMyRaffleActionLabel :: RaffleizeActionLabel -> Widget NameResources
-drawMyRaffleActionLabel ("RaffleOwner", what) = txt (Data.Text.pack what)
+drawMyRaffleActionLabel ("RaffleOwner", "Cancel") = txt "[C]     - Cancel the selected raffle"
+drawMyRaffleActionLabel ("RaffleOwner", "Update") = txt "[U]     - Update raffle configuration of the raffle"
+drawMyRaffleActionLabel ("RaffleOwner", "RecoverStake") = txt "[R]     - Recover the stake of the selected raffle"
+drawMyRaffleActionLabel ("RaffleOwner", "RecoverStakeAndAmount") = txt "[E]     - Recover the stake and collect the accumulated amount of the selected raffle"
+drawMyRaffleActionLabel ("RaffleOwner", "CollectAmount") = txt "[A]     - Collect the accumulated amount of the selected raffle"
 drawMyRaffleActionLabel _ = emptyWidget
 
 ------------------------------------------------------------------------------------------------

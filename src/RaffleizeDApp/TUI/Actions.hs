@@ -105,6 +105,33 @@ createRaffle roc skey config mRecipient = do
   putStrLn $ blueColorString (show config)
   raffleizeTransaction roc skey (User (CreateRaffle config)) Nothing mRecipient
 
+updateRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> RaffleConfig -> Maybe GYAddress -> IO Text
+updateRaffle roc skey raffleId config mRecipient = do
+  putStrLn $ yellowColorString "Updating raffle: \n\t " <> show raffleId
+  putStrLn "New raffle configuration"
+  putStrLn $ blueColorString (show config)
+  raffleizeTransaction roc skey (RaffleOwner (Update config)) (Just raffleId) mRecipient
+
+cancelRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
+cancelRaffle roc skey raffleId mRecipient = do
+  putStrLn $ yellowColorString $ "Cancelling raffle: \n\t " <> show raffleId
+  raffleizeTransaction roc skey (RaffleOwner Cancel) (Just raffleId) mRecipient
+
+recoverStakeRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
+recoverStakeRaffle roc skey raffleId mRecipient = do
+  putStrLn $ yellowColorString $ "Recovering the stake from raffle: \n\t " <> show raffleId
+  raffleizeTransaction roc skey (RaffleOwner RecoverStake) (Just raffleId) mRecipient
+
+recoverStakeAndAmountRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
+recoverStakeAndAmountRaffle roc skey raffleId mRecipient = do
+  putStrLn $ yellowColorString $ "Recovering the stake and the collected amount form raffle: \n\t " <> show raffleId
+  raffleizeTransaction roc skey (RaffleOwner RecoverStakeAndAmount) (Just raffleId) mRecipient
+
+collectAmountRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
+collectAmountRaffle roc skey raffleId mRecipient = do
+  putStrLn $ yellowColorString $ "Collect amount form raffle: \n\t " <> show raffleId
+  raffleizeTransaction roc skey (RaffleOwner CollectAmount) (Just raffleId) mRecipient
+
 buyTicket :: RaffleizeOffchainContext -> GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> IO Text
 buyTicket roc skey secretString raffleId mRecipient = do
   let secretHash = blake2b_256 $ fromString @BuiltinByteString secretString
