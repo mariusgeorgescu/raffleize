@@ -1,9 +1,8 @@
 module RaffleizeDApp.TxBuilding.Utils where
 
+import Data.Text qualified
 import GeniusYield.TxBuilder
 import GeniusYield.Types
-
-import Data.Text qualified
 import PlutusLedgerApi.V1.Interval qualified
 import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V2
@@ -12,6 +11,12 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.TxBuilding.Validators
+
+------------------------
+
+-- * Utilities
+
+------------------------
 
 getAdaBalance :: GYUTxOs -> Ada
 getAdaBalance = fromValue . getValueBalance
@@ -26,6 +31,24 @@ addressFromPaymentSigningKey nid skey =
       address = addressFromPubKeyHash nid pub_key_hash
    in address
 
+pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime
+pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . slotFromApi . fromInteger
+
+pPOSIXTimeFromGYSlot :: GYTxQueryMonad m => GYSlot -> m POSIXTime
+pPOSIXTimeFromGYSlot = (timeToPlutus <$>) . slotToBeginTime
+
+gySlotFromPOSIXTime :: GYTxQueryMonad m => POSIXTime -> m GYSlot
+gySlotFromPOSIXTime ptime = do
+  enclosingSlotFromTime' (timeFromPlutus ptime)
+
+showLink :: GYNetworkId -> Text -> Text -> Text
+showLink nid s content = case nid of
+  GYMainnet -> cexplorerMainnet <> s <> "/" <> content <> " "
+  GYTestnetPreprod -> cexplorerPreprod <> s <> "/" <> content <> " "
+  GYTestnetPreview -> cexplorerPreview <> s <> "/" <> content <> " "
+  GYTestnetLegacy -> content
+  GYPrivnet -> content
+
 {--  This function returns a Just tuple of the datum and value of a UTxO if the UTxO has inline datum,
 otherwise returns Nothing
 --}
@@ -39,11 +62,6 @@ getInlineDatumAndValue utxo = case utxoOutDatum utxo of
 -- * Raffleize Checks
 
 ------------------------------------------------------------------------------------------------
-
--- -- | This function checks if a 'GYAssetClass' is of a token minted by Raffleize Minting Policy
--- isRaffleizeAC :: GYAssetClass -> Bool
--- isRaffleizeAC (GYToken gyMP _gyTN) = gyMP == mintingPolicyId raffleizeMintingPolicyGY
--- isRaffleizeAC _ = False
 
 -- | This function checks if a 'GYAssetClass' is of a "reference token" minted by Raffleize Minting Policy
 isRaffleizeRefAC :: GYAssetClass -> Bool
@@ -71,6 +89,14 @@ hasAnyOfTheAssets acs gyOut =
 -- * Raffle Validator Utils
 
 ------------------------------------------------------------------------------------------------
+
+getMyRaffleizeUserTokensFromValue :: Value -> [AssetClass]
+getMyRaffleizeUserTokensFromValue val =
+  let
+    raffleizeCS = mintingPolicyCurrencySymbol raffleizeMintingPolicyGY
+   in
+    [AssetClass (cs, deriveRefFromUserTN tn) | (cs, tn, _) <- flattenValue val, raffleizeCS == cs]
+
 {--  This function converts a 'GYDatum' to 'RaffleDatum', if does not succeeed it returns Nothing.
 --}
 raffleDatumFromDatum :: GYDatum -> Maybe RaffleDatum
@@ -167,36 +193,3 @@ tsdValueAndImageFromUTxO ticketStateUTxO = do
  Otherwise it returns Nothing.-}
 ticketInfoFromUTxO :: GYUTxO -> RaffleStateId -> Integer -> Maybe TicketInfo
 ticketInfoFromUTxO utxo raffleStateId currentRandom = mkTicketInfo raffleStateId currentRandom <$> tsdValueAndImageFromUTxO utxo
-
-------------------------
-
--- * Utilities
-
-------------------------
-
-pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime
-pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . slotFromApi . fromInteger
-
-pPOSIXTimeFromGYSlot :: GYTxQueryMonad m => GYSlot -> m POSIXTime
-pPOSIXTimeFromGYSlot = (timeToPlutus <$>) . slotToBeginTime
-
-gySlotFromPOSIXTime :: GYTxQueryMonad m => POSIXTime -> m GYSlot
-gySlotFromPOSIXTime ptime = do
-  enclosingSlotFromTime' (timeFromPlutus ptime)
-
-showLink :: GYNetworkId -> Text -> Text -> Text
-showLink nid s content = case nid of
-  GYMainnet -> cexplorerMainnet <> s <> "/" <> content <> " "
-  GYTestnetPreprod -> cexplorerPreprod <> s <> "/" <> content <> " "
-  GYTestnetPreview -> cexplorerPreview <> s <> "/" <> content <> " "
-  GYTestnetLegacy -> content
-  GYPrivnet -> content
-
-getMyRaffleizeUserTokensFromValue :: Value -> [AssetClass]
-getMyRaffleizeUserTokensFromValue val =
-  let
-    raffleizeCS = mintingPolicyCurrencySymbol raffleizeMintingPolicyGY
-   in
-    [AssetClass (cs, deriveRefFromUserTN tn) | (cs, tn, _) <- flattenValue val, raffleizeCS == cs]
-
--- ----

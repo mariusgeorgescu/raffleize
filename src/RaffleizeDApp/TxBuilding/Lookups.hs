@@ -5,7 +5,6 @@ import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Interval qualified
 import PlutusLedgerApi.V1.Value
-
 import PlutusLedgerApi.V3 (POSIXTimeRange)
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
@@ -20,53 +19,9 @@ import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
 
-{- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at any of the addresses in the list.
-If no UTxO is found the function fails.
--}
-getUTxOWithStateTokenAtAddresses :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> [GYAddress] -> m GYUTxO
-getUTxOWithStateTokenAtAddresses refAC addresses = do
-  utxs <- lookupUTxOWithStateTokenAtAddresses refAC addresses
-  maybe (throwError (GYQueryUTxOException (GYNoUtxosAtAddress addresses))) return utxs
-
-{- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at a given validator addres.
-If no UTxO is found the function fails.
--}
-getUTxOWithStateToken :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> GYAddress -> m GYUTxO
-getUTxOWithStateToken refAC addr = do
-  utxo <- lookupUTxOWithStateToken refAC addr
-  maybe (throwError (GYQueryUTxOException (GYNoUtxosAtAddress [addr]))) return utxo
-
-getRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (RaffleStateData, Value)
-getRaffleStateDataAndValue raffleId =
-  do
-    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
-    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
-    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdAndValueFromUTxO utxo
-
-getRaffleStateValueAndImage :: GYTxQueryMonad m => AssetClass -> m (RaffleStateData, Value, String)
-getRaffleStateValueAndImage raffleId =
-  do
-    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
-    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
-    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdValueAndImageFromUTxO utxo
-
-getTicketStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (TicketStateData, Value)
-getTicketStateDataAndValue ticketId =
-  do
-    ticketValidatorAddr <- scriptAddress ticketValidatorGY
-    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
-    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdAndValueFromUTxO utxo
-
-getTicketStateDataAndValueAndImage :: GYTxQueryMonad m => AssetClass -> m (TicketStateData, Value, String)
-getTicketStateDataAndValueAndImage ticketId =
-  do
-    ticketValidatorAddr <- scriptAddress ticketValidatorGY
-    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
-    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdValueAndImageFromUTxO utxo
-
 ------------------------------------------------------------------------------------------------
 
--- * Search BULKD
+-- * Search Bulk
 
 ------------------------------------------------------------------------------------------------
 
@@ -203,7 +158,6 @@ lookupTicketInfoByUserAC ticketUserAC = do
           let actions = validActionLabelsForTicketState ticketStateId
           return $ Just $ TicketInfo tsd tVal tImg ticketStateLabel actions
 
-
 -- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
 lookupActiveRaffles :: (GYTxQueryMonad m) => m [RaffleInfo]
 lookupActiveRaffles = do
@@ -234,3 +188,47 @@ lookupRafflesOfAddress addr = do
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
+
+{- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at any of the addresses in the list.
+If no UTxO is found the function fails.
+-}
+getUTxOWithStateTokenAtAddresses :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> [GYAddress] -> m GYUTxO
+getUTxOWithStateTokenAtAddresses refAC addresses = do
+  utxs <- lookupUTxOWithStateTokenAtAddresses refAC addresses
+  maybe (throwError (GYQueryUTxOException (GYNoUtxosAtAddress addresses))) return utxs
+
+{- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at a given validator addres.
+If no UTxO is found the function fails.
+-}
+getUTxOWithStateToken :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> GYAddress -> m GYUTxO
+getUTxOWithStateToken refAC addr = do
+  utxo <- lookupUTxOWithStateToken refAC addr
+  maybe (throwError (GYQueryUTxOException (GYNoUtxosAtAddress [addr]))) return utxo
+
+getRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (RaffleStateData, Value)
+getRaffleStateDataAndValue raffleId =
+  do
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
+    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdAndValueFromUTxO utxo
+
+getRaffleStateValueAndImage :: GYTxQueryMonad m => AssetClass -> m (RaffleStateData, Value, String)
+getRaffleStateValueAndImage raffleId =
+  do
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
+    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdValueAndImageFromUTxO utxo
+
+getTicketStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (TicketStateData, Value)
+getTicketStateDataAndValue ticketId =
+  do
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
+    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdAndValueFromUTxO utxo
+
+getTicketStateDataAndValueAndImage :: GYTxQueryMonad m => AssetClass -> m (TicketStateData, Value, String)
+getTicketStateDataAndValueAndImage ticketId =
+  do
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
+    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdValueAndImageFromUTxO utxo

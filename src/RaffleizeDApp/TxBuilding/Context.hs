@@ -66,35 +66,3 @@ runTxF providerCtx UserAddresses {usedAddresses, changeAddress, reservedCollater
               )
       )
       skeleton
-
--- -- | Getting path for our core configuration.
--- parseArgs :: IO FilePath
--- parseArgs = do
---   args <- getArgs
---   case args of
---     coreCfg : _ -> return coreCfg
---     _invalidArgument -> fail "Error: wrong arguments, needed a path to the CoreConfig JSON configuration file\n"
-
--- -- | Getting path for our core configuration.
--- getCoreConfiguration :: IO GYCoreConfig
--- getCoreConfiguration = do
---   coreCfgPath <- parseArgs
---   coreConfigIO coreCfgPath
-
--- -- | Getting path for our core configuration.
--- readCoreConfiguration :: IO GYCoreConfig
--- readCoreConfiguration = coreConfigIO atlasCoreConfig -- Parsing our core configuration.
-
--- runContextWithCfgProviders :: GYLogNamespace -> ReaderT ProviderCtx IO b -> IO b
--- runContextWithCfgProviders s m = do
---   coreConfig <- readCoreConfiguration
---   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
---     let ctx = ProviderCtx coreConfig providers
---     runReaderT m ctx
-
--- runContextWithProviders :: GYLogNamespace -> ReaderT ProviderCtx IO b -> IO b
--- runContextWithProviders s m = do
---   coreConfig <- readCoreConfiguration
---   withCfgProviders coreConfig (s :: GYLogNamespace) $ \providers -> do
---     let ctx = ProviderCtx coreConfig providers
---     runReaderT m ctx
