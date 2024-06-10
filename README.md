@@ -787,9 +787,34 @@ List the user documentation components (such as user manuals, on-line help, and 
 
 ## 4. Installation
 
+Since   building transaction bodies require gathering suitable information from the blockchain. 
+For this purpose, we'll require a provider. So at the project root directory a file named **"atlas_config.json"**, which should have the following format
+```
+{
+  "coreProvider": {
+    "maestroToken": "{YOUR TOKEN HERE}"
+  },
+  "networkId": "testnet-preview",
+  "logging": [
+    {
+      "type": {
+        "tag": "stderr"
+      },
+      "severity": "Debug",
+      "verbosity": "V2"
+    }
+  ],
+  "utxoCacheEnable": true
+}
+```
+More info about the provider config can be found [here](https://atlas-app.io/getting-started/endpoints#defining-provider-configuration)
+
+
 This project uses the Nix package manager to build
 ```
 direnv allow
+
+cabal update
 
 cabal build
 
@@ -797,6 +822,19 @@ cabal test
 
 cabal run tui
 
-cabal run server
+```
 
+
+![Print screen from the terminal user interface](TUIimage.png)
+
+For running the server 
+```
+cabal run server
+```
+
+
+For running the purescript bridge generator
+
+```
+cabal run psgen
 ```

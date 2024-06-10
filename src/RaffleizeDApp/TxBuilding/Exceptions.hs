@@ -7,7 +7,6 @@ data MissingContextNFT = MissingContextNFT deriving (Show, Typeable)
 instance Exception MissingContextNFT
 instance IsGYApiError MissingContextNFT
 
-
 data RaffleizeDatumNotFound = RaffleizeDatumNotFound deriving (Show, Typeable)
 instance Exception RaffleizeDatumNotFound
 instance IsGYApiError RaffleizeDatumNotFound
@@ -19,3 +18,7 @@ instance IsGYApiError TicketDatumNotFound
 data InlineDatumNotFound = InlineDatumNotFound deriving (Show, Typeable)
 instance Exception InlineDatumNotFound
 instance IsGYApiError InlineDatumNotFound
+
+data TooManyUTxOs = TooManyUTxOs deriving (Show, Typeable)
+instance Exception TooManyUTxOs
+instance IsGYApiError TooManyUTxOs

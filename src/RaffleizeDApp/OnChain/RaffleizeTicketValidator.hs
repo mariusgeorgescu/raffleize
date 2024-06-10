@@ -15,7 +15,8 @@ import PlutusTx (
  )
 import RaffleizeDApp.CustomTypes.ActionTypes (
   RaffleOwnerAction (GetCollateraOfExpiredTicket),
-  TicketOwnerAction (RefundCollateralLosing, RevealTicketSecret), RaffleizeRedeemer (RaffleOwnerRedeemer, TicketOwnerRedeemer),
+  RaffleizeRedeemer (RaffleOwnerRedeemer, TicketOwnerRedeemer),
+  TicketOwnerAction (RefundCollateralLosing, RevealTicketSecret),
  )
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes (
@@ -72,10 +73,10 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
               let raffleUserAC = deriveUserFromRefAC raffleRefAC
                   ---- RAFFLE STATE FROM REF INPUT
                   (rValue, rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs
-                  currentStateLabel = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                  currentTicketStateLabel = evalTicketState tsd currentStateLabel
+                  rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
+                  currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                in pand
-                    [ currentTicketStateLabel #== 7 -- BURNABLE_BY_RAFFLE_OWNER
+                    [ currentTicketState #== 97 -- BURNABLE_BY_RAFFLE_OWNER (UNREVEALED_EXPIRED)
                     , isBurningNFT ticketRefAC txInfoMint -- Transaction burns 1 ticketRef.
                     , hasTxInWithToken raffleUserAC txInfoInputs -- Transaction spends the raffle user NFT on another input.
                     ]
@@ -83,13 +84,11 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
               let
                 ---- RAFFLE STATE FROM REF INPUT
                 (rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction has the raffleRef as reference input
-                currentStateLabel = evaluateRaffleState (txInfoValidRange, rsd, rValue)
+                rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
+                currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                in
                 pand
-                  [ currentStateLabel -- Must be valid state for recover collateral of losing ticket
-                      `pelem` [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-                              , 42 -- SUCCESS_LOCKED_STAKE
-                              ]
+                  [ currentTicketState #== 95 -- LOSING
                   , burnsTicketUserAndRef -- Must burn tickets NFTs
                   , traceIfFalse "are you stupid?" $
                       rRandomSeed rsd #== tNumber -- Must not be the winning ticket
@@ -97,8 +96,8 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
             TicketOwnerRedeemer toa _ ->
               -- rsd must be strict to ensure that raffle state is spent
               let (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
-                  currentStateLabel = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                  currentTicketStateLabel = evalTicketState tsd currentStateLabel
+                  rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
+                  currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                   !ticketValidatorAddr = txOutAddress ownInput
                   hasOnly1InputFromValidator = case findTxInWith noConstraint (#== ticketValidatorAddr) txInfoInputs of
                     [_x] -> True
@@ -111,12 +110,12 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                          in pand
                               [ traceIfFalse "secret too long" $ lengthOfByteString secret #<= 32
                               , hasTxInWithToken ticketUserAC txInfoInputs -- Transaction spends the ticket user NFT on another input.
-                              , currentTicketStateLabel #== 5 -- REVEALABLE -- Current state is valid for revealing ticket.
+                              , currentTicketState #== 92 -- REVEALABLE -- Current state is valid for revealing ticket.
                               , hasTxOutWithInlineDatumAnd (mkTicketDatum new_tsd) (#== ownValue) (#== ticketValidatorAddr) txInfoOutputs ---Transaction locks new ticket state at validator address (with updated datum).
                               ]
                       _closingAction ->
                         pand
-                          [ currentTicketStateLabel #== 6 -- BURNABLE_BY_TICKET_OWNER
+                          [ currentTicketState `pelem` [91, 96, 94] -- BURNABLE_BY_TICKET_OWNER (FULLY_REFUNDABLE, EXTRA_REFUNDABLE, WINNING)
                           , burnsTicketUserAndRef
                           ]
             _ -> traceIfFalse "Invalid redeemer for ticket ref" False

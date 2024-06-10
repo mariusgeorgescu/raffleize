@@ -30,13 +30,14 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes (
   RaffleConfig (..),
   RaffleDatum,
+  RaffleInfo (..),
   RaffleParam (..),
   RaffleStateData (..),
   RaffleStateId,
-  RaffleizeActionLabel,
   raffleStateData,
  )
-import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateLabel, ticketStateData)
+import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketInfo (TicketInfo), TicketStateData (..), TicketStateId, ticketStateData)
+import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude hiding (error)
 
@@ -88,6 +89,9 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake `geq` mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
@@ -145,11 +149,11 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
 validateRaffleAction :: RaffleizeAction -> RaffleStateId -> Bool
 validateRaffleAction action currentStateLabel =
   traceIfFalse "Action not permited in this raffle state" $
-    currentStateLabel `pelem` validRaffleStatesForRaffleAction action
+    currentStateLabel `pelem` validRaffleStatesForRaffleizeAction action
 {-# INLINEABLE validateRaffleAction #-}
 
-validRaffleStatesForRaffleAction :: RaffleizeAction -> [RaffleStateId]
-validRaffleStatesForRaffleAction action = case action of
+validRaffleStatesForRaffleizeAction :: RaffleizeAction -> [RaffleStateId]
+validRaffleStatesForRaffleizeAction action = case action of
   User (CreateRaffle _) -> []
   User (BuyTicket _) ->
     [ 1 -- NEW
@@ -192,7 +196,7 @@ validRaffleStatesForRaffleAction action = case action of
     , 33 -- UNREVEALED_FINAL
     , 43 -- SUCCESS_FINAL
     ]
-{-# INLINEABLE validRaffleStatesForRaffleAction #-}
+{-# INLINEABLE validRaffleStatesForRaffleizeAction #-}
 
 -- | used in property based testing to check consistency of validActionLabelsForState with  validateRaffleAction
 actionToLabel :: RaffleizeAction -> RaffleizeActionLabel
@@ -208,8 +212,8 @@ actionToLabel action = case action of
     _ -> show toa
   Admin CloseRaffle -> ("Admin", "CloseRaffle")
 
-validActionLabelsForState :: RaffleStateId -> [RaffleizeActionLabel]
-validActionLabelsForState r = case r of
+validActionLabelsForRaffleState :: RaffleStateId -> [RaffleizeActionLabel]
+validActionLabelsForRaffleState r = case r of
   1 -> [("User", "BuyTicket"), ("RaffleOwner", "Cancel"), ("RaffleOwner", "Update")]
   10 -> [("RaffleOwner", "RecoverStake")]
   11 -> [("Admin", "CloseRaffle")]
@@ -281,22 +285,77 @@ evaluateRaffleState (time_range, rsd@RaffleStateData {rConfig, rSoldTickets, rRe
                           (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
 {-# INLINEABLE evaluateRaffleState #-}
 
-evalTicketState :: TicketStateData -> RaffleStateId -> TicketStateLabel
-evalTicketState TicketStateData {tSecret = Just _} _ = 6 --  ==> BURNABLE_BY_TICKET_OWNER
-evalTicketState TicketStateData {tSecret = Nothing} rs
-  | rs #== 3 = 5 -- ticket is unrevealed & raffle is in revealing ==> REVEALABLE
-  | rs
-      `pelem` [ 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-              , 21 -- UNDERFUNDED_LOCKED_REFUNDS
-              ] =
-      6 -- -ticket is unrevealed & raffle is underfunded  ==> BURNABLE_BY_TICKET_OWNER
-  | rs
-      `pelem` [ 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-              , 31 -- UNREVEALED_LOCKED_REFUNDS
-              ] =
-      7 -- ticket is unrevealed & raffle is unrevealed  ==> BURNABLE_BY_RAFFLE_OWNER
-  | otherwise = 0 -- LOCKED ==> UNSPENDABLE
+showTicketStateLabel :: TicketStateId -> String
+showTicketStateLabel r = case r of
+  90 -> "COMITTED"
+  91 -> "FULLY_REFUNDABLE"
+  92 -> "REVEALABLE"
+  93 -> "REVEALED"
+  94 -> "WINNING"
+  95 -> "LOSING"
+  96 -> "EXTRA_REFUNDABLE"
+  97 -> "UNREVEALED_EXPIRED"
+  _ -> mempty
+
+evalTicketState :: TicketStateData -> Integer -> RaffleStateId -> TicketStateId
+evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
+  | raffleStateId #== 2 = 90 -- COMITTED
+  | raffleStateId #== 10 = 91 -- FULLY_REFUNDABLE
+  | raffleStateId #== 20 = 91 -- FULLY_REFUNDABLE
+  | raffleStateId #== 21 = 91 -- FULLY_REFUNDABLE
+  | raffleStateId #== 3 =
+      if isNothing tSecret
+        then 92 -- REVEALABLE
+        else 93 -- REVEALED
+  | raffleStateId #== 40 || raffleStateId #== 42 =
+      if randomSeed #== tNumber
+        then 94 -- WINNING
+        else 95 -- LOSING
+  | raffleStateId #== 30 || raffleStateId #== 31 =
+      if isJust tSecret
+        then 96 -- EXTRA_REFUNDABLE
+        else 97 -- UNREVEALED_EXPIRED
+  | raffleStateId #== 1 = traceError "Raffle cannot be NEW"
+  | raffleStateId #== 11 = traceError "Raffle cannot be EXPIRED_FINAL"
+  | raffleStateId #== 22 = traceError "Raffle cannot be UNDERFUNDED_LOCKED_STAKE"
+  | raffleStateId #== 23 = traceError "Raffle cannot be UNDERFUNDED_FINAL"
+  | raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
+  | raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
+  | raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
+  | raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
+  | raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
+evalTicketState _ _ _ = traceError "invalid state"
 {-# INLINEABLE evalTicketState #-}
+
+validActionLabelsForTicketState :: TicketStateId -> [RaffleizeActionLabel]
+validActionLabelsForTicketState r = case r of
+  91 -> [("TicketOwner", "RefundTicket")]
+  92 -> [("TicketOwner", "RevealTicketSecret")]
+  94 -> [("TicketOwner", "CollectStake")]
+  95 -> [("TicketOwner", "RefundCollateralLosing")]
+  96 -> [("TicketOwner", "RefundTicketExtra")]
+  97 -> [("RaffleOwner", "GetCollateraOfExpiredTicket")]
+  _ -> mempty
+
+validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateId]
+validTicketStatesForRaffleizeAction ra = case ra of
+  RaffleOwner roa -> case roa of
+    GetCollateraOfExpiredTicket -> [97] ---- UNREVEALED_EXPIRED   | ticket action only,  not on raffle state
+    _ -> []
+  TicketOwner toa -> case toa of
+    (RevealTicketSecret _) -> [92] -- REVEALABLE
+    CollectStake -> [94] -- WINNING
+    RefundTicket -> [91] -- FULLY_REFUNDABLE
+    RefundTicketExtra -> [96] -- EXTRA_REFUNDABLE
+    RefundCollateralLosing -> [95] -- -- LOSING    | ticket action only, not on raffle state
+  User _ -> []
+  Admin _ -> []
+
+validateTicketAction :: RaffleizeAction -> TicketStateId -> Bool
+validateTicketAction action currentStateLabel =
+  traceIfFalse "Action not permited in this ticket state" $
+    currentStateLabel `pelem` validTicketStatesForRaffleizeAction action
+{-# INLINEABLE validateTicketAction #-}
 
 getRaffleStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, RaffleStateData)
 getRaffleStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, raffleStateData $ unsafeFromBuiltinData b)
@@ -365,9 +424,17 @@ deriveUserFromRefTN :: TokenName -> TokenName
 deriveUserFromRefTN (TokenName bs) = TokenName (userTokenPrefixBS #<> sliceByteString 4 (lengthOfByteString bs) bs)
 {-# INLINEABLE deriveUserFromRefTN #-}
 
+deriveRefFromUserTN :: TokenName -> TokenName
+deriveRefFromUserTN (TokenName bs) = TokenName (refTokenPrefixBS #<> sliceByteString 4 (lengthOfByteString bs) bs)
+{-# INLINEABLE deriveRefFromUserTN #-}
+
 deriveUserFromRefAC :: AssetClass -> AssetClass
 deriveUserFromRefAC (AssetClass (ac, tn)) = AssetClass (ac, deriveUserFromRefTN tn)
 {-# INLINEABLE deriveUserFromRefAC #-}
+
+deriveRefFromUserAC :: AssetClass -> AssetClass
+deriveRefFromUserAC (AssetClass (ac, tn)) = AssetClass (ac, deriveRefFromUserTN tn)
+{-# INLINEABLE deriveRefFromUserAC #-}
 
 --------------
 
@@ -443,3 +510,17 @@ paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
 -- This function checks if tokenname has the raffle prefix
 hasRefPrefix :: TokenName -> Bool
 hasRefPrefix (TokenName tnbs) = sliceByteString 0 4 tnbs #== refTokenPrefixBS
+
+mkRaffleInfo :: POSIXTimeRange -> (RaffleStateData, Value, String) -> RaffleInfo
+mkRaffleInfo tr (rsd, rVal, img) =
+  let raffleStateId = evaluateRaffleState (tr, rsd, rVal)
+      stateLabel = showRaffleStateLabel raffleStateId
+      actions = validActionLabelsForRaffleState raffleStateId
+   in RaffleInfo rsd rVal img stateLabel actions
+
+mkTicketInfo :: RaffleStateId -> Integer -> (TicketStateData, Value, String) -> TicketInfo
+mkTicketInfo raffleStateId currentRandom (tsd, tVal, tImg) =
+  let ticketStateId = evalTicketState tsd currentRandom raffleStateId
+      ticketStateLabel = showTicketStateLabel ticketStateId
+      actions = validActionLabelsForTicketState ticketStateId
+   in TicketInfo tsd tVal tImg ticketStateLabel actions

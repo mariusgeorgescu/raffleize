@@ -17,7 +17,7 @@ import RaffleizeDApp.Constants (
   raffleImageURI,
   raffleName,
  )
-import RaffleizeDApp.CustomTypes.Types (Metadata)
+import RaffleizeDApp.CustomTypes.Types (Metadata, RaffleizeActionLabel)
 import RaffleizeDApp.OnChain.Utils (
   adaValueFromLovelaces,
   encodeUtf8KV,
@@ -132,7 +132,7 @@ mkRaffleDatum rsd =
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
 type RaffleStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
 
-type RaffleizeActionLabel = (String, String)
+
 
 data RaffleInfo = RaffleInfo
   { riRsd :: RaffleStateData
@@ -142,6 +142,9 @@ data RaffleInfo = RaffleInfo
   , riAvailableActions :: [RaffleizeActionLabel]
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
+
+
+
 
 -------------------------------------------------------------------------------
 

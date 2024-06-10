@@ -3,16 +3,14 @@ module RaffleizeDApp.TxBuilding.Lookups where
 import GHC.Stack
 import GeniusYield.TxBuilder
 import GeniusYield.Types
+import PlutusLedgerApi.V1.Interval qualified
 import PlutusLedgerApi.V1.Value
-import PlutusLedgerApi.V2
+import PlutusLedgerApi.V3 (POSIXTimeRange)
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (evaluateRaffleState, hasRefPrefix, showRaffleStateLabel, validActionLabelsForState)
+import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.TxBuilding.Exceptions
-
-import Data.Text qualified as Text
-import PlutusLedgerApi.V1.Interval qualified
-import RaffleizeDApp.TxBuilding.Utils (pPOSIXTimeFromGYSlot)
+import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
@@ -21,121 +19,216 @@ import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
 
-lookuptUTxOWithStateToken :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> GYValidator 'PlutusV2 -> m GYUTxO
-lookuptUTxOWithStateToken refAC gyValidator = do
-  gyRefAC <- assetClassFromPlutus' refAC
-  gyValidatorAddressGY <- scriptAddress gyValidator
-  utxs <- utxosToList <$> utxosAtAddress gyValidatorAddressGY (Just gyRefAC)
-  case utxs of
-    [x] -> return x
-    _ -> throwError (GYQueryUTxOException (GYNoUtxosAtAddress [gyValidatorAddressGY]))
-
-lookupTxOWithTokenAtAddress :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => AssetClass -> GYAddress -> m GYUTxO
-lookupTxOWithTokenAtAddress tokenAC address = do
-  gyAC <- assetClassFromPlutus' tokenAC
-  utxs <- utxosToList <$> utxosAtAddress address (Just gyAC)
-  case utxs of
-    [x] -> return x
-    _ -> throwError (GYQueryUTxOException (GYNoUtxosAtAddress [address]))
-
-lookupTxOWithTokenAtAddresses :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => AssetClass -> [GYAddress] -> m GYUTxO
-lookupTxOWithTokenAtAddresses tokenAC addresses = do
-  gyAC <- assetClassFromPlutus' tokenAC
-  utxs <- concatMap utxosToList <$> mapM (`utxosAtAddress` Just gyAC) addresses
-  case utxs of
-    [x] -> return x
-    _ -> throwError (GYQueryUTxOException (GYNoUtxosAtAddress addresses))
-
-lookupRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (RaffleStateData, Value)
-lookupRaffleStateDataAndValue raffleId =
-  do
-    utxo <- lookuptUTxOWithStateToken raffleId raffleizeValidatorGY
-    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ getRaffleStateDataAndValue utxo
-
-lookupTicketStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (TicketStateData, Value)
-lookupTicketStateDataAndValue ticketId =
-  do
-    utxo <- lookuptUTxOWithStateToken ticketId ticketValidatorGY
-    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ getTicketDatumAndValue utxo
-
-------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
 
-gyGetInlineDatumAndValue' :: MonadError GYTxMonadException m => GYUTxO -> m (GYDatum, GYValue)
-gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ gyGetInlineDatumAndValue utxo
+-- * Search Bulk
 
--- getRaffleStateDataAndValue' :: MonadError GYTxMonadException m => GYUTxO -> m (RaffleStateData, Value)
--- getRaffleStateDataAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getRaffleStateDataAndValue utxo
+------------------------------------------------------------------------------------------------
 
-gyGetRaffleInfo :: (HasCallStack, GYTxQueryMonad m) => GYUTxO -> m RaffleInfo
-gyGetRaffleInfo utxo = do
+lookupUTxOsAtfAddress :: (GYTxQueryMonad m) => GYAddress -> m GYUTxOs
+lookupUTxOsAtfAddress addr = utxosAtAddress addr Nothing
+
+lookupUTxOsAtValidator :: GYTxQueryMonad m => GYValidator v -> m GYUTxOs
+lookupUTxOsAtValidator validator = do
+  addr <- scriptAddress validator
+  utxosAtAddress addr Nothing
+
+lookupUTxOsByStateTokens :: (GYTxQueryMonad m) => [AssetClass] -> GYAddress -> m GYUTxOs
+lookupUTxOsByStateTokens acs addr = do
+  gyRefACs <- mapM assetClassFromPlutus' acs
+  gyUTxOs <- utxosAtAddress addr Nothing
+  return $ filterUTxOs (hasAnyOfTheAssets gyRefACs) gyUTxOs
+
+lookupRaffleInfosByACs :: (GYTxQueryMonad m) => [AssetClass] -> m [RaffleInfo]
+lookupRaffleInfosByACs acs = do
   now <- slotOfCurrentBlock
   nowposix <- pPOSIXTimeFromGYSlot now
-  let r = PlutusLedgerApi.V1.Interval.singleton nowposix
-  (rsd, val, img) <- maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getRaffleStateValueAndImage utxo
-  let stateId = evaluateRaffleState (r, rsd, val)
-  let stateLabel = showRaffleStateLabel stateId
-  let actions = validActionLabelsForState stateId
-  return $ RaffleInfo rsd val img stateLabel actions
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+  raffleUTxOs <- utxosToList <$> lookupUTxOsByStateTokens acs raffleValidatorAddr
+  return $ mapMaybe (`raffleInfoFromUTxO` tr) raffleUTxOs
+
+lookupTicketInfosByACs :: (GYTxQueryMonad m) => [AssetClass] -> m [TicketInfo]
+lookupTicketInfosByACs uACs = do
+  let rACs = deriveRefFromUserAC <$> uACs
+  ticketValidatorAddr <- scriptAddress ticketValidatorGY
+  tcketUTxOs <- utxosToList <$> lookupUTxOsByStateTokens rACs ticketValidatorAddr
+  let tickets = mapMaybe tsdValueAndImageFromUTxO tcketUTxOs
+  let rafflesACs = fmap (\(tsd, _, _) -> tRaffle tsd) tickets
+  raffles <- lookupRaffleInfosByACs rafflesACs
+  now <- slotOfCurrentBlock
+  nowposix <- pPOSIXTimeFromGYSlot now
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  let ticketsInfos = mkTicketsInfo tr tickets raffles
+  return ticketsInfos
+  where
+    mkTicketsInfo :: POSIXTimeRange -> [(TicketStateData, Value, String)] -> [RaffleInfo] -> [TicketInfo]
+    mkTicketsInfo tr ((tsd, tVal, tImg) : tis) ris = case find ((tRaffle tsd ==) . rRaffleID . riRsd) ris of
+      Nothing -> mkTicketsInfo tr tis ris
+      Just (RaffleInfo {..}) ->
+        let
+          raffleStateId = evaluateRaffleState (tr, riRsd, riValue)
+          ticketStateId = evalTicketState tsd (rRandomSeed riRsd) raffleStateId
+          ticketStateLabel = showTicketStateLabel ticketStateId
+          actions = validActionLabelsForTicketState ticketStateId
+         in
+          TicketInfo tsd tVal tImg ticketStateLabel actions : mkTicketsInfo tr tis ris
+    mkTicketsInfo _ _ _ = []
 
 ------------------------------------------------------------------------------------------------
 
--- * Extract State Data
+-- * Search
 
 ------------------------------------------------------------------------------------------------
--- This function checks if a GYTxOut has a reference token minted by the raffleize minting policy
--- Since the reference tokens minted by the raffleize minting policy are always locked at the script address
-gyOutHasValidRefToken :: GYUTxO -> Bool
-gyOutHasValidRefToken gyOut =
-  let gyValue = utxoValue gyOut
-      gyAssets = valueAssets gyValue
-   in any isRaffleizeAC gyAssets
 
--- | This function checks if a 'GYAssetClass' is of a reference token minted by Raffleize Minting Policy
-isRaffleizeAC :: GYAssetClass -> Bool
-isRaffleizeAC (GYToken gyMP gyTN) =
-  (gyMP == mintingPolicyId raffleizeMintingPolicyGY)
-    && hasRefPrefix (tokenNameToPlutus gyTN)
-isRaffleizeAC _ = False
+{- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at any of the addresses in the list.
+If no UTxO is found the function fails.
+-}
+lookupUTxOWithStateTokenAtAddresses :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> [GYAddress] -> m (Maybe GYUTxO)
+lookupUTxOWithStateTokenAtAddresses refAC addresses = do
+  gyRefAC <- assetClassFromPlutus' refAC
+  utxos <- concatMap utxosToList <$> mapM (`utxosAtAddress` Just gyRefAC) addresses
+  case utxos of
+    [] -> return Nothing
+    [x] -> return $ Just x
+    _ -> throwError (GYApplicationException TooManyUTxOs)
 
-gyDatumToRSD :: GYDatum -> Maybe RaffleStateData
-gyDatumToRSD gyDatum = raffleStateData <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
+lookupUTxOWithStateToken :: (GYTxQueryMonad m) => AssetClass -> GYAddress -> m (Maybe GYUTxO)
+lookupUTxOWithStateToken refAC addr = do
+  gyRefAC <- assetClassFromPlutus' refAC
+  utxos <- utxosToList <$> utxosAtAddress addr (Just gyRefAC)
+  case utxos of
+    [] -> return Nothing
+    [x] -> return $ Just x
+    _ -> throwError (GYApplicationException TooManyUTxOs)
 
-gyGetImageFromRaffleDatum :: GYDatum -> Maybe BuiltinByteString
-gyGetImageFromRaffleDatum gyDatum = raffleImage <$> (fromBuiltinData @RaffleDatum . datumToPlutus' $ gyDatum)
+lookupRaffleStateDataAndValue :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (RaffleStateData, Value))
+lookupRaffleStateDataAndValue raffleId =
+  do
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- lookupUTxOWithStateToken raffleId raffleValidatorAddr
+    return $ utxo >>= rsdAndValueFromUTxO
 
+lookupRaffleStateValueAndImage :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (RaffleStateData, Value, String))
+lookupRaffleStateValueAndImage raffleId =
+  do
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- lookupUTxOWithStateToken raffleId raffleValidatorAddr
+    return $ utxo >>= rsdValueAndImageFromUTxO
 
-gyDatumToTSD :: GYDatum -> Maybe TicketStateData
-gyDatumToTSD gyDatum = ticketStateData <$> (fromBuiltinData @TicketDatum . datumToPlutus' $ gyDatum)
+lookupTicketStateDataAndValue :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (TicketStateData, Value))
+lookupTicketStateDataAndValue ticketId =
+  do
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- lookupUTxOWithStateToken ticketId ticketValidatorAddr
+    return $ utxo >>= tsdAndValueFromUTxO
 
-gyGetInlineDatumAndValue :: GYUTxO -> Maybe (GYDatum, GYValue)
-gyGetInlineDatumAndValue utxo = case utxoOutDatum utxo of
-  GYOutDatumInline datum -> Just (datum, utxoValue utxo)
-  _ -> Nothing
+lookupTickeStateValueAndImage :: (GYTxQueryMonad m) => AssetClass -> m (Maybe (TicketStateData, Value, String))
+lookupTickeStateValueAndImage ticketId =
+  do
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- lookupUTxOWithStateToken ticketId ticketValidatorAddr
+    return $ utxo >>= tsdValueAndImageFromUTxO
 
-getRaffleStateDataAndValue :: GYUTxO -> Maybe (RaffleStateData, Value)
-getRaffleStateDataAndValue raffleStateUTxO = do
-  (gyDatum, gyValue) <- gyGetInlineDatumAndValue raffleStateUTxO
-  rsd <- gyDatumToRSD gyDatum
-  let pVal = valueToPlutus gyValue
-  return (rsd, pVal)
+lookupRaffleInfoRefAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe RaffleInfo)
+lookupRaffleInfoRefAC raffleRefAC = do
+  now <- slotOfCurrentBlock
+  nowposix <- pPOSIXTimeFromGYSlot now
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  stateValImg <- lookupRaffleStateValueAndImage raffleRefAC
+  return $ mkRaffleInfo tr <$> stateValImg
 
-getRaffleStateValueAndImage :: GYUTxO -> Maybe (RaffleStateData, Value, String)
-getRaffleStateValueAndImage raffleStateUTxO = do
-  (gyDatum, gyValue) <- gyGetInlineDatumAndValue raffleStateUTxO
-  rsd <- gyDatumToRSD gyDatum
-  img <- gyGetImageFromRaffleDatum gyDatum
-  let pVal = valueToPlutus gyValue
-  let img2 = Text.unpack $ fromBuiltin $ decodeUtf8 img
-  return (rsd, pVal, img2)
+lookupTicketInfoByUserAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe TicketInfo)
+lookupTicketInfoByUserAC ticketUserAC = do
+  let ticketRefAC = deriveRefFromUserAC ticketUserAC
+  mticket <- lookupTickeStateValueAndImage ticketRefAC
+  case mticket of
+    Nothing -> return Nothing
+    Just (tsd, tVal, tImg) -> do
+      mraffle <- lookupRaffleStateDataAndValue (tRaffle tsd)
+      case mraffle of
+        Nothing -> return Nothing
+        Just (rsd, rVal) -> do
+          now <- slotOfCurrentBlock
+          nowposix <- pPOSIXTimeFromGYSlot now
+          let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+          let raffleStateId = evaluateRaffleState (tr, rsd, rVal)
+          let ticketStateId = evalTicketState tsd (rRandomSeed rsd) raffleStateId
+          let ticketStateLabel = showTicketStateLabel ticketStateId
+          let actions = validActionLabelsForTicketState ticketStateId
+          return $ Just $ TicketInfo tsd tVal tImg ticketStateLabel actions
 
-getTicketDatumAndValue :: GYUTxO -> Maybe (TicketStateData, Value)
-getTicketDatumAndValue ticketStateUTxO = do
-  (gyDatum, gyValue) <- gyGetInlineDatumAndValue ticketStateUTxO
-  tsd <- gyDatumToTSD gyDatum
-  let pVal = valueToPlutus gyValue
-  return (tsd, pVal)
+-- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
+lookupActiveRaffles :: (GYTxQueryMonad m) => m [RaffleInfo]
+lookupActiveRaffles = do
+  allUTxOs <- lookupUTxOsAtValidator raffleizeValidatorGY
+  let validUTxOs = filterUTxOs hasValidRefToken allUTxOs
+  let raffleUTxOs = utxosToList validUTxOs
+  now <- slotOfCurrentBlock
+  nowposix <- pPOSIXTimeFromGYSlot now
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  return $ mapMaybe (`raffleInfoFromUTxO` tr) raffleUTxOs
+
+lookupTicketsOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [TicketInfo]
+lookupTicketsOfAddress addr = do
+  utxos <- lookupUTxOsAtfAddress addr
+  let val = getValueBalance utxos
+  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
+  lookupTicketInfosByACs raffleizeUserTokens
+
+lookupRafflesOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [RaffleInfo]
+lookupRafflesOfAddress addr = do
+  utxos <- lookupUTxOsAtfAddress addr
+  let val = getValueBalance utxos
+  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
+  lookupRaffleInfosByACs raffleizeUserTokens
+
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+
+{- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at any of the addresses in the list.
+If no UTxO is found the function fails.
+-}
+getUTxOWithStateTokenAtAddresses :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> [GYAddress] -> m GYUTxO
+getUTxOWithStateTokenAtAddresses refAC addresses = do
+  utxs <- lookupUTxOWithStateTokenAtAddresses refAC addresses
+  maybe (throwError (GYQueryUTxOException (GYNoUtxosAtAddress addresses))) return utxs
+
+{- | This function returns a UTxO which contains the NFT specified by 'AssetClass' locked at a given validator addres.
+If no UTxO is found the function fails.
+-}
+getUTxOWithStateToken :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> GYAddress -> m GYUTxO
+getUTxOWithStateToken refAC addr = do
+  utxo <- lookupUTxOWithStateToken refAC addr
+  maybe (throwError (GYQueryUTxOException (GYNoUtxosAtAddress [addr]))) return utxo
+
+getRaffleStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (RaffleStateData, Value)
+getRaffleStateDataAndValue raffleId =
+  do
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
+    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdAndValueFromUTxO utxo
+
+getRaffleStateValueAndImage :: GYTxQueryMonad m => AssetClass -> m (RaffleStateData, Value, String)
+getRaffleStateValueAndImage raffleId =
+  do
+    raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
+    utxo <- getUTxOWithStateToken raffleId raffleValidatorAddr
+    maybe (throwError (GYApplicationException RaffleizeDatumNotFound)) return $ rsdValueAndImageFromUTxO utxo
+
+getTicketStateDataAndValue :: (HasCallStack, GYTxQueryMonad m) => AssetClass -> m (TicketStateData, Value)
+getTicketStateDataAndValue ticketId =
+  do
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
+    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdAndValueFromUTxO utxo
+
+getTicketStateDataAndValueAndImage :: GYTxQueryMonad m => AssetClass -> m (TicketStateData, Value, String)
+getTicketStateDataAndValueAndImage ticketId =
+  do
+    ticketValidatorAddr <- scriptAddress ticketValidatorGY
+    utxo <- getUTxOWithStateToken ticketId ticketValidatorAddr
+    maybe (throwError (GYApplicationException TicketDatumNotFound)) return $ tsdValueAndImageFromUTxO utxo

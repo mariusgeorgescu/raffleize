@@ -1,12 +1,11 @@
 module RaffleizeDApp.Server.API where
 
 import Control.Monad.Reader
-
-import PlutusLedgerApi.V1 qualified
-import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleStateData, RaffleInfo)
+import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleInfo)
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.Server.Queries
 import RaffleizeDApp.TxBuilding.Context
-import RaffleizeDApp.TxBuilding.Interactions (RaffleizeInteraction, RaffleizeTxBuildingContext, interactionToHexEncodedCBOR)
+import RaffleizeDApp.TxBuilding.Transactions
 import Servant
 
 type RaffleizeAPI =
@@ -21,9 +20,7 @@ type InteractionInterface =
 -- | Type for our Raffleize Servant API.
 type LookupsInterface =
   Get '[JSON] String
-    :<|> "raffles" :> Get '[JSON] [(RaffleStateData, PlutusLedgerApi.V1.Value)]
-    :<|> "raffle" :> Get '[JSON] RaffleStateData
-    :<|> "value" :> Get '[JSON] PlutusLedgerApi.V1.Value
+    :<|> "raffles" :> Get '[JSON] [RaffleInfo]
     :<|> "info" :> Get '[JSON] RaffleInfo
 
 raffleizeApi :: Proxy RaffleizeAPI
@@ -32,12 +29,8 @@ raffleizeApi = Proxy
 -- apiSwagger :: Swagger
 -- apiSwagger = toSwagger raffleizeApi
 
-handleInteraction :: RaffleizeTxBuildingContext -> ProviderCtx -> RaffleizeInteraction -> IO String
-handleInteraction tbCtx pCtx i =
-  let
-    i' = runReader (interactionToHexEncodedCBOR i) tbCtx
-   in
-    runReaderT i' pCtx
+handleInteraction :: RaffleizeOffchainContext -> RaffleizeInteraction -> IO String
+handleInteraction roc i = runReaderT (interactionToHexEncodedCBOR i) roc
 
-raffleizeServer :: RaffleizeTxBuildingContext -> ProviderCtx -> ServerT RaffleizeAPI IO
-raffleizeServer r p = handleInteraction r p :<|> handleLookup :<|> handleGetRaffles :<|> handleGetRaffle :<|> handleGetValue :<|> handleGetInfo
+raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
+raffleizeServer roc@RaffleizeOffchainContext {..} = handleInteraction roc :<|> handleLookup :<|> handleGetRaffles providerCtx :<|> handleGetOneRaffle providerCtx

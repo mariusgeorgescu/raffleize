@@ -21,8 +21,7 @@ import RaffleizeDApp.Server.API (raffleizeApi, raffleizeServer)
 import RaffleizeDApp.TUI.Utils (decodeConfigFile)
 import RaffleizeDApp.TxBuilding.Context (
   ProviderCtx (ProviderCtx),
- )
-import RaffleizeDApp.TxBuilding.Interactions (
+  RaffleizeOffchainContext (RaffleizeOffchainContext),
   RaffleizeTxBuildingContext,
  )
 import Servant (
@@ -50,13 +49,14 @@ main = do
   putStrLn "Loading Providers ..."
   withCfgProviders atlasConfig (read @GYLogNamespace "raffleizeserver") $ \providers -> do
     let pCtx = ProviderCtx atlasConfig providers
+    let raffleizeContext = RaffleizeOffchainContext tbCtx pCtx
     putStrLn $ "Starting server at " <> show host <> " " <> show port
     let settings = setHost host $ setPort port defaultSettings -- host and port customized for heroku
-    runSettings settings $ app tbCtx pCtx
+    runSettings settings $ app raffleizeContext
 
-app :: RaffleizeTxBuildingContext -> ProviderCtx -> Application
-app tbCtx pCtx =
+app :: RaffleizeOffchainContext -> Application
+app raffleizeContext =
   cors (const $ Just simpleCorsResourcePolicy {corsRequestHeaders = [HttpTypes.hContentType]}) $
     serve raffleizeApi $
       hoistServer raffleizeApi (Handler . ExceptT . try) $
-        raffleizeServer tbCtx pCtx
+        raffleizeServer raffleizeContext

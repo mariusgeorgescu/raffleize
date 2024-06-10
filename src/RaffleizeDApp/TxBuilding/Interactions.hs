@@ -10,27 +10,10 @@ import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Operations
-
-data RaffleizeInteraction = RaffleizeInteraction
-  { interactionContextNFT :: Maybe AssetClass
-  -- ^ The @AssetClass@ of the Raffle or Ticket the ticket which are in scope of the interaction (if set).
-  , raffleizeAction :: RaffleizeAction
-  -- ^ The @RaffleizeAction@ is the intented action to perfrom.
-  , userAddresses :: UserAddresses
-  -- ^ The user addresses to be used as input for transaction building.
-  , recipient :: Maybe GYAddress
-  -- ^ If the interaction unlocks some funds, the funds will be sent to this address (if set, otherwise to the change address).
-  }
-  deriving (Show, Generic, FromJSON, ToJSON)
-
-data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
-  { raffleValidatorRef :: GYTxOutRef
-  , ticketValidatorRef :: GYTxOutRef
-  }
-  deriving (Show, Generic, ToJSON, FromJSON)
 
 interactionToTxSkeleton ::
   (HasCallStack, GYTxMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
@@ -67,15 +50,3 @@ interactionToTxSkeleton
             CollectAmount -> collectAmountTX raffleValidatorRef receiveAddr contextNFT
             GetCollateraOfExpiredTicket -> getCollateralOfExpiredTicketTX ticketValidatorRef usedAddrs receiveAddr contextNFT
           Admin CloseRaffle -> undefined -- TODO
-
-interactionToTxBody :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT ProviderCtx IO GYTxBody)
-interactionToTxBody interaction@RaffleizeInteraction {userAddresses} = do
-  raffleizeTxBuildingContext <- ask
-  let skeleton = runReader (interactionToTxSkeleton interaction) raffleizeTxBuildingContext
-  return $ runTxI userAddresses (fst <$> skeleton)
-
-interactionToUnsignedTx :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT ProviderCtx IO GYTx)
-interactionToUnsignedTx = (fmap unsignedTx <$>) . interactionToTxBody
-
-interactionToHexEncodedCBOR :: (MonadReader RaffleizeTxBuildingContext r) => RaffleizeInteraction -> r (ReaderT ProviderCtx IO String)
-interactionToHexEncodedCBOR = (fmap txToHex <$>) . interactionToUnsignedTx

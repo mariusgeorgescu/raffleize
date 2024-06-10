@@ -163,7 +163,7 @@ getTimeRangeForNextNSlots i = do
 queryRaffleRUN :: HasCallStack => Bool -> Wallet -> AssetClass -> Run RaffleStateId
 queryRaffleRUN log w rid = do
   (r, v) <- runWallet' w $ do
-    lookupRaffleStateDataAndValue rid `catchError` (error . show)
+    getRaffleStateDataAndValue rid `catchError` (error . show)
   tr <- getTimeRangeForNextNSlots 0
   let state = evaluateRaffleState (tr, r, v)
   when log $ do
@@ -174,7 +174,7 @@ queryRaffleRUN log w rid = do
 queryTicketRUN :: Wallet -> AssetClass -> Run ()
 queryTicketRUN w tid = do
   (r, v) <- runWallet' w $ do
-    lookupTicketStateDataAndValue tid `catchError` (error . show)
+    getTicketStateDataAndValue tid `catchError` (error . show)
   logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
 
 mintTestTokensRun :: Wallet -> ByteString -> Integer -> Run Value
