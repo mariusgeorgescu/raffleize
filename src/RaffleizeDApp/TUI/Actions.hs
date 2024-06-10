@@ -95,7 +95,7 @@ raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey rafflei
   putStrLn (yellowColorString "Building transaction...")
   raffleizeTxBody <- runReaderT (interactionToTxBody raffleizeInteraction) raffleizeContext
   let raffleizeTxSigned = signGYTxBody raffleizeTxBody [skey]
-  putStrLn $ greenColorString ("Buit and signed by: \n\t" <> Data.Text.unpack (addressToText my_addr))
+  putStrLn $ greenColorString ("Built and signed by: \n\t" <> Data.Text.unpack (addressToText my_addr))
   txOutRef <- runReaderT (submitTxAndWaitForConfirmation raffleizeTxSigned) providerCtx
   return $ showTxOutRef txOutRef
 
