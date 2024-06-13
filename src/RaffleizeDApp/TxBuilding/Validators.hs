@@ -63,7 +63,7 @@ mockRaffleParam =
     , rRaffleValidatorHash = raffleizeValidatorHashPlutus
     , rTicketValidatorHash = ticketValidatorHashPlutus
     , rTicketCollateral = 3_500_000 --- ^ Lovelaces
-    , rRaffleCollateral = 3_500_000 --- ^ Lovelaces
+    , rRaffleCollateral = 30_000_000 --- ^ Lovelaces
     }
 
 raffleizeMintingPolicyPlutus :: CompiledCode (BuiltinData -> BuiltinData -> ())

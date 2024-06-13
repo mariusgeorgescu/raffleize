@@ -142,4 +142,14 @@ buyTicket roc skey secretString raffleId mRecipient = do
 
 ----------------
 
+revealTicket :: RaffleizeOffchainContext -> GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> IO Text
+revealTicket roc skey revealedSecretString ticketUserAC mRecipient = do
+  let revealedSecretBS = fromString @BuiltinByteString revealedSecretString
+  putStrLn $ yellowColorString $ "Revealing ticket secret e: \n\t " <> show ticketUserAC
+  putStrLn $ blueColorString $ "with secret: " <> revealedSecretString
+  putStrLn $ blueColorString $ "revealed: " <> (show . toJSON $ revealedSecretBS)
+  raffleizeTransaction roc skey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just ticketUserAC) mRecipient
+
+----------------
+
 ---------

@@ -46,7 +46,7 @@ deployRaffleizeValidatortTxBody :: (MonadIO m, MonadReader ProviderCtx m) => Use
 deployRaffleizeValidatortTxBody = deployReferenceScriptTxBody (validatorToScript raffleizeValidatorGY)
 
 deployTicketValidatortTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> m GYTxBody
-deployTicketValidatortTxBody = deployReferenceScriptTxBody (validatorToScript raffleizeValidatorGY)
+deployTicketValidatortTxBody = deployReferenceScriptTxBody (validatorToScript ticketValidatorGY)
 
 -----------------
 
