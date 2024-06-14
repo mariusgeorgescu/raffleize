@@ -73,6 +73,8 @@ library
     RaffleizeDApp.Tests.PropertyTests
     RaffleizeDApp.Tests.UnitTests
     RaffleizeDApp.TUI.Actions
+    RaffleizeDApp.TUI.RaffleizeWidgets
+    RaffleizeDApp.TUI.Types
     RaffleizeDApp.TUI.UI
     RaffleizeDApp.TUI.Utils
     RaffleizeDApp.TxBuilding.Context

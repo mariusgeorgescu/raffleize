@@ -20,6 +20,8 @@ import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import RaffleizeDApp.TxBuilding.Utils
 
+
+
 addressFromSkey :: ProviderCtx -> GYPaymentSigningKey -> GYAddress
 addressFromSkey pCtx skey =
   let nid = (cfgNetworkId . ctxCoreCfg) pCtx
@@ -76,12 +78,13 @@ deployValidators pCtx skey = do
   B.writeFile raffleizeValidatorsConfig (encode . toJSON $ validators)
   putStrLn $ greenColorString ("exported to " <> raffleizeValidatorsConfig)
 
-mintTestTokens :: ProviderCtx -> GYPaymentSigningKey -> GYAddress -> String -> Integer -> IO Text
-mintTestTokens pCtx skey addr tn amount = do
+mintTestTokens :: ProviderCtx -> GYPaymentSigningKey -> String -> Integer -> IO Text
+mintTestTokens pCtx skey tn amount = do
   putStrLn $ yellowColorString "Minting test tokens... "
   putStrLn $ blueColorString $ "with token name: " <> show tn
   putStrLn $ blueColorString $ "amount: " <> show amount
-  let userAddrs = UserAddresses [addr] addr Nothing
+  let my_addr = addressFromSkey pCtx skey
+  let userAddrs = UserAddresses [my_addr] my_addr Nothing
   mintTxBody <- runReaderT (mintTestTokensTxBody userAddrs tn amount) pCtx
   let mintTxSigned = signGYTxBody mintTxBody [skey]
   txOutRef <- runReaderT (submitTxAndWaitForConfirmation mintTxSigned) pCtx

@@ -57,3 +57,8 @@ cexplorerPreprod :: Text
 cexplorerPreprod = "https://preprod.cexplorer.io/"
 cexplorerMainnet :: Text
 cexplorerMainnet = "https://cexplorer.io/"
+
+----------
+
+tokenNameMaxLength :: Int
+tokenNameMaxLength = 32
