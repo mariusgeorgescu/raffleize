@@ -118,7 +118,6 @@ tui = do
 
 buildInitialState :: ProviderCtx -> String -> IO RaffleizeUI
 buildInitialState pCtx logo = do
-  liftIO $ print ("BUILDING INITIAL STATE" :: String)
   maybeValidatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   maybeSKey <- readPaymentKeyFile operationSkeyFilePath
   allRafflesInfo <- getActiveRaffles pCtx
@@ -149,6 +148,11 @@ buildInitialState pCtx logo = do
 
   let constructValueState = mkConstructValueState balance mempty
   return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance logo mempty mintTokenForm raffleConfigForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm constructValueState MainScreen)
+
+refreshState :: RaffleizeUI -> IO RaffleizeUI
+refreshState RaffleizeUI {..} = do
+  putStrLn $ yellowColorString "Refreshing info ..."
+  buildInitialState providersCtx logo
 
 ------------------------------------------------------------------------------------------------
 
@@ -263,7 +267,7 @@ handleEvent s e =
                             liftIO clearScreen
                             txOutRef <- liftIO $ revealTicket (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ maybeSecretKey s) (Data.Text.unpack "marius") contextNFT Nothing
                             let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                            initialState <- liftIO $ refreshState s
                             continue
                               initialState
                                 { message = "TICKET SECRET REVEALED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
@@ -291,7 +295,7 @@ handleEvent s e =
                             liftIO clearScreen
                             txOutRef <- liftIO $ buyTicket (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust (maybeSecretKey s)) secretString contextNFT mRecipient
                             let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                            initialState <- liftIO $ refreshState s
                             continue
                               initialState
                                 { message = "TICKET BOUGHT SUCCESFULLY!\n" <> showLink nid "tx" txOutRef <> "\n FOR RAFFLE " <> showText contextNFT
@@ -316,7 +320,7 @@ handleEvent s e =
                             liftIO clearScreen
                             txOutRef <- liftIO $ cancelRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ maybeSecretKey s) contextNFT Nothing
                             let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                            initialState <- liftIO $ refreshState s
                             continue
                               initialState
                                 { message = "RAFFLE CANCELLED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
@@ -333,7 +337,7 @@ handleEvent s e =
                             liftIO clearScreen
                             txOutRef <- liftIO $ recoverStakeRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ maybeSecretKey s) contextNFT Nothing
                             let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                            initialState <- liftIO $ refreshState s
                             continue
                               initialState
                                 { message = "RAFFLE STAKE RECOVERED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
@@ -350,7 +354,7 @@ handleEvent s e =
                             liftIO clearScreen
                             txOutRef <- liftIO $ recoverStakeAndAmountRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ maybeSecretKey s) contextNFT Nothing
                             let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                            initialState <- liftIO $ refreshState s
                             continue
                               initialState
                                 { message = "RAFFLE STAKE AND COLLECTED AMOUNT RECOVERED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
@@ -389,7 +393,7 @@ handleEvent s e =
                             let recpient = addressFromTextMaybe $ _raffleRecipient (formState crForm)
                             txOutRef <- liftIO $ createRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust (maybeSecretKey s)) raffle recpient
                             let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                            initialState <- liftIO $ refreshState s
                             continue initialState {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
                           else continue s
                   KIns -> continue s {currentScreen = ConstructValueScreen}
@@ -412,7 +416,7 @@ handleEvent s e =
               'q' -> halt s
               'g' -> do
                 liftIO $ generateNewSkey operationSkeyFilePath
-                s' <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                s' <- liftIO $ refreshState s
                 continue s'
               'e' -> do
                 liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
@@ -430,12 +434,12 @@ handleEvent s e =
                             }
                       'l' -> do
                         liftIO clearScreen
-                        initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                        initialState <- liftIO $ refreshState s
                         continue initialState {message = "Updated"}
                       'd' -> do
                         liftIO clearScreen
                         liftIO $ deployValidators (providersCtx s) (fromJust (maybeSecretKey s))
-                        initialState <- liftIO $ buildInitialState (providersCtx s) (logo s)
+                        initialState <- liftIO $ refreshState s
                         continue initialState {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
                       'r' -> do
                         continue s {currentScreen = MyRafflesScreen}

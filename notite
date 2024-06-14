@@ -1,1 +1,2 @@
 nft collateral is dependent by the max size of the datum
+raffle value must be bounded -> so that memory units do not exced -> maxProtocol - most expensive raffleize usecase

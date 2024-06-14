@@ -153,7 +153,7 @@ data ActiveRafflesFormState = ActiveRafflesFormState
 makeLenses ''ActiveRafflesFormState
 
 drawRaffleLockedValue :: Value -> Widget NameResources
-drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 30 $ hLimit 60 $ drawValueWidget riValue
+drawRaffleLockedValue riValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ vLimit 200 $ hLimit 60 $ drawValueWidget riValue
 
 drawRaffeStats :: RaffleStateData -> Widget NameResources
 drawRaffeStats RaffleStateData {..} =
@@ -316,8 +316,8 @@ drawTicketInfo TicketInfo {..} =
     drawTicketLockedValue = borderWithLabel (txt " CURRENT LOCKED VALUE ") $ drawValueWidget tiValue
     drawTicketState :: Widget NameResources
     drawTicketState =
-      vLimit 20 $
-        hLimit 120 $
+      vLimit 200 $
+        hLimit 130 $
           renderTable $
             table
               [ [txt "Ticket Number: ", txt (showText (tNumber tiTsd))]
