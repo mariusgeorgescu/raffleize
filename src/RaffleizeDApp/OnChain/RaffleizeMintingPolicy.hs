@@ -4,7 +4,7 @@
 
 module RaffleizeDApp.OnChain.RaffleizeMintingPolicy where
 
-import PlutusCore.Builtin.Debug
+import PlutusCore.Builtin.Debug (plcVersion100)
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue)
 import PlutusLedgerApi.V2 (
