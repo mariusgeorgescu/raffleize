@@ -1,9 +1,10 @@
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeTicketValidator where
 
-import PlutusCore.Version (plcVersion100)
+import PlutusCore.Builtin.Debug (plcVersion100)
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V1.Value (geq)
 import PlutusLedgerApi.V2 (PubKeyHash, TxOut (txOutAddress, txOutValue))
@@ -13,6 +14,7 @@ import PlutusTx (
   liftCode,
   unsafeApplyCode,
  )
+import RaffleizeDApp.Constants (secretMaxLength)
 import RaffleizeDApp.CustomTypes.ActionTypes (
   RaffleOwnerAction (GetCollateraOfExpiredTicket),
   RaffleizeRedeemer (RaffleOwnerRedeemer, TicketOwnerRedeemer),
@@ -42,7 +44,7 @@ import RaffleizeDApp.OnChain.Utils (
   getOwnInput,
   hasTxInWithToken,
   hasTxOutWith,
-  hasTxOutWithInlineDatumAnd,
+  hasTxOutWithInlineDatumAnd',
   isBurningNFT,
   mkUntypedValidatorCustom,
   noConstraint,
@@ -108,10 +110,10 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                       RevealTicketSecret secret ->
                         let new_tsd = revealTicketToRaffleT secret tsd
                          in pand
-                              [ traceIfFalse "secret too long" $ lengthOfByteString secret #<= 32
+                              [ traceIfFalse "secret too long" $ lengthOfByteString secret #<= secretMaxLength
                               , hasTxInWithToken ticketUserAC txInfoInputs -- Transaction spends the ticket user NFT on another input.
                               , currentTicketState #== 92 -- REVEALABLE -- Current state is valid for revealing ticket.
-                              , hasTxOutWithInlineDatumAnd (mkTicketDatum new_tsd) (#== ownValue) (#== ticketValidatorAddr) txInfoOutputs ---Transaction locks new ticket state at validator address (with updated datum).
+                              , hasTxOutWithInlineDatumAnd' (mkTicketDatum new_tsd) ownValue ticketValidatorAddr txInfoOutputs ---Transaction locks new ticket state at validator address (with updated datum).
                               ]
                       _closingAction ->
                         pand

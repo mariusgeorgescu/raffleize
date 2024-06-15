@@ -1,9 +1,10 @@
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeMintingPolicy where
 
-import PlutusCore.Version (plcVersion100)
+import PlutusCore.Builtin.Debug
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue)
 import PlutusLedgerApi.V2 (
@@ -36,7 +37,7 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
 import RaffleizeDApp.OnChain.Utils (
   adaValueFromLovelaces,
   hasTxInWithRef,
-  hasTxOutWithInlineDatumAnd,
+  hasTxOutWithInlineDatumAnd',
   isBurningNFT,
   isMintingNFT,
   mkUntypedMintingPolicyCustom,
@@ -71,7 +72,7 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
                 , traceIfFalse "Must mint the user NFT" $
                     isMintingNFT raffleUserAC txInfoMint
                 , traceIfFalse "Must lock new raffle state at Raffle Validator (with correct value and datum)" $
-                    hasTxOutWithInlineDatumAnd newRaffleDatum (#== (raffleRefTokenValue #+ rStake #+ adaValueFromLovelaces rRaffleCollateral)) (#== raffleValidatorAddress) txInfoOutputs
+                    hasTxOutWithInlineDatumAnd' newRaffleDatum (raffleRefTokenValue #+ rStake #+ adaValueFromLovelaces rRaffleCollateral) raffleValidatorAddress txInfoOutputs
                 ]
         MintTicket raffleID ->
           let raffleRefToken = assetClassValue raffleID 1

@@ -20,8 +20,6 @@ import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import RaffleizeDApp.TxBuilding.Utils
 
-
-
 addressFromSkey :: ProviderCtx -> GYPaymentSigningKey -> GYAddress
 addressFromSkey pCtx skey =
   let nid = (cfgNetworkId . ctxCoreCfg) pCtx
@@ -148,10 +146,25 @@ buyTicket roc skey secretString raffleId mRecipient = do
 revealTicket :: RaffleizeOffchainContext -> GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> IO Text
 revealTicket roc skey revealedSecretString ticketUserAC mRecipient = do
   let revealedSecretBS = fromString @BuiltinByteString revealedSecretString
-  putStrLn $ yellowColorString $ "Revealing ticket secret e: \n\t " <> show ticketUserAC
+  putStrLn $ yellowColorString $ "Revealing ticket secret: \n\t " <> show ticketUserAC
   putStrLn $ blueColorString $ "with secret: " <> revealedSecretString
   putStrLn $ blueColorString $ "revealed: " <> (show . toJSON $ revealedSecretBS)
   raffleizeTransaction roc skey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just ticketUserAC) mRecipient
+
+collectStake :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
+collectStake roc skey ticketUserAC mRecipient = do
+  putStrLn $ yellowColorString $ "Collecting stake with winning ticket: \n\t " <> show ticketUserAC
+  raffleizeTransaction roc skey (TicketOwner CollectStake) (Just ticketUserAC) mRecipient
+
+refundTicket :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
+refundTicket roc skey ticketUserAC mRecipient = do
+  putStrLn $ yellowColorString $ "Getting full refund for ticket of underfunded raffle: \n\t " <> show ticketUserAC
+  raffleizeTransaction roc skey (TicketOwner RefundTicket) (Just ticketUserAC) mRecipient
+
+extraRefundTicket :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
+extraRefundTicket roc skey ticketUserAC mRecipient = do
+  putStrLn $ yellowColorString $ "Getting extra refund for ticket of unrevealed raffle: \n\t " <> show ticketUserAC
+  raffleizeTransaction roc skey (TicketOwner RefundTicketExtra) (Just ticketUserAC) mRecipient
 
 ----------------
 

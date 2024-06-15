@@ -27,8 +27,8 @@ getValueBalance = valueToPlutus . foldMapUTxOs utxoValue
 addressFromPaymentSigningKey :: GYNetworkId -> GYPaymentSigningKey -> GYAddress
 addressFromPaymentSigningKey nid skey =
   let pub_key = paymentVerificationKey skey
-      pub_key_hash = pubKeyHash pub_key
-      address = addressFromPubKeyHash nid pub_key_hash
+      payment_key_hash = paymentKeyHash pub_key
+      address = addressFromPaymentKeyHash nid payment_key_hash
    in address
 
 pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime

@@ -75,6 +75,7 @@ data RaffleizeUI = RaffleizeUI
   , myRafflesForm :: Form MyRafflesFormState RaffleizeEvent NameResources
   , buyTicketForm :: Form BuyTicketFormState RaffleizeEvent NameResources
   , myTicketsForm :: Form MyTicketsFormState RaffleizeEvent NameResources
+  , revealSecretForm :: Form RevealSecretFormState RaffleizeEvent NameResources
   , myConstrctValueState :: ConstructValueState
   , currentScreen :: Screen
   }
@@ -124,6 +125,7 @@ buildInitialState pCtx logo = do
   let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
   let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
   let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
+  let revealSecretForm = mkRevealSecretForm (RevealSecretFormState mempty)
   (myRafflesForm, myTicketsForm, raffleConfigForm, balance) <- case maybeSKey of
     Nothing -> do
       let rf = mkMyRafflesForm (MyRafflesFormState mempty Nothing)
@@ -147,7 +149,7 @@ buildInitialState pCtx logo = do
       return (rf, tf, cf, balance)
 
   let constructValueState = mkConstructValueState balance mempty
-  return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance logo mempty mintTokenForm raffleConfigForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm constructValueState MainScreen)
+  return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance logo mempty mintTokenForm raffleConfigForm activeRafflesForm myRafflesForm buyTicketForm myTicketsForm revealSecretForm constructValueState MainScreen)
 
 refreshState :: RaffleizeUI -> IO RaffleizeUI
 refreshState RaffleizeUI {..} = do
@@ -167,6 +169,7 @@ handleEvent s e =
       EvKey KEsc [] -> continue s {message = "", currentScreen = MainScreen}
       EvKey key _modifiers ->
         case currentScreen s of
+          RevealTicketSecretScreen -> handleRevealSecretEvents s e
           ConstructValueScreen -> do
             let currentCVS = myConstrctValueState s
             let atvForm = addToValueForm currentCVS
@@ -252,59 +255,8 @@ handleEvent s e =
                       let newcvs = currentCVS {constructedValueList = newConstructedList}
                       continue s {myConstrctValueState = newcvs}
                   _ -> error "invalid focus"
-          MyTicketsScreen -> do
-            let mtForm = myTicketsForm s
-                mtFormState = formState mtForm
-                mst = mtFormState ^. selectedTicket
-             in case key of
-                  KChar 's' -> case validatorsConfig s of
-                    Nothing -> continue s {message = "Validators not present at " <> Data.Text.pack raffleizeValidatorsConfig}
-                    Just validatorsTxOutRefs ->
-                      do
-                        case mst of
-                          Just ticketInfo -> do
-                            let contextNFT = fst $ generateTicketACFromTicket (tiTsd ticketInfo)
-                            liftIO clearScreen
-                            txOutRef <- liftIO $ revealTicket (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ maybeSecretKey s) (Data.Text.unpack "marius") contextNFT Nothing
-                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ refreshState s
-                            continue
-                              initialState
-                                { message = "TICKET SECRET REVEALED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
-                                , currentScreen = MainScreen
-                                }
-                          Nothing -> continue s
-                  _ -> do
-                    mtForm1 <- handleFormEvent e (myTicketsForm s)
-                    continue s {myTicketsForm = mtForm1}
-          BuyTicketScreen ->
-            let btForm = buyTicketForm s
-                btFormState = formState btForm
-                secretString = Data.Text.unpack $ btFormState ^. secret
-                mRecipient = addressFromTextMaybe $ btFormState ^. ticketRecipient
-                arState = formState (activeRafflesForm s)
-                contextNFT = rRaffleID $ riRsd $ fromJust $ arState ^. selectedRaffle
-                invalid_fields = invalidFields btForm
-             in case key of
-                  KEnter -> case validatorsConfig s of
-                    Nothing -> continue s {message = "Validators not present at " <> Data.Text.pack raffleizeValidatorsConfig}
-                    Just validatorsTxOutRefs ->
-                      do
-                        if null invalid_fields
-                          then do
-                            liftIO clearScreen
-                            txOutRef <- liftIO $ buyTicket (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust (maybeSecretKey s)) secretString contextNFT mRecipient
-                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
-                            initialState <- liftIO $ refreshState s
-                            continue
-                              initialState
-                                { message = "TICKET BOUGHT SUCCESFULLY!\n" <> showLink nid "tx" txOutRef <> "\n FOR RAFFLE " <> showText contextNFT
-                                , currentScreen = MainScreen
-                                }
-                          else continue s
-                  _ -> do
-                    updated_form <- handleFormEvent e btForm
-                    continue s {buyTicketForm = updated_form}
+          MyTicketsScreen -> handleMyTicketsEvents s e
+          BuyTicketScreen -> handleBuyTicketScreenEvents s e
           MyRafflesScreen ->
             let mrForm = myRafflesForm s
                 mrFormState = formState mrForm
@@ -364,17 +316,7 @@ handleEvent s e =
                   _ -> do
                     mrForm1 <- handleFormEvent e (myRafflesForm s)
                     continue s {myRafflesForm = mrForm1}
-          ActiveRafflesScreen ->
-            case key of
-              KChar 'b' -> do
-                case formState (activeRafflesForm s) ^. selectedRaffle of
-                  Just sr -> do
-                    let isValidBuy = any ((== "BuyTicket") . snd) $ riAvailableActions sr
-                    if isValidBuy then continue s {currentScreen = BuyTicketScreen} else continue s
-                  _ -> continue s
-              _ -> do
-                arForm <- handleFormEvent e (activeRafflesForm s)
-                continue s {activeRafflesForm = arForm}
+          ActiveRafflesScreen -> handleActiveRafflesEvents s e
           CreateRaffleScreen ->
             let crForm = raffleConfigForm s
                 invalid_fields = invalidFields crForm
@@ -451,6 +393,119 @@ handleEvent s e =
       _ -> continue s
     _ -> continue s
 
+handleActiveRafflesEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleActiveRafflesEvents s@RaffleizeUI {..} event | currentScreen == ActiveRafflesScreen = do
+  let maybeSelectedRaffle = formState activeRafflesForm ^. selectedRaffle
+  case (event, maybeSelectedRaffle) of
+    (VtyEvent (EvKey (KChar 'b') _modifiers), Just selectedActiveRaffle) -> do
+      let isValidBuy = any ((== "BuyTicket") . snd) $ riAvailableActions selectedActiveRaffle
+      if isValidBuy then continue s {currentScreen = BuyTicketScreen} else continue s
+    _ -> do
+      arForm <- handleFormEvent event activeRafflesForm
+      continue s {activeRafflesForm = arForm}
+handleActiveRafflesEvents _state _event = error "Invalid use of handleActiveRafflesEvents"
+
+-- | Handle events in Buy Ticket Secret Screen
+handleBuyTicketScreenEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleBuyTicketScreenEvents s@RaffleizeUI {..} event | currentScreen == BuyTicketScreen = do
+  let btForm = buyTicketForm
+      btFormState = formState btForm
+      secretString = Data.Text.unpack $ btFormState ^. secret
+      mRecipient = addressFromTextMaybe $ btFormState ^. ticketRecipient
+      arState = formState activeRafflesForm
+      maybeSelectedRaffle = arState ^. selectedRaffle
+      invalid_fields = invalidFields btForm
+   in case (event, maybeSecretKey, validatorsConfig, maybeSelectedRaffle, null invalid_fields) of
+        (VtyEvent (EvKey KEnter _modifiers), Just secretKey, Just validatorsTxOutRefs, Just selectedActiveRaffle, True) ->
+          do
+            let isValidBuy = any ((== "BuyTicket") . snd) $ riAvailableActions selectedActiveRaffle
+            if isValidBuy
+              then do
+                liftIO clearScreen
+                let contextNFT = rRaffleID . riRsd $ selectedActiveRaffle
+                txOutRef <- liftIO $ buyTicket (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey secretString contextNFT mRecipient
+                let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
+                initialState <- liftIO $ refreshState s
+                continue
+                  initialState
+                    { message = "TICKET BOUGHT SUCCESFULLY!\n" <> showLink nid "tx" txOutRef <> "\n FOR RAFFLE " <> showText contextNFT
+                    }
+              else continue s
+        _ -> do
+          updated_form <- handleFormEvent event btForm
+          continue s {buyTicketForm = updated_form}
+handleBuyTicketScreenEvents _state _event = error "Invalid use of handleBuyTicketScreenEvents"
+
+-- | Handle events in Reveal Ticket Secret Screen
+handleRevealSecretEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleRevealSecretEvents s@RaffleizeUI {..} event
+  | currentScreen == RevealTicketSecretScreen =
+      let mtForm = myTicketsForm
+          mtFormState = formState mtForm
+          mySelectedTicket = mtFormState ^. selectedTicket
+       in case (event, maybeSecretKey, validatorsConfig, mySelectedTicket) of
+            (VtyEvent (EvKey KEnter _modifiers), Just secretKey, Just validatorsTxOutRefs, Just selectedTicketInfo) -> do
+              let isValidReveal = elem ("TicketOwner", "RevealTicketSecret") (tiAvailableActions selectedTicketInfo)
+               in ( if isValidReveal
+                      then
+                        ( do
+                            let revealedTicketSecret = Data.Text.unpack $ formState revealSecretForm ^. revealedSecret
+                            let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
+                            liftIO clearScreen
+                            txOutRef <- liftIO $ revealTicket (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey revealedTicketSecret contextNFT Nothing
+                            let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
+                            initialState <- liftIO $ refreshState s
+                            continue
+                              initialState
+                                { message = "TICKET SECRET REVEALED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
+                                }
+                        )
+                      else continue s
+                  )
+            _ -> do
+              newFormState <- handleFormEvent event revealSecretForm
+              continue s {revealSecretForm = newFormState}
+handleRevealSecretEvents _state _event = error "Invalid use of handleRevealSecretEvents"
+
+-- | Handle events in My Tickets Screen
+handleMyTicketsEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleMyTicketsEvents s@RaffleizeUI {..} event | currentScreen == MyTicketsScreen = do
+  let mtForm = myTicketsForm
+      mtFormState = formState mtForm
+      mySelectedTicket = mtFormState ^. selectedTicket
+   in case (event, maybeSecretKey, validatorsConfig) of
+        (VtyEvent (EvKey key _modifiers), Just secretKey, Just validatorsTxOutRefs) -> do
+          case mySelectedTicket of
+            Just selectedTicketInfo -> do
+              let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
+              let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
+              case key of
+                (KChar 's') ->
+                  let isValidReveal = elem ("TicketOwner", "RevealTicketSecret") (tiAvailableActions selectedTicketInfo)
+                   in if isValidReveal then continue s {currentScreen = RevealTicketSecretScreen} else continue s
+                (KChar 'w') ->
+                  let isValidCollect = elem ("TicketOwner", "CollectStake") (tiAvailableActions selectedTicketInfo)
+                   in if isValidCollect
+                        then
+                          ( do
+                              liftIO clearScreen
+                              txOutRef <- liftIO $ collectStake (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey contextNFT Nothing
+                              initialState <- liftIO $ refreshState s
+                              continue
+                                initialState
+                                  { message = "WINNING TICKET REDEEMED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
+                                  }
+                          )
+                        else continue s
+                _ -> do
+                  newMtForm <- handleFormEvent event myTicketsForm
+                  continue s {myTicketsForm = newMtForm}
+            Nothing -> do
+              newMtForm <- handleFormEvent event myTicketsForm
+              continue s {myTicketsForm = newMtForm}
+        _ -> halt s
+handleMyTicketsEvents _state _event = error "Invalid use of handleMyTicketsEvents"
+
 -- | Handle events in Mint Tokens Screen
 handleMintTokensEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
 handleMintTokensEvents s@RaffleizeUI {currentScreen, maybeSecretKey, mintTokenForm, providersCtx} event
@@ -497,6 +552,7 @@ handleMintTokensEvents _state _event = error "Invalid use of handleMintTokensEve
 drawUI :: RaffleizeUI -> [Widget NameResources]
 drawUI s =
   let mSelectedRaffle = rRaffleID . riRsd <$> formState (activeRafflesForm s) ^. selectedRaffle
+      mySelectedTicket = liftA2 (,) tRaffle tNumber . tiTsd <$> formState (myTicketsForm s) ^. selectedTicket
    in joinBorders . withBorderStyle unicode . borderWithLabel (txt " RAFFLEIZE - C.A.R.D.A.N.A ")
         <$> [ if Data.Text.null (message s) then emptyWidget else center (withAttr "highlight" $ txt (message s)) <=> txt "[ESC] - Close"
             , if currentScreen s == MintTokenScreen then drawMintTestTokensForm (mintTokenForm s) else emptyWidget
@@ -506,6 +562,7 @@ drawUI s =
             , if currentScreen s == MyRafflesScreen then drawMyRafflesForm (myRafflesForm s) else emptyWidget
             , if currentScreen s == MyTicketsScreen then drawMyTicketsScreen (myTicketsForm s) else emptyWidget
             , if currentScreen s == ConstructValueScreen then drawConstructValueWidget (myConstrctValueState s) else emptyWidget
+            , if currentScreen s == RevealTicketSecretScreen then drawRevealTicketSecretScreen mySelectedTicket (revealSecretForm s) else emptyWidget
             , mainScreen s
             ]
 

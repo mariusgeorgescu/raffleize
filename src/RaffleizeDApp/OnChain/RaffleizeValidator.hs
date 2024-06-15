@@ -2,12 +2,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- Required for `makeLift`:
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeValidator where
 
-import PlutusCore.Version (plcVersion100)
+import PlutusCore.Builtin.Debug
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V1.Value (assetClassValue)
 import PlutusLedgerApi.V2 (
@@ -51,15 +52,16 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
   isOneOutputTo,
   isTicketForRaffle,
   raffleTicketCollateralValue,
+  redeemerToAction,
   refundTicketToRaffle,
   revealTicketToRaffleR,
   updateRaffleStateValue,
-  validateRaffleAction, redeemerToAction,
+  validateRaffleAction,
  )
 import RaffleizeDApp.OnChain.Utils (
   getOwnInput,
   hasTxInWithToken,
-  hasTxOutWithInlineDatumAnd,
+  hasTxOutWithInlineDatumAnd',
   isBurningNFT,
   isMintingNFT,
   mkUntypedValidatorCustom,
@@ -87,10 +89,10 @@ raffleizeValidatorLamba
             burnsRaffleRef = isBurningNFT rRaffleID txInfoMint
             locksRaffleStateWithUpdatedDatumAndValue (newStateData :: RaffleStateData) =
               traceIfFalse "raffle state not locked" $
-                hasTxOutWithInlineDatumAnd (mkRaffleDatum newStateData) (#== updatedRaffleStateVale) (#== raffleValidatorAddr) txInfoOutputs -- using (==) to avoid utxo value ddos
+                hasTxOutWithInlineDatumAnd' (mkRaffleDatum newStateData) updatedRaffleStateVale raffleValidatorAddr txInfoOutputs -- using (==) to avoid utxo value ddos
             hasNewTicketState (newStateData :: TicketStateData) newValue =
               traceIfFalse "ticket state not locked" $
-                hasTxOutWithInlineDatumAnd (mkTicketDatum newStateData) (#== newValue) (#== ticketValidatorAddr) txInfoOutputs
+                hasTxOutWithInlineDatumAnd' (mkTicketDatum newStateData) newValue ticketValidatorAddr txInfoOutputs
          in validateRaffleAction action currentStateLabel -- Must be a valid action for the raffle state.
               && case redeemer of
                 UserRedeemer (CreateRaffle _) -> traceIfFalse "invalid redeemer" False

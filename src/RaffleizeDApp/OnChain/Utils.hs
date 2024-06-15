@@ -2,6 +2,7 @@ module RaffleizeDApp.OnChain.Utils where
 
 import Data.List.Extra (intercalate)
 import PlutusLedgerApi.V1.Value (
+  AssetClass (unAssetClass),
   TokenName (..),
   Value,
   adaSymbol,
@@ -11,7 +12,7 @@ import PlutusLedgerApi.V1.Value (
   assetClassValueOf,
   flattenValue,
   geq,
-  singleton, AssetClass (unAssetClass),
+  singleton,
  )
 import PlutusLedgerApi.V2 (
   Address,
@@ -140,6 +141,10 @@ isTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstr
 isTxOutWithInlineDatumAnd datum toValue toAddress TxOut {txOutValue, txOutAddress, txOutDatum} = toValue txOutValue && toAddress txOutAddress && isGivenInlineDatum datum txOutDatum
 {-# INLINEABLE isTxOutWithInlineDatumAnd #-}
 
+isTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> TxOut -> Bool
+isTxOutWithInlineDatumAnd' datum value address TxOut {txOutValue, txOutAddress, txOutDatum} = value #== txOutValue && address #== txOutAddress && isGivenInlineDatum datum txOutDatum
+{-# INLINEABLE isTxOutWithInlineDatumAnd' #-}
+
 ---------------------------------
 
 -- | Helper function to check that a UTxO is being spent in the transaction.
@@ -174,6 +179,10 @@ getCurrentStateDatumAndValue stateToken toAddress outs = case filter (isTxOutWit
 hasTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstraint -> [TxOut] -> Bool
 hasTxOutWithInlineDatumAnd datum toValue toAddress = traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd datum toValue toAddress)
 {-# INLINEABLE hasTxOutWithInlineDatumAnd #-}
+
+hasTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> [TxOut] -> Bool
+hasTxOutWithInlineDatumAnd' datum value address = traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd' datum value address)
+{-# INLINEABLE hasTxOutWithInlineDatumAnd' #-}
 
 isMintingNFT :: AssetClass -> Value -> Bool
 isMintingNFT ac txInfoMint = traceIfFalse "NFT not minted" $ assetClassValueOf txInfoMint ac #== 1
@@ -299,4 +308,3 @@ findOwnInputA _ = Nothing
 adaValueFromLovelaces :: Integer -> Value
 adaValueFromLovelaces = singleton adaSymbol adaToken
 {-# INLINEABLE adaValueFromLovelaces #-}
-

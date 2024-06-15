@@ -26,6 +26,7 @@ data NameResources
   | TokenNameField
   | MintAmountField
   | SecretField
+  | RevealedSecretField
   | MintTokensAddressField
   | SendTicketAddressField
   | SendRaffleAddressField
@@ -41,6 +42,7 @@ data Screen
   | BuyTicketScreen
   | MyTicketsScreen
   | ConstructValueScreen
+  | RevealTicketSecretScreen
   deriving (Eq, Ord, Enum, Show)
 
 instance Splittable [] where

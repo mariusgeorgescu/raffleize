@@ -89,6 +89,8 @@ invalidFieldText t = case t of
   SendRaffleAddressField -> "Enter a valid address or leave empty to receive the raffle NFT to the current address !"
   SendTicketAddressField -> "Enter a valid address or leave empty to receive the ticket to the current address !"
   ConstructedValueItemsList -> "Stake value must not be empty !"
+  RevealedSecretField -> "The secret must have maximum 32 characters !"
+  SecretField -> "The secret must have maximum 32 characters !"
   _ -> ""
 
 invalidFieldsWidget :: [NameResources] -> Widget n
@@ -329,7 +331,7 @@ drawTicketInfo TicketInfo {..} =
 mkMyTicketsForm :: MyTicketsFormState -> Form MyTicketsFormState e NameResources
 mkMyTicketsForm =
   newForm
-    [(txt mempty <=>) @@= listField _myTickets selectedTicket drawTicketInfoListItem 10 MyTicketsListField]
+    [(txt "My Tickets" <=>) @@= listField _myTickets selectedTicket drawTicketInfoListItem 10 MyTicketsListField]
   where
     drawTicketInfoListItem :: Bool -> TicketInfo -> Widget NameResources
     drawTicketInfoListItem isSelected ti = if isSelected then withAttr "action" $ drawTicketInfo ti else drawTicketInfo ti
@@ -372,6 +374,27 @@ drawMyTicketsScreen mtForm =
           ("TicketOwner", "RefundTicketExtra") -> txt "[E]     - Get ticket refund and extra"
           ("RaffleOwner", "GetCollateraOfExpiredTicket") -> emptyWidget
           _ -> emptyWidget
+
+------------------------------------------------------------------------------------------------
+
+-- **  Reveal Ticket Secret Form
+
+------------------------------------------------------------------------------------------------
+newtype RevealSecretFormState = RevealSecretFormState
+  { _revealedSecret :: Text
+  }
+  deriving (Show)
+
+makeLenses ''RevealSecretFormState
+
+mkRevealSecretForm :: RevealSecretFormState -> Form RevealSecretFormState e NameResources
+mkRevealSecretForm =
+  newForm
+    [(txt "Ticket Secret: " <=>) @@= editShowableFieldWithValidate revealedSecret RevealedSecretField ((<= secretMaxLength) . fromIntegral . Data.Text.length)]
+
+drawRevealTicketSecretScreen :: Maybe (AssetClass, Integer) -> Form s e NameResources -> Widget NameResources
+drawRevealTicketSecretScreen (Just (selectedTicketRaffleId, selectedTicketNo)) revealSecretForm = center $ mkFormScreen (" REVEAL SECRET FOR TICKET  #" <> showText selectedTicketNo <> " OF RAFFLE " <> showText selectedTicketRaffleId) " REVEAL SECRET " revealSecretForm
+drawRevealTicketSecretScreen Nothing _ = error "Trying to reveal ticket with no selected ticket !"
 
 ------------------------------------------------------------------------------------------------
 
@@ -526,7 +549,7 @@ makeLenses ''BuyTicketFormState
 mkBuyTicketForm :: BuyTicketFormState -> Form BuyTicketFormState e NameResources
 mkBuyTicketForm =
   newForm
-    [ (txt "Ticket Secret: " <=>) @@= editTextField secret SecretField (Just 5)
+    [ (txt "Ticket Secret: " <=>) @@= editShowableFieldWithValidate secret SecretField ((<= secretMaxLength) . fromIntegral . Data.Text.length)
     , (txt "Recipient address: " <=>) @@= editShowableFieldWithValidate ticketRecipient SendTicketAddressField (liftA2 (||) (Data.Maybe.isJust . addressFromTextMaybe) Data.Text.null)
     ]
 
