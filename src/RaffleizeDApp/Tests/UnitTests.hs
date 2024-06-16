@@ -346,7 +346,8 @@ raffleizeSuccessScenario wallets@Wallets {..} = do
     winnerCollectStakeTXRun refRaffleValidator refTicketValidator (head (fst <$> ws))
   logInfo' ("TICKET OWNER REDEEM STAKE :" ++ show raffleId)
 
-  void $ queryRaffleRUN True w1 raffleId
+  s <- queryRaffleRUN True w1 raffleId
+  when (s /= 43) $ logError "not in SUCCESS_FINAL"
 
 ---------------------
 ------------------------
