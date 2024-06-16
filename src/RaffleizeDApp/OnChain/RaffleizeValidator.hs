@@ -127,7 +127,7 @@ raffleizeValidatorLamba
                           [ burnsRaffleUser -- Must burn raffle user NFT.
                           , locksRaffleStateWithUpdatedDatumAndValue rsd -- Must lock raffle state at Raffle Validator address (with updated value and datum).
                           ]
-                TicketOwnerRedeemer ticketOwnerAction !ticketRefAC ->
+                TicketOwnerRedeemer !ticketOwnerAction !ticketRefAC ->
                   let !tsd = snd $ getTicketStateDatumAndValue ticketRefAC (#== ticketValidatorAddr) txInfoInputs --- Must spend the ticket ref NFT in another input.
                       !ticketUserAC = deriveUserFromRefAC ticketRefAC
                       burnsTickets = isBurningNFT ticketRefAC txInfoMint && isBurningNFT ticketUserAC txInfoMint

@@ -18,8 +18,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 
 import Control.Monad
-import GHC.Stack (HasCallStack)
-
+import GeniusYield.Imports
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Lookups
@@ -237,7 +236,7 @@ createNew wallets@Wallets {} = do
           , rRevealDDL = rddl
           , rTicketPrice = 5_000_000
           , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876)
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
   deployAndCreateRUN wallets config
 
@@ -261,7 +260,7 @@ createUpdate wallets@Wallets {..} = do
           , rRevealDDL = newrddl
           , rTicketPrice = 10_000_000
           , rMinTickets = 2
-          , rStake = valueToPlutus (fakeIron 9876)
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
   updateRaffleRUN w1 raffleValidatorTxOutRef raffleId newconfig
 
@@ -329,7 +328,7 @@ raffleizeSuccessScenario wallets@Wallets {..} = do
   (refRaffleValidator, raffleId) <- createNew wallets
 
   -- Buy ticket to raffle
-  ws <- buyNTicketsRUN refRaffleValidator raffleId [w1, w2, w3, w4] ["unu", "doi", "trei", "patru"]
+  ws <- buyNTicketsRUN refRaffleValidator raffleId [w1, w2, w3, w4] ["unu", "doi", "trei", fromString @BuiltinByteString "84a289f6f0dc3d1e18dcac4687604d7184a289f6f0dc3d1e18dcac4687604d71"]
 
   waitNSlots 4
   -- Revealing tickets

@@ -61,13 +61,13 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
         let
           !raffleRefAC = tRaffle
           !raffleValidatorAddr = scriptHashAddress tRaffleValidator
-          !burnsTicketUserAndRef =
+          burnsTicketUserAndRef =
             isBurningNFT ticketRefAC txInfoMint
               && isBurningNFT ticketUserAC txInfoMint
          in
           case redeemer of
             RaffleOwnerRedeemer GetCollateraOfExpiredTicket ->
-              let raffleUserAC = deriveUserFromRefAC raffleRefAC
+              let !raffleUserAC = deriveUserFromRefAC raffleRefAC
                   ---- RAFFLE STATE FROM REF INPUT
                   (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs
                   !rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
@@ -90,14 +90,14 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                   , traceIfFalse "are you stupid?" $
                       rRandomSeed rsd #== tNumber -- Must not be the winning ticket
                   ]
-            TicketOwnerRedeemer toa _ ->
+            TicketOwnerRedeemer !toa _ ->
               -- rsd must be strict to ensure that raffle state is spent
-              let (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
+              let (rValue, rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
                   rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
                   currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                   ownInput = getOwnInput context
                   ownValue = txOutValue ownInput
-                  ticketValidatorAddr = txOutAddress ownInput
+                  !ticketValidatorAddr = txOutAddress ownInput
                   hasOnly1InputFromValidator = case findTxInWith noConstraint (#== ticketValidatorAddr) txInfoInputs of
                     [_x] -> True
                     _ -> False
@@ -105,7 +105,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                   hasOnly1InputFromValidator -- Must be only one ticket action per transaction
                     && case toa of
                       RevealTicketSecret secret ->
-                        let new_tsd = revealTicketToRaffleT secret tsd
+                        let !new_tsd = revealTicketToRaffleT secret tsd
                          in pand
                               [ traceIfFalse "secret too long" $ lengthOfByteString secret #<= secretMaxLength
                               , hasTxInWithToken ticketUserAC txInfoInputs -- Transaction spends the ticket user NFT on another input.

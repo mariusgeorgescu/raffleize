@@ -61,7 +61,7 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
           let (!raffleRefAC, !raffleUserAC) = generateRefAndUserAC $ AssetClass (cs, tokenNameFromTxOutRef seedTxOutRef)
               raffleRefTokenValue = assetClassValue raffleRefAC 1
               raffleUserTokenValue = assetClassValue raffleUserAC 1
-              newRaffleDatum = mkRaffleDatum $ mkNewRaffle raffleRefAC param config
+              !newRaffleDatum = mkRaffleDatum $ mkNewRaffle raffleRefAC param config
            in pand
                 [ traceIfFalse "Must be valid configuration" $
                     checkRaffle param txInfoValidRange config

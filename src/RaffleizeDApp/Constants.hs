@@ -64,4 +64,4 @@ tokenNameMaxLength :: Int
 tokenNameMaxLength = 32
 
 secretMaxLength :: Integer
-secretMaxLength = 32
+secretMaxLength = 64

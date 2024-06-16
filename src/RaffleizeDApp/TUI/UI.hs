@@ -313,6 +313,23 @@ handleEvent s e =
                                 , currentScreen = MainScreen
                                 }
                           Nothing -> continue s
+                  KChar 'a' -> case validatorsConfig s of
+                    Nothing -> continue s {message = "Validators not present at " <> Data.Text.pack raffleizeValidatorsConfig}
+                    Just validatorsTxOutRefs ->
+                      do
+                        case msr of
+                          Just sr -> do
+                            let contextNFT = rRaffleID $ riRsd sr
+                            liftIO clearScreen
+                            txOutRef <- liftIO $ collectAmountRaffle (RaffleizeOffchainContext validatorsTxOutRefs (providersCtx s)) (fromJust $ maybeSecretKey s) contextNFT Nothing
+                            let nid = (cfgNetworkId . ctxCoreCfg . providersCtx) s
+                            initialState <- liftIO $ refreshState s
+                            continue
+                              initialState
+                                { message = "RAFFLE COLLECTED AMOUNT REDEEMED SUCCESFULLY!\n" <> showText contextNFT <> "\n" <> showLink nid "tx" txOutRef <> "\n"
+                                , currentScreen = MainScreen
+                                }
+                          Nothing -> continue s
                   _ -> do
                     mrForm1 <- handleFormEvent e (myRafflesForm s)
                     continue s {myRafflesForm = mrForm1}

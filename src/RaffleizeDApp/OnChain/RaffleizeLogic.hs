@@ -10,7 +10,7 @@ import PlutusTx.Builtins (
 import GHC.Err (error)
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
-import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq)
+import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
 import PlutusLedgerApi.V2 (
   Address,
   Datum (Datum),
@@ -87,8 +87,20 @@ checkRaffle
       , traceIfFalse "invalid min tickets" $
           rMinTickets #> 0
       , traceIfFalse "empty stake" $
-          rStake `geq` mempty
+          rStake #/= mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
+      -- to avoid double satisfaction when checking if stake is locked.
       -- to avoid double satisfaction when checking if stake is locked.
       -- to avoid double satisfaction when checking if stake is locked.
       -- to avoid double satisfaction when checking if stake is locked.
@@ -235,54 +247,56 @@ validActionLabelsForRaffleState r = case r of
   _ -> []
 
 evaluateRaffleState :: (POSIXTimeRange, RaffleStateData, Value) -> RaffleStateId
-evaluateRaffleState (time_range, rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets, rRefundedTickets}, svalue) =
-  let isBeforeCommitDDL = after (rCommitDDL rConfig) time_range
-      isBetweenCommitAndRevealDDL = before (rCommitDDL rConfig) time_range && after (rRevealDDL rConfig) time_range
-      isStakeLocked = svalue `geq` rStake rConfig
-      isCollectedAmmoutLocked = svalue `geq` raffleAccumulatedValue rsd
-      outstandingFullRefunds = rRefundedTickets #< rSoldTickets
-      outstandingExtraRefunds = rRefundedTickets #< rRevealedTickets
-      anyTicketsSold = rSoldTickets #> 0
-      minNoOfTicketsSold = rSoldTickets #< rMinTickets rConfig
-      anyTicketsRevealed = rRevealedTickets #> 0
-      allTicketsRevealed = rSoldTickets #== rRevealedTickets
-   in if isBeforeCommitDDL
-        then
-          if anyTicketsSold
-            then 2 -- COMMITTING
-            else 1 -- NEW
-        else
-          if not anyTicketsSold
-            then
-              if isStakeLocked
-                then 10 -- EXPIRED_LOCKED_STAKE
-                else 11 -- EXPIRED_FINAL
-            else
-              if minNoOfTicketsSold
-                then -- UNDERFUNDED
-                case (isStakeLocked, outstandingFullRefunds) of
-                  (True, True) -> 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-                  (False, True) -> 21 -- UNDERFUNDED_LOCKED_REFUNDS
-                  (True, False) -> 22 -- UNDERFUNDED_LOCKED_STAKE
-                  (False, False) -> 23 -- UNDERFUNDED_FINAL
-                else
-                  if allTicketsRevealed
-                    then -- SUCCESS
-                    case (isStakeLocked, isCollectedAmmoutLocked) of
-                      (True, True) -> 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-                      (False, True) -> 41 -- SUCCESS_LOCKED_AMOUNT
-                      (True, False) -> 42 -- SUCCESS_LOCKED_STAKE
-                      (False, False) -> 43 -- SUCCESS_FINAL
-                    else
-                      if isBetweenCommitAndRevealDDL
-                        then 3 -- REVEALING
-                        else case (anyTicketsRevealed, isStakeLocked, outstandingExtraRefunds) of
-                          (False, True, False) -> 300 -- UNREVEALED_NO_REVEALS
-                          (True, True, True) -> 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-                          (True, False, True) -> 31 -- UNREVEALED_LOCKED_REFUNDS
-                          (True, True, False) -> 32 -- UNREVEALED_LOCKED_STAKE
-                          (_, False, False) -> 33 -- UNREVEALED_FINAL
-                          (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
+evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets, rRevealedTickets, rRefundedTickets}, svalue) =
+  let
+    isBeforeCommitDDL = after (rCommitDDL rConfig) time_range
+    isBetweenCommitAndRevealDDL = before (rCommitDDL rConfig) time_range && after (rRevealDDL rConfig) time_range
+    isStakeLocked = svalue `geq` rStake rConfig
+    isCollectedAmmoutLocked = (valueOf svalue adaSymbol adaToken #- rRaffleCollateral rParam) #>= (rTicketPrice rConfig #* rSoldTickets) -- lovelaces wo collateral >  sold ticket * ticket price
+    outstandingFullRefunds = rRefundedTickets #< rSoldTickets
+    outstandingExtraRefunds = rRefundedTickets #< rRevealedTickets
+    anyTicketsSold = rSoldTickets #> 0
+    minNoOfTicketsSold = rSoldTickets #< rMinTickets rConfig
+    anyTicketsRevealed = rRevealedTickets #> 0
+    allTicketsRevealed = rSoldTickets #== rRevealedTickets
+   in
+    if isBeforeCommitDDL
+      then
+        if anyTicketsSold
+          then 2 -- COMMITTING
+          else 1 -- NEW
+      else
+        if not anyTicketsSold
+          then
+            if isStakeLocked
+              then 10 -- EXPIRED_LOCKED_STAKE
+              else 11 -- EXPIRED_FINAL
+          else
+            if minNoOfTicketsSold
+              then -- UNDERFUNDED
+              case (isStakeLocked, outstandingFullRefunds) of
+                (True, True) -> 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+                (False, True) -> 21 -- UNDERFUNDED_LOCKED_REFUNDS
+                (True, False) -> 22 -- UNDERFUNDED_LOCKED_STAKE
+                (False, False) -> 23 -- UNDERFUNDED_FINAL
+              else
+                if allTicketsRevealed
+                  then -- SUCCESS
+                  case (isStakeLocked, isCollectedAmmoutLocked) of
+                    (True, True) -> 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
+                    (False, True) -> 41 -- SUCCESS_LOCKED_AMOUNT
+                    (True, False) -> 42 -- SUCCESS_LOCKED_STAKE
+                    (False, False) -> 43 -- SUCCESS_FINAL
+                  else
+                    if isBetweenCommitAndRevealDDL
+                      then 3 -- REVEALING
+                      else case (anyTicketsRevealed, isStakeLocked, outstandingExtraRefunds) of
+                        (False, True, False) -> 300 -- UNREVEALED_NO_REVEALS
+                        (True, True, True) -> 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
+                        (True, False, True) -> 31 -- UNREVEALED_LOCKED_REFUNDS
+                        (True, True, False) -> 32 -- UNREVEALED_LOCKED_STAKE
+                        (_, False, False) -> 33 -- UNREVEALED_FINAL
+                        (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
 {-# INLINEABLE evaluateRaffleState #-}
 
 showTicketStateLabel :: TicketStateId -> String
@@ -315,15 +329,15 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
       if isJust tSecret
         then 96 -- EXTRA_REFUNDABLE
         else 97 -- UNREVEALED_EXPIRED
-  -- | raffleStateId #== 1 = traceError "Raffle cannot be NEW"
-  -- | raffleStateId #== 11 = traceError "Raffle cannot be EXPIRED_FINAL"
-  -- | raffleStateId #== 22 = traceError "Raffle cannot be UNDERFUNDED_LOCKED_STAKE"
-  -- | raffleStateId #== 23 = traceError "Raffle cannot be UNDERFUNDED_FINAL"
-  -- | raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
-  -- | raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
-  -- | raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
-  -- | raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
-  -- | raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
+        -- \| raffleStateId #== 1 = traceError "Raffle cannot be NEW"
+        -- \| raffleStateId #== 11 = traceError "Raffle cannot be EXPIRED_FINAL"
+        -- \| raffleStateId #== 22 = traceError "Raffle cannot be UNDERFUNDED_LOCKED_STAKE"
+        -- \| raffleStateId #== 23 = traceError "Raffle cannot be UNDERFUNDED_FINAL"
+        -- \| raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
+        -- \| raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
+        -- \| raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
+        -- \| raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
+        -- \| raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
 evalTicketState _ _ _ = traceError "invalid state"
 {-# INLINEABLE evalTicketState #-}
 
