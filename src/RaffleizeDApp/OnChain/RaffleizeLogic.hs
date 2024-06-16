@@ -315,15 +315,15 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
       if isJust tSecret
         then 96 -- EXTRA_REFUNDABLE
         else 97 -- UNREVEALED_EXPIRED
-  | raffleStateId #== 1 = traceError "Raffle cannot be NEW"
-  | raffleStateId #== 11 = traceError "Raffle cannot be EXPIRED_FINAL"
-  | raffleStateId #== 22 = traceError "Raffle cannot be UNDERFUNDED_LOCKED_STAKE"
-  | raffleStateId #== 23 = traceError "Raffle cannot be UNDERFUNDED_FINAL"
-  | raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
-  | raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
-  | raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
-  | raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
-  | raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
+  -- | raffleStateId #== 1 = traceError "Raffle cannot be NEW"
+  -- | raffleStateId #== 11 = traceError "Raffle cannot be EXPIRED_FINAL"
+  -- | raffleStateId #== 22 = traceError "Raffle cannot be UNDERFUNDED_LOCKED_STAKE"
+  -- | raffleStateId #== 23 = traceError "Raffle cannot be UNDERFUNDED_FINAL"
+  -- | raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
+  -- | raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
+  -- | raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
+  -- | raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
+  -- | raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
 evalTicketState _ _ _ = traceError "invalid state"
 {-# INLINEABLE evalTicketState #-}
 

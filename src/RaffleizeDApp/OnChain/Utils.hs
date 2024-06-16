@@ -141,9 +141,9 @@ isTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstr
 isTxOutWithInlineDatumAnd datum toValue toAddress TxOut {txOutValue, txOutAddress, txOutDatum} = toValue txOutValue && toAddress txOutAddress && isGivenInlineDatum datum txOutDatum
 {-# INLINEABLE isTxOutWithInlineDatumAnd #-}
 
-isTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> TxOut -> Bool
-isTxOutWithInlineDatumAnd' datum value address TxOut {txOutValue, txOutAddress, txOutDatum} = value #== txOutValue && address #== txOutAddress && isGivenInlineDatum datum txOutDatum
-{-# INLINEABLE isTxOutWithInlineDatumAnd' #-}
+-- isTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> TxOut -> Bool
+-- isTxOutWithInlineDatumAnd' datum value address TxOut {txOutValue, txOutAddress, txOutDatum} = value #== txOutValue && address #== txOutAddress && isGivenInlineDatum datum txOutDatum
+-- {-# INLINEABLE isTxOutWithInlineDatumAnd' #-}
 
 ---------------------------------
 
@@ -180,9 +180,9 @@ hasTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConst
 hasTxOutWithInlineDatumAnd datum toValue toAddress = traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd datum toValue toAddress)
 {-# INLINEABLE hasTxOutWithInlineDatumAnd #-}
 
-hasTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> [TxOut] -> Bool
-hasTxOutWithInlineDatumAnd' datum value address = traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd' datum value address)
-{-# INLINEABLE hasTxOutWithInlineDatumAnd' #-}
+-- hasTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> [TxOut] -> Bool
+-- hasTxOutWithInlineDatumAnd' datum value address = traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd' datum value address)
+-- {-# INLINEABLE hasTxOutWithInlineDatumAnd' #-}
 
 isMintingNFT :: AssetClass -> Value -> Bool
 isMintingNFT ac txInfoMint = traceIfFalse "NFT not minted" $ assetClassValueOf txInfoMint ac #== 1

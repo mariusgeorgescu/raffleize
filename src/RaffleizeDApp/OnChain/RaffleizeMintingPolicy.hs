@@ -37,7 +37,7 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
 import RaffleizeDApp.OnChain.Utils (
   adaValueFromLovelaces,
   hasTxInWithRef,
-  hasTxOutWithInlineDatumAnd',
+  hasTxOutWithInlineDatumAnd,
   isBurningNFT,
   isMintingNFT,
   mkUntypedMintingPolicyCustom,
@@ -58,7 +58,7 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
   let raffleValidatorAddress = scriptHashAddress rRaffleValidatorHash
    in case redeemer of
         MintRaffle config@RaffleConfig {rStake} seedTxOutRef ->
-          let (raffleRefAC, raffleUserAC) = generateRefAndUserAC $ AssetClass (cs, tokenNameFromTxOutRef seedTxOutRef)
+          let (!raffleRefAC, !raffleUserAC) = generateRefAndUserAC $ AssetClass (cs, tokenNameFromTxOutRef seedTxOutRef)
               raffleRefTokenValue = assetClassValue raffleRefAC 1
               raffleUserTokenValue = assetClassValue raffleUserAC 1
               newRaffleDatum = mkRaffleDatum $ mkNewRaffle raffleRefAC param config
@@ -72,7 +72,7 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
                 , traceIfFalse "Must mint the user NFT" $
                     isMintingNFT raffleUserAC txInfoMint
                 , traceIfFalse "Must lock new raffle state at Raffle Validator (with correct value and datum)" $
-                    hasTxOutWithInlineDatumAnd' newRaffleDatum (raffleRefTokenValue #+ rStake #+ adaValueFromLovelaces rRaffleCollateral) raffleValidatorAddress txInfoOutputs
+                    hasTxOutWithInlineDatumAnd newRaffleDatum (#== (raffleRefTokenValue #+ rStake #+ adaValueFromLovelaces rRaffleCollateral)) (#== raffleValidatorAddress) txInfoOutputs
                 ]
         MintTicket raffleID ->
           let raffleRefToken = assetClassValue raffleID 1
