@@ -186,7 +186,7 @@ handleEvent s e =
                   let nextFocus = focusNext (elementFocus currentCVS)
                   let updatedCVS = currentCVS {elementFocus = nextFocus}
                   continue s {myConstrctValueState = updatedCVS}
-              KIns -> do
+              k | k == KChar '+' || k == KIns -> do
                 let selectedElement = snd <$> listSelectedElement (availableValueList currentCVS)
                 case (selectedElement, isValidValue, (`elem` [1, 2]) <$> currentFocus) of
                   (Just (cs, tn, total), True, Just True) -> do
@@ -238,7 +238,7 @@ handleEvent s e =
                     let newcvs = currentCVS {addToValueForm = validated_form}
                     continue s {myConstrctValueState = newcvs}
                   Just 3 -> case key of
-                    KDel -> do
+                    k | k == KChar '-' || k == KDel -> do
                       let selectedElement = listSelectedElement (constructedValueList currentCVS)
                       case selectedElement of
                         Nothing -> continue s
@@ -355,7 +355,7 @@ handleEvent s e =
                             initialState <- liftIO $ refreshState s
                             continue initialState {message = "RAFFLE SUCCESFULLY CREATED !\n" <> showLink nid "tx" txOutRef}
                           else continue s
-                  KIns -> continue s {currentScreen = ConstructValueScreen}
+                  k | k == KChar '+' || k == KIns -> continue s {currentScreen = ConstructValueScreen}
                   _ -> do
                     crForm1 <- handleFormEvent e crForm
                     let crFormState = formState crForm1

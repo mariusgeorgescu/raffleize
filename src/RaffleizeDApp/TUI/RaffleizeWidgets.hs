@@ -452,7 +452,7 @@ drawConstructValueWidget ConstructValueState {addToValueForm, availableValueList
                       (renderList (valueItemWidget True) (currentFocus == 2) availableValueList)
                       <=> (if currentFocus == 2 then withAttr focusedFormInputAttr else id) (renderForm addToValueForm)
                   , vBorder
-                  , txt "Current Selected Value " <=> (if currentFocus /= 3 then id else withAttr focusedFormInputAttr) (renderList (valueItemWidget True) (currentFocus == 2) constructedValueList)
+                  , (if currentFocus /= 3 then id else withAttr focusedFormInputAttr) (txt "Current Selected Value " <=> renderList (valueItemWidget True) (currentFocus == 2) constructedValueList)
                   ]
           )
           <=> vBox
@@ -464,9 +464,9 @@ constructValueActionsWidget :: Bool -> Bool -> Integer -> Widget n
 constructValueActionsWidget isValidToAdd isEmptyStake currentFocus =
   withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
     vBox
-      [ txt "[ESC]     - Close          "
-      , if currentFocus `elem` [1, 2] then (if isValidToAdd then txt "[Insert]  - Add to value" else emptyWidget) else (if isEmptyStake then emptyWidget else txt "[Delete]  - Remove from value")
-      , if not isEmptyStake then txt ("[Enter]  - " <> " Finish value construction") else emptyWidget
+      [ txt "[ESC]          - Close          "
+      , if currentFocus `elem` [1, 2] then (if isValidToAdd then txt "[Insert]| [+]  - Add to value" else emptyWidget) else (if isEmptyStake then emptyWidget else txt "[Delete] | [-]  - Remove from value")
+      , if not isEmptyStake then txt ("[Enter]       - " <> " Finish value construction") else emptyWidget
       ]
 
 drawAction :: (Text, Text) -> Widget n
@@ -528,9 +528,9 @@ createRaffleScreen raffleConfigForm constructValueState =
     createRaffleActionsWidget isValid =
       withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
         vBox
-          [ txt "[ESC]     - Close          "
-          , txt "[Insert]  - Configure raffle value"
-          , if isValid then txt ("[Enter]   - " <> "Create new raffle") else emptyWidget
+          [ txt "[ESC]          - Close          "
+          , txt "[Insert] | [+] - Configure raffle value"
+          , if isValid then txt ("[Enter]        - " <> "Create new raffle") else emptyWidget
           ]
 
 ------------------------------------------------------------------------------------------------
