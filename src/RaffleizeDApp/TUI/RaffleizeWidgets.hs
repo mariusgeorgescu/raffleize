@@ -88,7 +88,7 @@ invalidFieldText t = case t of
   TicketPriceField -> "The ticket price must be a natural number, lower than " <> showText (rMinTicketPrice mockRaffleParam) <> " !"
   SendRaffleAddressField -> "Enter a valid address or leave empty to receive the raffle NFT to the current address !"
   SendTicketAddressField -> "Enter a valid address or leave empty to receive the ticket to the current address !"
-  ConstructedValueItemsList -> "Stake value must not be empty !"
+  ConstructedValueItemsList -> "Stake value must not be empty ! The stake value can contain maximum 2 asset classes"
   RevealedSecretField -> "The secret must have maximum 32 characters !"
   SecretField -> "The secret must have maximum 32 characters !"
   _ -> ""
@@ -367,11 +367,11 @@ drawMyTicketsScreen mtForm =
       where
         drawMyTicketActionLabel :: RaffleizeActionLabel -> Widget NameResources
         drawMyTicketActionLabel label = case label of
-          ("TicketOwner", "RefundTicket") -> txt "[R]     - Get full refund"
           ("TicketOwner", "RevealTicketSecret") -> txt "[S]     - Reveal the ticket secret"
           ("TicketOwner", "CollectStake") -> txt "[W]     - Redeem the winning ticket"
-          ("TicketOwner", "RefundCollateralLosing") -> txt "[L]     - Get refund of the collateral on losing ticket"
+          ("TicketOwner", "RefundTicket") -> txt "[R]     - Get full refund"
           ("TicketOwner", "RefundTicketExtra") -> txt "[E]     - Get ticket refund and extra"
+          ("TicketOwner", "RefundCollateralLosing") -> txt "[L]     - Get refund of the collateral on losing ticket"
           ("RaffleOwner", "GetCollateraOfExpiredTicket") -> emptyWidget
           _ -> emptyWidget
 
@@ -464,9 +464,9 @@ constructValueActionsWidget :: Bool -> Bool -> Integer -> Widget n
 constructValueActionsWidget isValidToAdd isEmptyStake currentFocus =
   withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
     vBox
-      [ txt "[ESC]          - Close          "
-      , if currentFocus `elem` [1, 2] then (if isValidToAdd then txt "[Insert]| [+]  - Add to value" else emptyWidget) else (if isEmptyStake then emptyWidget else txt "[Delete] | [-]  - Remove from value")
-      , if not isEmptyStake then txt ("[Enter]       - " <> " Finish value construction") else emptyWidget
+      [ txt "[ESC]           - Close          "
+      , if currentFocus `elem` [1, 2] then (if isValidToAdd then txt "[Insert] | [+]  - Add to value" else emptyWidget) else (if isEmptyStake then emptyWidget else txt "[Delete] | [-]  - Remove from value")
+      , if not isEmptyStake then txt "[Enter]         -Finish value construction" else emptyWidget
       ]
 
 drawAction :: (Text, Text) -> Widget n
@@ -511,7 +511,7 @@ createRaffleScreen raffleConfigForm constructValueState =
     currentStakeValueList = toList (constructedValueList constructValueState)
     currentStakeValue = unFlattenValue currentStakeValueList
     raffleConfigFormState = formState raffleConfigForm
-    ivfs = invalidFields raffleConfigForm
+    ivfs = invalidFields raffleConfigForm <> ([ConstructedValueItemsList | (not . (`elem` [1, 2]) . length) (toList (constructedValueList constructValueState))])
     isValid = null ivfs
    in
     center $
