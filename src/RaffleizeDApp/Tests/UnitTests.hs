@@ -38,6 +38,7 @@ createRaffleTests =
     , testRun "CREATE NEW -> UPDATE -> EXPIRE" createUpdateExpired
     , testRun "CREATE NEW -> UPDATE -> CANCEL -> *" createUpdateCancel
     , testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
+    , testRun "UNDERFUNDED" underfundedScenario
     ]
 
 ------------------------------------------------------------------------------------------------
@@ -83,6 +84,12 @@ cancelRaffleTXRun scriptRef raffleRefAC = do
   recipient <- ownAddress
   ownAddrs <- ownAddresses
   skeleton <- cancelRaffleTX scriptRef ownAddrs recipient raffleRefAC `catchError` (error . show)
+  void $ sendSkeleton skeleton `catchError` (error . show)
+
+recoverStakeRaffleTXRun :: GYTxOutRef -> AssetClass -> GYTxMonadRun ()
+recoverStakeRaffleTXRun scriptRef raffleRefAC = do
+  recipient <- ownAddress
+  skeleton <- recoverStakeTX scriptRef recipient raffleRefAC `catchError` (error . show)
   void $ sendSkeleton skeleton `catchError` (error . show)
 
 ------------------------------------------------------------------------------------------------
@@ -133,6 +140,11 @@ cancelRaffleRUN :: Wallet -> GYTxOutRef -> AssetClass -> Run ()
 cancelRaffleRUN wallet validatorRef raffleId = do
   runWallet' wallet (cancelRaffleTXRun validatorRef raffleId)
   logInfo' ("CANCELLED :" ++ show raffleId)
+
+recoverStakeRaffleRUN :: Wallet -> GYTxOutRef -> AssetClass -> Run ()
+recoverStakeRaffleRUN wallet validatorRef raffleId = do
+  runWallet' wallet (recoverStakeRaffleTXRun validatorRef raffleId)
+  logInfo' ("RECOVERED STAKE :" ++ show raffleId)
 
 deployReferenceScriptRUN :: GYValidator 'PlutusV2 -> Wallet -> GYAddress -> Run GYTxOutRef
 deployReferenceScriptRUN validator fromWallet toWallet = do
@@ -348,6 +360,28 @@ raffleizeSuccessScenario wallets@Wallets {..} = do
 
   s <- queryRaffleRUN True w1 raffleId
   when (s /= 43) $ logError "not in SUCCESS_FINAL"
+
+----------------------
+-- UNDERFUNDED SCENARIO
+-----------------------
+
+underfundedScenario :: Wallets -> Run ()
+underfundedScenario wallets@Wallets {..} = do
+  -- Deploy the validator to be used as reference script
+  refTicketValidator <- deployReferenceScriptRUN ticketValidatorGY w9 (walletAddress w9)
+  (refRaffleValidator, raffleId) <- createNew wallets
+
+  -- Buy ticket to raffle
+  ws <- buyNTicketsRUN refRaffleValidator raffleId [w1, w2, w3, w4] ["unu", "doi", "trei", fromString @BuiltinByteString "84a289f6f0dc3d1e18dcac4687604d7184a289f6f0dc3d1e18dcac4687604d71"]
+
+  waitNSlots 4
+  -- Revealing tickets
+  -- revealNTicketsRUN refRaffleValidator refTicketValidator raffleId (take 3 ws)
+  revealNTicketsRUN refRaffleValidator refTicketValidator raffleId (drop 3 ws)
+  mapM_ (queryTicketRUN w1) $ fst <$> ws
+  waitNSlots 30 -- Slot 52
+  recoverStakeRaffleRUN w1 refRaffleValidator raffleId
+  void $ queryRaffleRUN True w1 raffleId
 
 ---------------------
 ------------------------
