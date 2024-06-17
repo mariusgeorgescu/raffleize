@@ -12,12 +12,13 @@ import Data.Aeson qualified
 import Data.Maybe qualified
 import Data.Text qualified
 import Data.Vector qualified
+
 import GeniusYield.GYConfig
 import GeniusYield.Types
 import PlutusLedgerApi.V1
 import PlutusLedgerApi.V1.Time qualified
 import PlutusLedgerApi.V1.Value
-import PlutusPrelude
+import PlutusPrelude (showText)
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
@@ -77,6 +78,8 @@ drawPOSIX = str . gyIso8601Show . timeFromPlutus
 
 ------------------------------------------------------------------------------------------------
 
+-- Common Helper Functions
+
 invalidFieldText :: NameResources -> Text
 invalidFieldText t = case t of
   TokenNameField -> "Token name must have maximum " <> showText tokenNameMaxLength <> " characters!"
@@ -106,16 +109,18 @@ mkFormScreen title actionsDesc raffleizeForm =
                 , hBorder
                 , hCenter $ invalidFieldsWidget ivfs
                 , hBorder
-                , hCenter $ formActionsWidget (null ivfs) actionsDesc
+                , hCenter $ formActionsWidget (null ivfs) actionsDesc []
                 ]
 
-formActionsWidget :: Bool -> Text -> Widget n
-formActionsWidget isValid desc =
+formActionsWidget :: Bool -> Text -> [Widget n] -> Widget n
+formActionsWidget isValid desc other =
   withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
     vBox
-      [ txt "[ESC]   - Close          "
-      , if isValid then txt ("[Enter] - " <> desc) else emptyWidget
-      ]
+      ( [ txt "[ESC]   - Close          "
+        , if isValid then txt ("[Enter] - " <> desc) else emptyWidget
+        ]
+          <> other
+      )
 
 ------------------------------------------------------------------------------------------------
 
@@ -303,7 +308,7 @@ data MyTicketsFormState = MyTicketsFormState
 makeLenses ''MyTicketsFormState
 
 drawTicketInfo :: TicketInfo -> Widget NameResources
-drawTicketInfo TicketInfo {..} =
+drawTicketInfo TicketInfo {..} = 
   joinBorders
     <$> borderWithLabel
       (txt (showText (tRaffle tiTsd)))
@@ -505,9 +510,12 @@ mkRaffleConfigForm =
     , (txt "Recipient address: " <+>) @@= editShowableFieldWithValidate raffleRecipient SendRaffleAddressField (liftA2 (||) (Data.Maybe.isJust . addressFromTextMaybe) Data.Text.null)
     ]
 
-createRaffleScreen :: Form RaffleConfigFormState RaffleizeEvent NameResources -> ConstructValueState -> Widget NameResources
-createRaffleScreen raffleConfigForm constructValueState =
+drawCreateUpdateRaffleForm :: Maybe AssetClass -> Form RaffleConfigFormState RaffleizeEvent NameResources -> ConstructValueState -> Widget NameResources
+drawCreateUpdateRaffleForm updateRaffle raffleConfigForm constructValueState =
   let
+    (title, actionDesc :: Text) = case updateRaffle of
+      Nothing -> (" CREATE NEW RAFFLE ", "Create new raffle")
+      Just rid -> (" UPDATE RAFFLE " <> showText rid, "Update raffle configuration")
     currentStakeValueList = toList (constructedValueList constructValueState)
     currentStakeValue = unFlattenValue currentStakeValueList
     raffleConfigFormState = formState raffleConfigForm
@@ -515,23 +523,17 @@ createRaffleScreen raffleConfigForm constructValueState =
     isValid = null ivfs
    in
     center $
-      borderWithLabel (txt " CREATE NEW RAFFLE ") $
+      borderWithLabel (txt title) $
         vBox $
           padAll 1
             <$> [ withAttr focusedFormInputAttr (renderForm raffleConfigForm)
                 , str (showValue "Current Raffle Stake" currentStakeValue)
                 , if isValid then emptyWidget else hBorder <=> hCenter (invalidFieldsWidget ivfs) <=> hBorder
-                , hCenter $ createRaffleActionsWidget isValid
+                , hCenter $ formActionsWidget isValid actionDesc [txt "[Insert] | [+] - Configure raffle value"]
                 ]
-  where
-    createRaffleActionsWidget :: Bool -> Widget n
-    createRaffleActionsWidget isValid =
-      withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
-        vBox
-          [ txt "[ESC]          - Close          "
-          , txt "[Insert] | [+] - Configure raffle value"
-          , if isValid then txt ("[Enter]        - " <> "Create new raffle") else emptyWidget
-          ]
+
+drawCreateRaffleForm :: Form RaffleConfigFormState RaffleizeEvent NameResources -> ConstructValueState -> Widget NameResources
+drawCreateRaffleForm = drawCreateUpdateRaffleForm Nothing
 
 ------------------------------------------------------------------------------------------------
 

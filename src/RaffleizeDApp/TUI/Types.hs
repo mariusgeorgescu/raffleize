@@ -36,6 +36,7 @@ data NameResources
 data Screen
   = MainScreen
   | CreateRaffleScreen
+  | UpdateRaffleScreen
   | MintTokenScreen
   | ActiveRafflesScreen
   | MyRafflesScreen
