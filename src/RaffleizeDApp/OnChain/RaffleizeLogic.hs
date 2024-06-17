@@ -128,7 +128,7 @@ showRaffleStateLabel r = case r of
   31 -> "UNREVEALED_LOCKED_REFUNDS"
   32 -> "UNREVEALED_LOCKED_STAKE"
   33 -> "UNREVEALED_FINAL"
-  _ -> traceError "invalid"
+  _ -> "INVALID STATE"
 
 redeemerToAction :: RaffleizeRedeemer -> RaffleizeAction
 redeemerToAction (UserRedeemer action) = User action
@@ -309,7 +309,7 @@ showTicketStateLabel r = case r of
   95 -> "LOSING"
   96 -> "EXTRA_REFUNDABLE"
   97 -> "UNREVEALED_EXPIRED"
-  _ -> mempty
+  _ -> "INVALID STATE"
 
 evalTicketState :: TicketStateData -> Integer -> RaffleStateId -> TicketStateId
 evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
@@ -338,7 +338,7 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
         -- \| raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
         -- \| raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
         -- \| raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
-evalTicketState _ _ _ = traceError "invalid state"
+evalTicketState _ _ _ = 9999 -- traceError "invalid state"  - TO DO - SOMETHING ABOUT
 {-# INLINEABLE evalTicketState #-}
 
 validActionLabelsForTicketState :: TicketStateId -> [RaffleizeActionLabel]
@@ -349,7 +349,7 @@ validActionLabelsForTicketState r = case r of
   95 -> [("TicketOwner", "RefundCollateralLosing")]
   96 -> [("TicketOwner", "RefundTicketExtra")]
   97 -> [("RaffleOwner", "GetCollateraOfExpiredTicket")]
-  _ -> mempty
+  _ -> []
 
 validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateId]
 validTicketStatesForRaffleizeAction ra = case ra of
