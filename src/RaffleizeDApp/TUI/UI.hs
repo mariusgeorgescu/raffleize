@@ -171,18 +171,18 @@ handleEvent s e =
       EvKey KEsc [] -> continue s {message = "", currentScreen = MainScreen}
       EvKey key _modifiers ->
         case currentScreen s of
-          RevealTicketSecretScreen -> handleRevealSecretEvents s e
-          ConstructValueScreen -> handleConstrutValueEvents s e
-          MyTicketsScreen -> handleMyTicketsEvents s e
-          BuyTicketScreen -> handleBuyTicketScreenEvents s e
-          MyRafflesScreen -> handleMyRafflesEvents s e
+          MintTokenScreen -> handleMintTokensEvents s e
           ActiveRafflesScreen -> handleActiveRafflesEvents s e
           CreateRaffleScreen -> handleCreateRaffleEvents s e
-          MintTokenScreen -> handleMintTokensEvents s e
+          ConstructValueScreen -> handleConstrutValueEvents s e
+          BuyTicketScreen -> handleBuyTicketScreenEvents s e
+          MyTicketsScreen -> handleMyTicketsEvents s e
+          RevealTicketSecretScreen -> handleRevealSecretEvents s e
+          MyRafflesScreen -> handleMyRafflesEvents s e
           MainScreen -> case key of
             (KChar c) -> case c of
-              'R' -> continue s {message = "Refresh Screen"}
               'q' -> halt s
+              'v' -> continue s {currentScreen = ActiveRafflesScreen}
               'g' -> do
                 liftIO $ generateNewSkey operationSkeyFilePath
                 s' <- liftIO $ refreshState s
@@ -190,17 +190,14 @@ handleEvent s e =
               'e' -> do
                 liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
                 continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
-              'v' -> continue s {currentScreen = ActiveRafflesScreen}
               _ ->
                 if isJust (maybeSecretKey s)
                   then do
                     case c of
                       'm' -> continue s {currentScreen = MintTokenScreen}
-                      'c' -> do
-                        continue
-                          s
-                            { currentScreen = CreateRaffleScreen
-                            }
+                      'c' -> continue s {currentScreen = CreateRaffleScreen}
+                      'r' -> continue s {currentScreen = MyRafflesScreen}
+                      't' -> continue s {currentScreen = MyTicketsScreen}
                       'l' -> do
                         liftIO clearScreen
                         initialState <- liftIO $ refreshState s
@@ -210,10 +207,6 @@ handleEvent s e =
                         liftIO $ deployValidators (providersCtx s) (fromJust (maybeSecretKey s))
                         initialState <- liftIO $ refreshState s
                         continue initialState {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
-                      'r' -> do
-                        continue s {currentScreen = MyRafflesScreen}
-                      't' -> do
-                        continue s {currentScreen = MyTicketsScreen}
                       _ -> continue s
                   else continue s
             _ -> continue s
@@ -650,7 +643,7 @@ mainScreen s =
             --       viewport ValueItemsViewPort Vertical $
             --         vLimit 300 $
             --           hLimit 150 $
-            renderList (valueItemWidget True) False valueItemsList
+                        renderList (valueItemWidget True) False valueItemsList
 
 ------------------------------------------------------------------------------------------------
 

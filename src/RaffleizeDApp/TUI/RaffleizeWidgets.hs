@@ -466,7 +466,7 @@ constructValueActionsWidget isValidToAdd isEmptyStake currentFocus =
     vBox
       [ txt "[ESC]           - Close          "
       , if currentFocus `elem` [1, 2] then (if isValidToAdd then txt "[Insert] | [+]  - Add to value" else emptyWidget) else (if isEmptyStake then emptyWidget else txt "[Delete] | [-]  - Remove from value")
-      , if not isEmptyStake then txt "[Enter]         -Finish value construction" else emptyWidget
+      , if not isEmptyStake then txt "[Enter]         - Finish value construction" else emptyWidget
       ]
 
 drawAction :: (Text, Text) -> Widget n
