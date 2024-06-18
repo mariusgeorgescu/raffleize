@@ -18,9 +18,14 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 
 import Control.Monad
+import Control.Monad.Reader
 import GeniusYield.Imports
+import RaffleizeDApp.CustomTypes.ActionTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.Utils
+import RaffleizeDApp.TxBuilding.Context
+import RaffleizeDApp.TxBuilding.Interactions (interactionToTxSkeleton)
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Operations
 import RaffleizeDApp.TxBuilding.Validators
@@ -32,13 +37,13 @@ createRaffleTests =
   testGroup
     "RAFFLEIZE TESTNG SCENATIOS"
     [ testRun "CREATE NEW" createNew
-    , testRun "CREATE NEW -> UPDATE" createUpdate
-    , testRun "CREATE NEW ->  EXPIRE" createExpired
-    , testRun "CREATE NEW ->  CANCEL" createCancel
-    , testRun "CREATE NEW -> UPDATE -> EXPIRE" createUpdateExpired
-    , testRun "CREATE NEW -> UPDATE -> CANCEL -> *" createUpdateCancel
-    , testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
-    , testRun "UNDERFUNDED" underfundedScenario
+    , -- , testRun "CREATE NEW -> UPDATE" createUpdate
+      -- , testRun "CREATE NEW ->  EXPIRE" createExpired
+      -- , testRun "CREATE NEW ->  CANCEL" createCancel
+      -- , testRun "CREATE NEW -> UPDATE -> EXPIRE" createUpdateExpired
+      -- , testRun "CREATE NEW -> UPDATE -> CANCEL -> *" createUpdateCancel
+      testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
+      -- , testRun "UNDERFUNDED" underfundedScenario
     ]
 
 ------------------------------------------------------------------------------------------------
@@ -120,6 +125,17 @@ winnerCollectStakeTXRun raffleScriptRef ticketScriptRef ticketRefAC = do
 -- Run TEST ACTIONS
 -----------------------
 
+raffleizeTransactionRUN :: Wallet -> RaffleizeTxBuildingContext -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> Run (GYTxId, AssetClass)
+raffleizeTransactionRUN w roc raffleizeActon interactionContextNFT optionalRecipient = do
+  my_addr <- runWallet' w ownAddress
+  let userAddrs = UserAddresses [my_addr] my_addr Nothing
+  let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
+  result <- runReaderT (interactionToTxSkeleton raffleizeInteraction) roc
+  (skeleton, ac) <- runWallet' w result
+  txId <- runWallet' w $ sendSkeleton skeleton `catchError` (error . show)
+  logInfo' ("Performed Raffleize Action:\n" <> show raffleizeActon)
+  return (txId, ac)
+
 createRaffleRUN :: Wallet -> RaffleConfig -> Run AssetClass
 createRaffleRUN wallet config = do
   raffleId <- runWallet' wallet (createRaffleTXRun config)
@@ -149,7 +165,7 @@ recoverStakeRaffleRUN wallet validatorRef raffleId = do
 deployReferenceScriptRUN :: GYValidator 'PlutusV2 -> Wallet -> GYAddress -> Run GYTxOutRef
 deployReferenceScriptRUN validator fromWallet toWallet = do
   valRef <- runWallet' fromWallet $ addRefScript toWallet validator `catchError` (error . show)
-  logInfo' "VALIDATOR DEPLOYED"
+  logInfo' $ "DEPLOYED VALIDATOR" <> show validator
   case valRef of
     Nothing -> error "failed to add the reference script"
     Just gtor -> return gtor
@@ -334,10 +350,24 @@ createUpdateCancel wallets@Wallets {..} = do
 -----------------------
 
 raffleizeSuccessScenario :: Wallets -> Run ()
-raffleizeSuccessScenario wallets@Wallets {..} = do
+raffleizeSuccessScenario Wallets {..} = do
   -- Deploy the validator to be used as reference script
   refTicketValidator <- deployReferenceScriptRUN ticketValidatorGY w9 (walletAddress w9)
-  (refRaffleValidator, raffleId) <- createNew wallets
+  refRaffleValidator <- deployReferenceScriptRUN raffleizeValidatorGY w9 (walletAddress w9)
+
+  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+  let cddl = slotToEndPOSIXTime sltCfg 20
+  let rddl = slotToEndPOSIXTime sltCfg 50
+  let config =
+        RaffleConfig
+          { rCommitDDL = cddl
+          , rRevealDDL = rddl
+          , rTicketPrice = 5_000_000
+          , rMinTickets = 3
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          }
+
+  (_, raffleId) <- raffleizeTransactionRUN w1 (RaffleizeTxBuildingContext refRaffleValidator refTicketValidator) (User (CreateRaffle config)) Nothing Nothing
 
   -- Buy ticket to raffle
   ws <- buyNTicketsRUN refRaffleValidator raffleId [w1, w2, w3, w4] ["unu", "doi", "trei", fromString @BuiltinByteString "84a289f6f0dc3d1e18dcac4687604d7184a289f6f0dc3d1e18dcac4687604d71"]

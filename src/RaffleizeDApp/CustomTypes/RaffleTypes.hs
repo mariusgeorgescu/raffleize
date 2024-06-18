@@ -1,4 +1,3 @@
-
 {-# LANGUAGE DerivingVia #-}
 
 module RaffleizeDApp.CustomTypes.RaffleTypes where
@@ -44,10 +43,8 @@ data RaffleConfig = RaffleConfig
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
 
-
 instance Arbitrary RaffleConfig where
   arbitrary = RaffleConfig <$> (POSIXTime <$> arbitrary) <*> (POSIXTime <$> arbitrary) <*> arbitrary <*> arbitrary <*> (adaValueFromLovelaces <$> arbitrary)
-
 
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 
@@ -83,7 +80,6 @@ data RaffleStateData = RaffleStateData
   , rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
-
 
 unstableMakeIsData ''RaffleStateData --- TODO must be changed with stable version
 
@@ -132,8 +128,6 @@ mkRaffleDatum rsd =
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
 type RaffleStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
 
-
-
 data RaffleInfo = RaffleInfo
   { riRsd :: RaffleStateData
   , riValue :: Value
@@ -143,9 +137,6 @@ data RaffleInfo = RaffleInfo
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
-
-
-
 -------------------------------------------------------------------------------
 
 -- *  Show Instances
@@ -154,7 +145,7 @@ data RaffleInfo = RaffleInfo
 instance Show RaffleConfig where
   show :: RaffleConfig -> String
   show RaffleConfig {..} =
-    "Commit Deadline          | "
+    "\nCommit Deadline          | "
       ++ show (getPOSIXTime rCommitDDL)
       ++ "\nReveal Deadline          | "
       ++ show (getPOSIXTime rRevealDDL)

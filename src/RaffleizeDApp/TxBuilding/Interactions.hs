@@ -4,7 +4,6 @@ import Control.Monad.Error.Class
 import Control.Monad.Reader
 import Data.Either.Extra
 
-import Data.Bifunctor (second)
 import GHC.Stack
 import GeniusYield.TxBuilder
 import GeniusYield.Types
@@ -18,7 +17,7 @@ import RaffleizeDApp.TxBuilding.Operations
 interactionToTxSkeleton ::
   (HasCallStack, GYTxMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
   RaffleizeInteraction ->
-  r (m (GYTxSkeleton 'PlutusV2, Maybe AssetClass))
+  r (m (GYTxSkeleton 'PlutusV2, AssetClass))
 interactionToTxSkeleton
   RaffleizeInteraction {..} = do
     raffleValidatorRef <- asks raffleValidatorRef
@@ -27,15 +26,14 @@ interactionToTxSkeleton
     let usedAddrs = usedAddresses userAddresses
     let receiveAddr = fromMaybe changeAddr recipient
     return $ case raffleizeAction of
-      User userAction ->
-        second Just <$> case userAction of
-          CreateRaffle raffleConfig -> createRaffleTX receiveAddr raffleConfig
-          BuyTicket secretHash -> do
-            contextNFT <- liftEither $ maybeToEither (GYApplicationException MissingContextNFT) interactionContextNFT
-            buyTicketTX secretHash raffleValidatorRef receiveAddr contextNFT
+      User userAction -> case userAction of
+        CreateRaffle raffleConfig -> createRaffleTX receiveAddr raffleConfig
+        BuyTicket secretHash -> do
+          contextNFT <- liftEither $ maybeToEither (GYApplicationException MissingContextNFT) interactionContextNFT
+          buyTicketTX secretHash raffleValidatorRef receiveAddr contextNFT
       other -> do
         contextNFT <- liftEither $ maybeToEither (GYApplicationException MissingContextNFT) interactionContextNFT
-        (,Nothing) <$> case other of
+        (,contextNFT) <$> case other of
           TicketOwner ticketOwnerAction -> case ticketOwnerAction of
             RevealTicketSecret secret -> revealTicketTX secret raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
             CollectStake -> winnerCollectStakeTX raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
