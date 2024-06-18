@@ -7,7 +7,7 @@ import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, revealTicketToRaffleRT, updateRaffleStateValue)
+import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, revealTicketToRaffleRT, updateRaffleStateValue, refundTicketToRaffle)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Lookups
@@ -247,7 +247,8 @@ ticketOwnerClosingTX toa raffleScriptRef ticketScriptRef ownAddr ticketRefAC = d
   spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC redeemerAction raffleizeValidatorGY
   spendsTicketRefNFT <- txMustSpendStateFromRefScriptWithRedeemer ticketScriptRef ticketRefAC redeemerAction ticketValidatorGY
   let newValue = updateRaffleStateValue (redeemerToAction redeemerAction) rsd rValue
-  isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum rsd) newValue
+  let new_rsd = if toa `elem` [RefundTicket, RefundTicketExtra] then refundTicketToRaffle tsd rsd else rsd
+  isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) newValue
   let ticketUserAC = deriveUserFromRefAC ticketRefAC
   isBurningTicketUserNFT <- txNFTAction (Burn ticketUserAC)
   isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)

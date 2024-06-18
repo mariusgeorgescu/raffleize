@@ -2,8 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- Required for `makeLift`:
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeValidator where
@@ -81,13 +81,13 @@ raffleizeValidatorLamba
         let !ownInput = getOwnInput context
             !ownValue = txOutValue ownInput
             !action = redeemerToAction redeemer
-            !updatedRaffleStateVale = updateRaffleStateValue action rsd ownValue
+            !updatedRaffleStateValue = updateRaffleStateValue action rsd ownValue
             !raffleValidatorAddr = txOutAddress ownInput
             !ticketValidatorAddr = scriptHashAddress (rTicketValidatorHash rParam)
             !currentStateLabel = evaluateRaffleState (txInfoValidRange, rsd, ownValue)
             locksRaffleStateWithUpdatedDatumAndValue (newStateData :: RaffleStateData) =
               traceIfFalse "raffle state not locked" $
-                hasTxOutWithInlineDatumAnd (mkRaffleDatum newStateData) (#== updatedRaffleStateVale) (#== raffleValidatorAddr) txInfoOutputs -- using (==) to avoid utxo value ddos
+                hasTxOutWithInlineDatumAnd (mkRaffleDatum newStateData) (#== updatedRaffleStateValue) (#== raffleValidatorAddr) txInfoOutputs -- using (==) to avoid utxo value ddos
             hasNewTicketState (newStateData :: TicketStateData) newValue =
               traceIfFalse "ticket state not locked" $
                 hasTxOutWithInlineDatumAnd (mkTicketDatum newStateData) newValue (#== ticketValidatorAddr) txInfoOutputs

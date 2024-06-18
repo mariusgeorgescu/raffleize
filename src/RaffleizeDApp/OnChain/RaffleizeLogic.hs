@@ -422,7 +422,7 @@ revealTicketToRaffleRT secret ticket@TicketStateData {tSecretHash, tRaffle} raff
 refundTicketToRaffle :: TicketStateData -> RaffleStateData -> RaffleStateData
 refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefundedTickets, rRaffleID} =
   if tRaffle #== rRaffleID
-    then raffle {rRefundedTickets = rRefundedTickets #- 1}
+    then raffle {rRefundedTickets = rRefundedTickets #+ 1}
     else traceError "ticket raffle id and raffle id does not match"
 {-# INLINEABLE refundTicketToRaffle #-}
 
