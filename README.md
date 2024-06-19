@@ -70,15 +70,11 @@ Table of Contents
     - [3.1 User Interfaces](#31-user-interfaces)
       - [General User Interface Characteristics:](#general-user-interface-characteristics)
       - [Key Components of the User Interface:](#key-components-of-the-user-interface)
-  - [](#)
-  - [](#-1)
-  - [](#-2)
     - [3.2 Software Interfaces](#32-software-interfaces)
   - [Appendix A: Glossary](#appendix-a-glossary)
       - [Definitions, Acronyms and Abbreviations](#definitions-acronyms-and-abbreviations)
         - [Acronyms and Abbreviations](#acronyms-and-abbreviations)
   - [4. Installation](#4-installation)
-
 
 
 
@@ -693,39 +689,35 @@ List the user documentation components (such as user manuals, on-line help, and 
 
 
 ## 3. External Interface Requirements
-🔌  
+
 ### 3.1 User Interfaces
-💻  
+
 #### General User Interface Characteristics:  
 **Consistency:** The UI across the DApp maintains a consistent look and feel.   
 **Responsive Design**: The UI adapts to different screen sizes and resolutions, providing an optimal experience on both desktop and mobile devices.   
 
 #### Key Components of the User Interface:
 
---- 
 - **Dashboard/Main Screen** 
   - **Layout:** A clean and intuitive layout displaying active raffles, with clear navigation menus for accessing other parts of the DApp.  
   - **Information Display:** Active raffles are presented with essential information like asset details, ticket price, and time remaining.  
   - **Interaction:** Easy access to join raffles or view more details with minimal clicks/taps.  
---- 
- 
+
 ![UI-Dashboard-NonAuth Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-Dashboard-NonAuth.puml)
 
 
----
- 
 ![UI-Dashboard-Auth Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-Dashboard-Auth.puml)
---- 
+
 
 - **Raffle Detail Page**
   - **Information Display:**  Provides comprehensive information about a specific raffle state, including the asset being raffled, total number of participants, and the smart contract details.
   - **Interaction:**: A clear and secure way to purchase tickets for raffle.
 
---- 
 ![UI-RaffleDetails-Commit Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleDetails-Commit.puml) 
----
+
+
 ![UI-RaffleDetails-Reveal Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleDetails-Reveal.puml) 
---- 
+
 
 - **User Profile/Account Management**
   - **Information Display:** 
@@ -751,7 +743,6 @@ List the user documentation components (such as user manuals, on-line help, and 
     - Guidance and Help: Inline tips or help buttons to guide organizers through the raffle creation process.
     - Preview and Confirmation: Before submission, a preview of the raffle for review and confirmation.
 
- 
 ![UI-RaffleProfile-Create Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Wireframes/UI-RaffleProfile-Create.puml) 
 
 
@@ -760,7 +751,6 @@ List the user documentation components (such as user manuals, on-line help, and 
 
 - **Help and FAQ Sections**: Easily accessible help sections and FAQs for user assistance.
 --- 
-
 
 ### 3.2 Software Interfaces
 🖥️   
