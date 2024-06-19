@@ -1,9 +1,10 @@
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeMintingPolicy where
 
-import PlutusCore.Version (plcVersion100)
+import PlutusCore.Builtin.Debug (plcVersion100)
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue)
 import PlutusLedgerApi.V2 (
@@ -57,10 +58,10 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
   let raffleValidatorAddress = scriptHashAddress rRaffleValidatorHash
    in case redeemer of
         MintRaffle config@RaffleConfig {rStake} seedTxOutRef ->
-          let (raffleRefAC, raffleUserAC) = generateRefAndUserAC $ AssetClass (cs, tokenNameFromTxOutRef seedTxOutRef)
+          let (!raffleRefAC, !raffleUserAC) = generateRefAndUserAC $ AssetClass (cs, tokenNameFromTxOutRef seedTxOutRef)
               raffleRefTokenValue = assetClassValue raffleRefAC 1
               raffleUserTokenValue = assetClassValue raffleUserAC 1
-              newRaffleDatum = mkRaffleDatum $ mkNewRaffle raffleRefAC param config
+              !newRaffleDatum = mkRaffleDatum $ mkNewRaffle raffleRefAC param config
            in pand
                 [ traceIfFalse "Must be valid configuration" $
                     checkRaffle param txInfoValidRange config

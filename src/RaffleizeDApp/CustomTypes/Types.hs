@@ -8,12 +8,11 @@ import Data.String
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
 import PlutusLedgerApi.V2
 import PlutusTx
-import PlutusTx.Show qualified as PlutusTx (show)
+import PlutusTx.Show qualified (show)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
 unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
-
 
 type RaffleizeActionLabel = (String, String)
 
@@ -90,7 +89,7 @@ instance FromJSON AssetClass where
 
 instance ToJSON BuiltinByteString where
   toJSON :: BuiltinByteString -> Data.Aeson.Value
-  toJSON bs = toJSON $ fromBuiltin @BuiltinString @Text $ PlutusTx.show bs
+  toJSON bs = toJSON $ fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show bs
 
 instance FromJSON BuiltinByteString where
   parseJSON :: Data.Aeson.Value -> Parser BuiltinByteString
@@ -105,4 +104,3 @@ instance FromJSON ScriptHash where
   parseJSON v =
     let s = parseJSON @BuiltinByteString v
      in ScriptHash <$> s
-

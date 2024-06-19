@@ -3,22 +3,21 @@ module RaffleizeDApp.TUI.Actions where
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Data.Aeson hiding (Value)
 import Data.ByteString.Lazy qualified as B
-import Data.String
 import Data.Text qualified
 import GeniusYield.GYConfig
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value
-import PlutusTx.Builtins (blake2b_256)
+import PlutusTx.Show qualified (show)
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.Tests.UnitTests
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import RaffleizeDApp.TxBuilding.Utils
+import RaffleizeDApp.Utils
 
 addressFromSkey :: ProviderCtx -> GYPaymentSigningKey -> GYAddress
 addressFromSkey pCtx skey =
@@ -76,12 +75,13 @@ deployValidators pCtx skey = do
   B.writeFile raffleizeValidatorsConfig (encode . toJSON $ validators)
   putStrLn $ greenColorString ("exported to " <> raffleizeValidatorsConfig)
 
-mintTestTokens :: ProviderCtx -> GYPaymentSigningKey -> GYAddress -> String -> Integer -> IO Text
-mintTestTokens pCtx skey addr tn amount = do
+mintTestTokens :: ProviderCtx -> GYPaymentSigningKey -> String -> Integer -> IO Text
+mintTestTokens pCtx skey tn amount = do
   putStrLn $ yellowColorString "Minting test tokens... "
   putStrLn $ blueColorString $ "with token name: " <> show tn
   putStrLn $ blueColorString $ "amount: " <> show amount
-  let userAddrs = UserAddresses [addr] addr Nothing
+  let my_addr = addressFromSkey pCtx skey
+  let userAddrs = UserAddresses [my_addr] my_addr Nothing
   mintTxBody <- runReaderT (mintTestTokensTxBody userAddrs tn amount) pCtx
   let mintTxSigned = signGYTxBody mintTxBody [skey]
   txOutRef <- runReaderT (submitTxAndWaitForConfirmation mintTxSigned) pCtx
@@ -99,46 +99,52 @@ raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey rafflei
   txOutRef <- runReaderT (submitTxAndWaitForConfirmation raffleizeTxSigned) providerCtx
   return $ showTxOutRef txOutRef
 
-createRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> RaffleConfig -> Maybe GYAddress -> IO Text
-createRaffle roc skey config mRecipient = do
-  putStrLn $ yellowColorString ("Creating a new raffle" :: String)
-  putStrLn $ blueColorString (show config)
-  raffleizeTransaction roc skey (User (CreateRaffle config)) Nothing mRecipient
-
-updateRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> RaffleConfig -> Maybe GYAddress -> IO Text
-updateRaffle roc skey raffleId config mRecipient = do
-  putStrLn $ yellowColorString "Updating raffle: \n\t " <> show raffleId
-  putStrLn "New raffle configuration"
-  putStrLn $ blueColorString (show config)
-  raffleizeTransaction roc skey (RaffleOwner (Update config)) (Just raffleId) mRecipient
-
-cancelRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
-cancelRaffle roc skey raffleId mRecipient = do
-  putStrLn $ yellowColorString $ "Cancelling raffle: \n\t " <> show raffleId
-  raffleizeTransaction roc skey (RaffleOwner Cancel) (Just raffleId) mRecipient
-
-recoverStakeRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
-recoverStakeRaffle roc skey raffleId mRecipient = do
-  putStrLn $ yellowColorString $ "Recovering the stake from raffle: \n\t " <> show raffleId
-  raffleizeTransaction roc skey (RaffleOwner RecoverStake) (Just raffleId) mRecipient
-
-recoverStakeAndAmountRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
-recoverStakeAndAmountRaffle roc skey raffleId mRecipient = do
-  putStrLn $ yellowColorString $ "Recovering the stake and the collected amount form raffle: \n\t " <> show raffleId
-  raffleizeTransaction roc skey (RaffleOwner RecoverStakeAndAmount) (Just raffleId) mRecipient
-
-collectAmountRaffle :: RaffleizeOffchainContext -> GYPaymentSigningKey -> AssetClass -> Maybe GYAddress -> IO Text
-collectAmountRaffle roc skey raffleId mRecipient = do
-  putStrLn $ yellowColorString $ "Collect amount form raffle: \n\t " <> show raffleId
-  raffleizeTransaction roc skey (RaffleOwner CollectAmount) (Just raffleId) mRecipient
-
-buyTicket :: RaffleizeOffchainContext -> GYPaymentSigningKey -> String -> AssetClass -> Maybe GYAddress -> IO Text
-buyTicket roc skey secretString raffleId mRecipient = do
-  let secretHash = blake2b_256 $ fromString @BuiltinByteString secretString
-  putStrLn $ yellowColorString $ "Buying ticket to raffle: \n\t " <> show raffleId
-  putStrLn $ blueColorString $ "with secret: " <> secretString
-  putStrLn $ blueColorString $ "onchain secret hash: " <> (show . toJSON $ secretHash)
-  raffleizeTransaction roc skey (User (BuyTicket secretHash)) (Just raffleId) mRecipient
+raffleizeActionToIntro :: Maybe AssetClass -> RaffleizeAction -> IO ()
+raffleizeActionToIntro ma ra =
+  let inContextOf s = case ma of
+        (Just contextNFT) -> printf " Transaction in context of %s:\n\t" s <> show contextNFT
+        Nothing -> ""
+   in do
+        case ra of
+          User a -> case a of
+            (CreateRaffle rconfig) -> do
+              putStrLn $ yellowColorString "Creating a new raffle..."
+              putStrLn $ blueColorString (show rconfig)
+            (BuyTicket secretHashBS) -> do
+              putStrLn $ yellowColorString "Buying ticket to raffle... \n\t "
+              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show secretHashBS)
+          RaffleOwner roa -> do
+            putStrLn $ inContextOf ("raffle" :: String)
+            case roa of
+              (Update rconfig) -> do
+                putStrLn $ yellowColorString "Updating raffle configuration... \n\t "
+                putStrLn "New raffle configuration"
+                putStrLn $ blueColorString (show rconfig)
+              Cancel -> do
+                putStrLn $ yellowColorString "Cancelling raffle... \n\t "
+              RecoverStake -> do
+                putStrLn $ yellowColorString "Recovering stake from failed raffle... \n\t "
+              RecoverStakeAndAmount -> do
+                putStrLn $ yellowColorString "Recovering stake from unrevealed raffle... \n\t "
+              CollectAmount -> do
+                putStrLn $ yellowColorString "Claiming collected amount from successfull raffle... \n\t "
+              GetCollateraOfExpiredTicket -> do
+                putStrLn $ yellowColorString "Getting the ticket collateral refund for losing ticket of raffle... \n\t "
+          TicketOwner toa -> do
+            putStrLn $ inContextOf ("ticket" :: String)
+            case toa of
+              (RevealTicketSecret secretBS) -> do
+                putStrLn $ yellowColorString "Reavealing the ticket secret... \n\t "
+                putStrLn $ blueColorString $ "onchain revealed secret: " <> Data.Text.unpack (fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show secretBS)
+              CollectStake -> do
+                putStrLn $ yellowColorString "Collecting stake with winning ticket: \n\t "
+              RefundTicket -> do
+                putStrLn $ yellowColorString "Getting full refund for ticket of underfunded raffle: \n\t "
+              RefundTicketExtra -> do
+                putStrLn $ yellowColorString "Getting extra refund for ticket of unrevealed raffle: \n\t "
+              RefundCollateralLosing -> do
+                putStrLn $ yellowColorString "Getting the ticket collateral refund for losing ticket of raffle: \n\t "
+          Admin CloseRaffle -> undefined -- TODO
 
 ----------------
 

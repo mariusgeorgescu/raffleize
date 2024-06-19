@@ -77,9 +77,9 @@ TRANSACTION
 
 
 left side
-**_  **Burn TicketId **
+**_  **Burn RaffleUserAC **
 *** 📜Raffle Minting Policy <<minting>>
-**_  **Burn TicketId **
+**_  **Burn RaffleRefAC **
 *** 📜Raffle Minting Policy <<minting>>
 ** Address with\n Raffle Validator\nRef. Script 
 ***: REF. SCRIPT
