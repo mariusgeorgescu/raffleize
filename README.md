@@ -1,6 +1,6 @@
 # RAFFLEIZE C-A-R-D-A-N-A  
 ### <br> (Commit-And-Reveal-Decentralized-Application-for-Native-Assets)
-Version 1.1 approved
+Version 2 approved
 Prepared by Marius Georgescu  
 
 This project is part of
