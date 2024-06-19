@@ -71,6 +71,7 @@ library
     RaffleizeDApp.Server.API
     RaffleizeDApp.Server.Queries
     RaffleizeDApp.Tests.PropertyTests
+    RaffleizeDApp.Tests.TestRuns
     RaffleizeDApp.Tests.UnitTests
     RaffleizeDApp.TUI.Actions
     RaffleizeDApp.TUI.RaffleizeWidgets
@@ -86,6 +87,7 @@ library
     RaffleizeDApp.TxBuilding.Transactions
     RaffleizeDApp.TxBuilding.Utils
     RaffleizeDApp.TxBuilding.Validators
+    RaffleizeDApp.Utils
 
   -- Add new contracts here, i.e.:
   -- Contracts.MyContract

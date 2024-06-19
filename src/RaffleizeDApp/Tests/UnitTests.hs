@@ -1,116 +1,46 @@
 module RaffleizeDApp.Tests.UnitTests where
 
-import Cardano.Simple.Ledger.Slot (Slot (..))
 import Cardano.Simple.Ledger.TimeSlot
-import Control.Monad.State.Class (MonadState (get), gets)
-import Data.ByteString hiding (drop, head, replicate, take, zip)
-import Data.List.Extra (replicate)
-import GeniusYield.Api.TestTokens (mintTestTokens)
+import Control.Monad.State.Class (gets)
 import GeniusYield.Test.Utils
-import GeniusYield.TxBuilder
 import GeniusYield.Types
-import Plutus.Model (Mock (mockCurrentSlot), logError, logInfo, mockConfig, mockConfigSlotConfig, waitNSlots)
-import PlutusLedgerApi.V1.Interval (from, intersection, to)
-import PlutusLedgerApi.V1.Value (AssetClass, tokenName)
-import PlutusLedgerApi.V2 (POSIXTimeRange, Value)
+import Plutus.Model (logError, mockConfig, mockConfigSlotConfig, waitNSlots)
 import PlutusTx.Builtins (blake2b_256)
 import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.CustomTypes.TicketTypes
 
 import Control.Monad
-import Control.Monad.Reader
-import GeniusYield.Imports
 import RaffleizeDApp.CustomTypes.ActionTypes
-import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.Utils
-import RaffleizeDApp.TxBuilding.Context
-import RaffleizeDApp.TxBuilding.Interactions (interactionToTxSkeleton)
-import RaffleizeDApp.TxBuilding.Lookups
-import RaffleizeDApp.TxBuilding.Operations
-import RaffleizeDApp.TxBuilding.Validators
+import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty
+
+unitTests :: TestTree
+unitTests = testGroup "CreateRaffles" [otherTests, createRaffleTests]
 
 -- | Our unit tests for creating a raffle
 createRaffleTests :: TestTree
 createRaffleTests =
   testGroup
-    "RAFFLEIZE TESTNG SCENATIOS"
-    [ testRun "CREATE NEW RAFFLE" createNewRaffleScenario
-    , testRun "CREATE NEW -> UPDATE" createAndUpdateScenario
+    "CREATE RAFFLE TEST CASES"
+    [ testRun "Test Case 1.1: Verify that a user can create a raffle with valid raffle configuration" createNewRaffleTC1
+    , testRun " Test Case 1.2: Verify that a user cannot create a raffle with Commit Deadline in the past" createNewRaffleTC2
+    , testRun " Test Case 1.3: Verify that a user cannot create a raffle with Reveal Deadline before Commit Deadline" createNewRaffleTC3
+    , testRun " Test Case 1.4: Verify that a user cannot create a raffle with empty stake" createNewRaffleTC4
+    , testRun " Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada" createNewRaffleTC5
+    ]
+
+otherTests :: TestTree
+otherTests =
+  testGroup
+    "CREATE RAFFLE TEST CASES"
+    [ testRun "CREATE NEW -> UPDATE" createAndUpdateScenario
     , testRun "CREATE NEW ->  EXPIRE -> RECOVER STAKE" createExpireRecoverScenario
     , testRun "CREATE NEW ->  CANCEL" createAndCancelScenario
     , testRun "CREATE NEW ->  BUY 3 -> UNDERFUNDED" underfundedScenario
+    , testRun "UNDERFUNDED" underfundedScenario
     -- testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
-    -- , testRun "UNDERFUNDED" underfundedScenario
     ]
 
-----------------------
--- Run TEST ACTIONS
------------------------
-
-deployValidatorsRun :: Wallet -> Run RaffleizeTxBuildingContext
-deployValidatorsRun w = do
-  refTicketValidator <- deployReferenceScriptRUN ticketValidatorGY w (walletAddress w)
-  refRaffleValidator <- deployReferenceScriptRUN raffleizeValidatorGY w (walletAddress w)
-  return RaffleizeTxBuildingContext {raffleValidatorRef = refRaffleValidator, ticketValidatorRef = refTicketValidator}
-
-raffleizeTransactionRUN :: Wallet -> RaffleizeTxBuildingContext -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> Run (GYTxId, AssetClass)
-raffleizeTransactionRUN w roc raffleizeActon interactionContextNFT optionalRecipient = do
-  my_addr <- runWallet' w ownAddress
-  let userAddrs = UserAddresses [my_addr] my_addr Nothing
-  let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
-  result <- runReaderT (interactionToTxSkeleton raffleizeInteraction) roc
-  (skeleton, ac) <- runWallet' w result
-  txId <- runWallet' w $ sendSkeleton skeleton `catchError` (error . show)
-  logInfo' ("Performed Raffleize Action:\n" <> show raffleizeActon)
-  return (txId, ac)
-
-deployReferenceScriptRUN :: GYValidator 'PlutusV2 -> Wallet -> GYAddress -> Run GYTxOutRef
-deployReferenceScriptRUN validator fromWallet toWallet = do
-  valRef <- runWallet' fromWallet $ addRefScript toWallet validator `catchError` (error . show)
-  logInfo' $ "DEPLOYED VALIDATOR" <> show validator
-  case valRef of
-    Nothing -> error "failed to add the reference script"
-    Just gtor -> return gtor
-
-getTimeRangeForNextNSlots :: Integer -> Run POSIXTimeRange
-getTimeRangeForNextNSlots i = do
-  mock <- get
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let now = mockCurrentSlot mock
-  let lower = slotToEndPOSIXTime sltCfg now
-  let upper = slotToEndPOSIXTime sltCfg (now + Slot i)
-  return $ intersection (from lower) (to upper)
-
-queryRaffleRUN :: HasCallStack => Bool -> Wallet -> AssetClass -> Run RaffleStateId
-queryRaffleRUN log w rid = do
-  (r, v) <- runWallet' w $ do
-    getRaffleStateDataAndValue rid `catchError` (error . show)
-  tr <- getTimeRangeForNextNSlots 0
-  let state = evaluateRaffleState (tr, r, v)
-  when log $ do
-    logInfo (yellowColorString $ "The raffle is in state : " ++ showRaffleStateLabel state)
-    logInfo $ yellowColorString $ show r ++ showValue "Raffle State Value" v
-  return state
-
-queryRaffleRun :: HasCallStack => Wallet -> AssetClass -> Run (Maybe RaffleInfo)
-queryRaffleRun w rid =
-  runWallet' w $ lookupRaffleInfoRefAC rid
-
-queryTicketRUN :: Wallet -> AssetClass -> Run ()
-queryTicketRUN w tid = do
-  (r, v) <- runWallet' w $ do
-    getTicketStateDataAndValue tid `catchError` (error . show)
-  logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
-
--- revealNTicketsRUN :: GYTxOutRef -> GYTxOutRef -> AssetClass -> [(AssetClass, (Wallet, Secret))] -> Run ()
--- revealNTicketsRUN refRaffleValidator refTicketValidator raffleId ws = do
---   mapM_ (revealTicketRUN refRaffleValidator refTicketValidator) ws
---   s <- queryRaffleRUN True (head (fst . snd <$> ws)) raffleId
---   when (s /= 3 && s /= 40) $ logError "not in REVEALIING or SUCCESS_LOCKED_STAKE_AND_AMOUNT"
-
-------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
@@ -118,13 +48,22 @@ queryTicketRUN w tid = do
 
 ------------------------------------------------------------------------------------------------
 
--- ** SCENARIO: Deploy Reference Script -> Create a New Raffle
+-- ** SCENARIO: Create new raffle
 
 ------------------------------------------------------------------------------------------------
-createNewRaffleScenario :: Wallets -> Run ()
-createNewRaffleScenario Wallets {..} = do
+
+{- | Test Case 1.1: Verify that a user can create a raffle with valid raffle configuration
+Preconditions:
+- Wallet has enough Ada to cover the raffle collateral and transaction fees
+Preconditions:
+- Raffle is in the "NEW" state.
+-}
+createNewRaffleTC1 :: Wallets -> Run ()
+createNewRaffleTC1 Wallets {..} = do
+  -- . Deploy validators
   roc <- deployValidatorsRun w9
 
+  -- . Create raffle
   sltCfg <- gets (mockConfigSlotConfig . mockConfig)
   let cddl = slotToEndPOSIXTime sltCfg 20
   let rddl = slotToEndPOSIXTime sltCfg 50
@@ -136,12 +75,112 @@ createNewRaffleScenario Wallets {..} = do
           , rMinTickets = 3
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
-
-  (_txId, raffleId) <- raffleizeTransactionRUN w1 roc (User (CreateRaffle config)) Nothing Nothing
+  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
   mri <- queryRaffleRun w1 raffleId
   case mri of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
+    Just ri -> do
+      when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
+
+{- | Test Case 1.2: Verify that a user cannot create a raffle with Commit Deadline in the past
+Preconditions:
+- Wallet has enough Ada to cover the raffle collateral and transaction fees
+Preconditions:
+- Transaction fails
+-}
+createNewRaffleTC2 :: Wallets -> Run ()
+createNewRaffleTC2 Wallets {..} = do
+  -- . Deploy validators
+  roc <- deployValidatorsRun w9
+
+  -- . Create raffle
+  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+  let cddl = slotToEndPOSIXTime sltCfg 4 -- Deadline set in the past
+  let rddl = slotToEndPOSIXTime sltCfg 50
+  let config =
+        RaffleConfig
+          { rCommitDDL = cddl
+          , rRevealDDL = rddl
+          , rTicketPrice = 5_000_000
+          , rMinTickets = 3
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          }
+  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+
+{- | Test Case 1.3: Verify that a user cannot create a raffle with Reveal Deadline before Commit Deadline
+Preconditions:
+- Wallet has enough Ada to cover the raffle collateral and transaction fees
+Preconditions:
+- Transaction fails
+-}
+createNewRaffleTC3 :: Wallets -> Run ()
+createNewRaffleTC3 Wallets {..} = do
+  -- . Deploy validators
+  roc <- deployValidatorsRun w9
+
+  -- . Create raffle
+  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+  let cddl = slotToEndPOSIXTime sltCfg 51
+  let rddl = slotToEndPOSIXTime sltCfg 50 -- Reveal ddl before commit ddl
+  let config =
+        RaffleConfig
+          { rCommitDDL = cddl
+          , rRevealDDL = rddl
+          , rTicketPrice = 5_000_000
+          , rMinTickets = 3
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          }
+  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+
+{- | Test Case 1.4: Verify that a user cannot create a raffle with empty stake
+Preconditions:
+- Wallet has enough Ada to cover the raffle collateral and transaction fees
+Preconditions:
+- Transaction fails
+-}
+createNewRaffleTC4 :: Wallets -> Run ()
+createNewRaffleTC4 Wallets {..} = do
+  -- . Deploy validators
+  roc <- deployValidatorsRun w9
+
+  -- . Create raffle
+  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+  let cddl = slotToEndPOSIXTime sltCfg 25
+  let rddl = slotToEndPOSIXTime sltCfg 60
+  let config =
+        RaffleConfig
+          { rCommitDDL = cddl
+          , rRevealDDL = rddl
+          , rTicketPrice = 5_000_000
+          , rMinTickets = 3
+          , rStake = mempty
+          }
+  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+
+{- | Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada
+Preconditions:
+- Wallet has enough Ada to cover the raffle collateral and transaction fees
+Preconditions:
+- Transaction fails
+-}
+createNewRaffleTC5 :: Wallets -> Run ()
+createNewRaffleTC5 Wallets {..} = do
+  -- . Deploy validators
+  roc <- deployValidatorsRun w9
+
+  -- . Create raffle
+  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+  let cddl = slotToEndPOSIXTime sltCfg 25
+  let rddl = slotToEndPOSIXTime sltCfg 60
+  let config =
+        RaffleConfig
+          { rCommitDDL = cddl
+          , rRevealDDL = rddl
+          , rTicketPrice = 5_000_000
+          , rMinTickets = 3
+          , rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeIron 9876)
+          }
+  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
 
 -- ------------------------------------------------------------------------------------------------
 
@@ -151,8 +190,10 @@ createNewRaffleScenario Wallets {..} = do
 
 createAndUpdateScenario :: Wallets -> Run ()
 createAndUpdateScenario Wallets {..} = do
+  -- . Deploy validators
   roc <- deployValidatorsRun w9
 
+  -- . Create raffle
   sltCfg <- gets (mockConfigSlotConfig . mockConfig)
   let cddl = slotToEndPOSIXTime sltCfg 20
   let rddl = slotToEndPOSIXTime sltCfg 50
@@ -164,14 +205,14 @@ createAndUpdateScenario Wallets {..} = do
           , rMinTickets = 3
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
-
-  (_txId, raffleId) <- raffleizeTransactionRUN w1 roc (User (CreateRaffle config)) Nothing Nothing
+  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
   mri <- queryRaffleRun w1 raffleId
   case mri of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
     Just ri -> when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
-  waitNSlots 3 -- Slot 16
-  -- 4. Update the raffle
+  waitNSlots 3
+
+  -- . Update the raffle
   sltCfg2 <- gets (mockConfigSlotConfig . mockConfig)
   let newcddl = slotToEndPOSIXTime sltCfg2 16
   let newrddl = slotToEndPOSIXTime sltCfg2 26
@@ -183,7 +224,7 @@ createAndUpdateScenario Wallets {..} = do
           , rMinTickets = 2
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
-  (_txId, raffleId2) <- raffleizeTransactionRUN w1 roc (RaffleOwner (Update newconfig)) (Just raffleId) Nothing
+  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner (Update newconfig)) (Just raffleId) Nothing
   mri2 <- queryRaffleRun w1 raffleId2
   case mri2 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
@@ -212,13 +253,13 @@ createAndCancelScenario Wallets {..} = do
           , rMinTickets = 3
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
-  (_txId, raffleId) <- raffleizeTransactionRUN w1 roc (User (CreateRaffle config)) Nothing Nothing
+  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
   waitNSlots 2
   mri <- queryRaffleRun w1 raffleId
   case mri of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
     Just ri -> when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
-  (_txId, raffleId2) <- raffleizeTransactionRUN w1 roc (RaffleOwner Cancel) (Just raffleId) Nothing
+  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner Cancel) (Just raffleId) Nothing
   mri2 <- queryRaffleRun w1 raffleId2
   case mri2 of
     Nothing -> return ()
@@ -245,14 +286,14 @@ createExpireRecoverScenario Wallets {..} = do
           , rMinTickets = 3
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
-  (_txId, raffleId) <- raffleizeTransactionRUN w1 roc (User (CreateRaffle config)) Nothing Nothing
+  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
   waitNSlots 20 -- Slot 31 - EXPIRED
   mri <- queryRaffleRun w1 raffleId
   case mri of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
     Just ri -> when (riStateLabel ri /= "EXPIRED_LOCKED_STAKE") $ logError "not in status EXPIRED_LOCKED_STAKE"
   waitNSlots 20
-  (_txId, raffleId2) <- raffleizeTransactionRUN w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
   mri2 <- queryRaffleRun w1 raffleId2
   case mri2 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
@@ -280,7 +321,7 @@ underfundedScenario Wallets {..} = do
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
 
-  (_txId, raffleId) <- raffleizeTransactionRUN w1 roc (User (CreateRaffle config)) Nothing Nothing
+  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
   mri <- queryRaffleRun w1 raffleId
   case mri of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
@@ -288,9 +329,9 @@ underfundedScenario Wallets {..} = do
   waitNSlots 1
   let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
   let secretHash = blake2b_256 secret
-  (_txId, ticket1) <- raffleizeTransactionRUN w2 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
-  (_txId, ticket2) <- raffleizeTransactionRUN w3 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
-  (_txId, ticket3) <- raffleizeTransactionRUN w4 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
+  (_txId, ticket1) <- raffleizeTransactionRun w2 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
+  (_txId, ticket2) <- raffleizeTransactionRun w3 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
+  (_txId, ticket3) <- raffleizeTransactionRun w4 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
   mri2 <- queryRaffleRun w1 raffleId
   case mri2 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
@@ -303,13 +344,13 @@ underfundedScenario Wallets {..} = do
     Nothing -> logError $ "Raffle not found: " <> show raffleId
     Just ri -> when (riStateLabel ri /= "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
 
-  (_txId, raffleId2) <- raffleizeTransactionRUN w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
   mri4 <- queryRaffleRun w1 raffleId2
   case mri4 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
     Just ri -> when (riStateLabel ri /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
 
-  (_txId, _ticket12) <- raffleizeTransactionRUN w2 roc (TicketOwner RefundTicket) (Just ticket1) Nothing
+  (_txId, _ticket12) <- raffleizeTransactionRun w2 roc (TicketOwner RefundTicket) (Just ticket1) Nothing
   mri6 <- queryRaffleRun w1 raffleId2
   case mri6 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
@@ -317,7 +358,7 @@ underfundedScenario Wallets {..} = do
       when (riStateLabel ri /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
       when (rRefundedTickets (riRsd ri) /= 1) $ logError "incorrect number of tickets refunded"
 
-  (_txId, _ticket22) <- raffleizeTransactionRUN w3 roc (TicketOwner RefundTicket) (Just ticket2) Nothing
+  (_txId, _ticket22) <- raffleizeTransactionRun w3 roc (TicketOwner RefundTicket) (Just ticket2) Nothing
   mri7 <- queryRaffleRun w1 raffleId2
   case mri7 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
@@ -325,7 +366,7 @@ underfundedScenario Wallets {..} = do
       when (riStateLabel ri /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
       when (rRefundedTickets (riRsd ri) /= 2) $ logError "incorrect number of tickets refunded"
 
-  (_txId, _ticket32) <- raffleizeTransactionRUN w4 roc (TicketOwner RefundTicket) (Just ticket3) Nothing
+  (_txId, _ticket32) <- raffleizeTransactionRun w4 roc (TicketOwner RefundTicket) (Just ticket3) Nothing
   mri8 <- queryRaffleRun w1 raffleId2
   case mri8 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
@@ -395,7 +436,7 @@ underfundedScenario Wallets {..} = do
 --           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
 --           }
 
---   (_, raffleId) <- raffleizeTransactionRUN w1 (RaffleizeTxBuildingContext refRaffleValidator refTicketValidator) (User (CreateRaffle config)) Nothing Nothing
+--   (_, raffleId) <- raffleizeTransactionRun w1 (RaffleizeTxBuildingContext refRaffleValidator refTicketValidator) (User (CreateRaffle config)) Nothing Nothing
 
 --   -- Buy ticket to raffle
 --   ws <- buyNTicketsRUN refRaffleValidator raffleId [w1, w2, w3, w4] ["unu", "doi", "trei", fromString @BuiltinByteString "84a289f6f0dc3d1e18dcac4687604d7184a289f6f0dc3d1e18dcac4687604d71"]
@@ -450,40 +491,6 @@ underfundedScenario Wallets {..} = do
 ------------------------
 ------------------------
 ------------------------
-
-logInfo' :: String -> Run ()
-logInfo' s = logInfo $ greenColorString s
-
-greenColorString :: String -> String
-greenColorString s =
-  "\n"
-    ++ "\ESC[1;32m"
-    ++ replicate 100 '='
-    ++ "\n"
-    ++ s
-    ++ "\n"
-    ++ replicate 100 '='
-    ++ "\ESC[0m"
-    ++ "\n"
-
-yellowColorString :: String -> String
-yellowColorString s =
-  "\n"
-    ++ "\ESC[1;93m"
-    ++ s
-    ++ "\ESC[0m"
-    ++ "\n"
-
-blueColorString :: String -> String
-blueColorString s =
-  "\n"
-    ++ "\ESC[1;94m"
-    ++ s
-    ++ "\ESC[0m"
-    ++ "\n"
-
-unitTests :: TestTree
-unitTests = testGroup "CreateRaffles" [createRaffleTests]
 
 --- >>> lengthOfByteString "5b39bfccb1447d4aae30e7a4fb0f4ba37e79ea96ec54b5ba7223979a15e4d0ae5b39bfccb1447d4aae30e7a4fb0f4ba37e79ea96ec54b5ba7223979a15e4d0ae=====------------------------"
 -- 157

@@ -47,10 +47,10 @@ import RaffleizeDApp.TUI.Actions
 import RaffleizeDApp.TUI.RaffleizeWidgets
 import RaffleizeDApp.TUI.Types
 import RaffleizeDApp.TUI.Utils
-import RaffleizeDApp.Tests.UnitTests (yellowColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
+import RaffleizeDApp.Utils
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
 

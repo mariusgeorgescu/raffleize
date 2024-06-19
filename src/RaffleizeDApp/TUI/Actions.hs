@@ -13,11 +13,11 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.Tests.UnitTests
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import RaffleizeDApp.TxBuilding.Utils
+import RaffleizeDApp.Utils
 
 addressFromSkey :: ProviderCtx -> GYPaymentSigningKey -> GYAddress
 addressFromSkey pCtx skey =

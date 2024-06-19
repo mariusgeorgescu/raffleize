@@ -6,10 +6,10 @@ import GeniusYield.Examples.Limbo (addRefScript')
 import GeniusYield.Imports (IsString (..))
 import GeniusYield.Types
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.Tests.UnitTests (greenColorString, yellowColorString)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Validators
+import RaffleizeDApp.Utils
 
 ------------------------------------------------------------------------------------------------
 
