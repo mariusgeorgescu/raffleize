@@ -41,10 +41,6 @@ import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude hiding (error)
 
-raffleStakeValue :: RaffleStateData -> Value
-raffleStakeValue RaffleStateData {rConfig} = rStake rConfig
-{-# INLINEABLE raffleStakeValue #-}
-
 raffleTicketPriceValue :: RaffleStateData -> Value
 raffleTicketPriceValue RaffleStateData {rConfig} = adaValueFromLovelaces (rTicketPrice rConfig)
 {-# INLINEABLE raffleTicketPriceValue #-}
@@ -139,12 +135,12 @@ redeemerToAction (AdminRedeemer action) = Admin action
 updateRaffleStateValue :: RaffleizeAction -> RaffleStateData -> Value -> Value
 updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets} rValue = case action of
   User (BuyTicket _) -> rValue #+ raffleTicketPriceValue rsd
-  RaffleOwner RecoverStake -> rValue #- raffleStakeValue rsd
-  RaffleOwner RecoverStakeAndAmount -> rValue #- raffleStakeValue rsd #- raffleAccumulatedValue rsd
+  RaffleOwner RecoverStake -> rValue #- rStake rConfig
+  RaffleOwner RecoverStakeAndAmount -> rValue #- rStake rConfig #- raffleAccumulatedValue rsd
   RaffleOwner CollectAmount -> rValue #- raffleAccumulatedValue rsd
-  RaffleOwner (Update _) -> rValue
+  RaffleOwner (Update newconfig) -> (rValue #- rStake rConfig )#+ rStake newconfig
   TicketOwner (RevealTicketSecret _) -> rValue
-  TicketOwner CollectStake -> rValue #- raffleStakeValue rsd
+  TicketOwner CollectStake -> rValue #- rStake rConfig
   TicketOwner RefundTicket ->
     let fullRefundValue = raffleTicketPriceValue rsd #+ raffleTicketCollateralValue rsd
      in rValue #- fullRefundValue

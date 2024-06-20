@@ -78,6 +78,7 @@ data RaffleizeUI = RaffleizeUI
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
   , maybeSecretKey :: Maybe GYPaymentSigningKey
   , balance :: Value
+  , balanceList :: GenericList NameResources [] (CurrencySymbol, TokenName, Integer)
   , logo :: String
   , message :: Text
   , mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources
@@ -159,9 +160,9 @@ buildInitialState pCtx logo = do
       let rf = mkMyRafflesForm (MyRafflesFormState (Data.Vector.fromList myRafflesInfo) Nothing)
       let tf = mkMyTicketsForm (MyTicketsFormState (Data.Vector.fromList myTicketsInfo) Nothing)
       return (rf, tf, cf, balance)
-
+  let balanceList = Brick.Widgets.List.list ValueItemsList (flattenValue balance) 5
   let constructValueState = mkConstructValueState balance mempty
-  return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance logo mempty mintTokenForm raffleConfigForm activeRafflesForm Nothing myRafflesForm buyTicketForm myTicketsForm revealSecretForm constructValueState MainScreen)
+  return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance balanceList logo mempty mintTokenForm raffleConfigForm activeRafflesForm Nothing myRafflesForm buyTicketForm myTicketsForm revealSecretForm constructValueState MainScreen)
 
 refreshState :: RaffleizeUI -> IO RaffleizeUI
 refreshState RaffleizeUI {..} = do
@@ -220,7 +221,9 @@ handleEvent s e =
                         continue initialState {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
                       _ -> continue s
                   else continue s
-            _ -> continue s
+            _ -> do
+              newBalanceList <- handleListEvent vtye (balanceList s)
+              continue s {balanceList = newBalanceList}
       _ -> continue s
     _ -> continue s
 
@@ -554,13 +557,12 @@ mainScreen s =
   where
     bodyWidget :: Widget NameResources
     bodyWidget =
-      let balanceList = Brick.Widgets.List.list ValueItemsList (flattenValue (balance s)) 5
-       in vBox $
-            padLeftRight 1
-              <$> [ summaryWidget
-                  , hBorder
-                  , assetsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (maybeSecretKey s) balanceList
-                  ]
+      vBox $
+        padLeftRight 1
+          <$> [ summaryWidget
+              , hBorder
+              , assetsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (maybeSecretKey s) (balanceList s)
+              ]
       where
         summaryWidget :: Widget NameResources
         summaryWidget =
@@ -653,12 +655,6 @@ mainScreen s =
       vLimit 100 $
         hLimit 150 $
           borderWithLabel (txt "ASSETS") $
-            -- visible $
-            --   withVScrollBarHandles $
-            --     withVScrollBars OnRight $
-            --       viewport ValueItemsViewPort Vertical $
-            --         vLimit 300 $
-            --           hLimit 150 $
             renderList (valueItemWidget True) False valueItemsList
 
 ------------------------------------------------------------------------------------------------
