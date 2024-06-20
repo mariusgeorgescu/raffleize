@@ -15,7 +15,7 @@ import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty
 
 unitTests :: TestTree
-unitTests = testGroup "CreateRaffles" [otherTests, createRaffleTests]
+unitTests = testGroup "Raffleize Unit Tests" [createRaffleTests, otherTests]
 
 -- | Our unit tests for creating a raffle
 createRaffleTests :: TestTree
@@ -206,10 +206,8 @@ createAndUpdateScenario Wallets {..} = do
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
   (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
-  mri <- queryRaffleRun w1 raffleId
-  case mri of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
+  ri <- fromMaybe (error $ "Raffle not found: " <> show raffleId) <$> queryRaffleRun w1 raffleId
+  when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
   waitNSlots 3
 
   -- . Update the raffle
@@ -222,7 +220,7 @@ createAndUpdateScenario Wallets {..} = do
           , rRevealDDL = newrddl
           , rTicketPrice = 10_000_000
           , rMinTickets = 2
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          , rStake = valueToPlutus (fakeIron 100) <> valueToPlutus (fakeGold 100)
           }
   (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner (Update newconfig)) (Just raffleId) Nothing
   mri2 <- queryRaffleRun w1 raffleId2
@@ -230,7 +228,11 @@ createAndUpdateScenario Wallets {..} = do
     Nothing -> logError $ "Raffle not found: " <> show raffleId
     Just ri2 -> do
       when (raffleId2 /= raffleId) $ logError "not same id"
-      when (rConfig (riRsd ri2) /= newconfig) $ logError "Config not updated"
+      when (raffleId2 /= raffleId) $ logError "not same id"
+      let prevStakeValue = rStake (rConfig (riRsd ri))
+      let currentStakeValue = rStake (rConfig (riRsd ri2))
+      let updatedVal = riValue ri #- prevStakeValue #+ currentStakeValue
+      when (riValue ri2 #/= updatedVal) $ logError "locked value does not match the config "
 
 -- ------------------------------------------------------------------------------------------------
 

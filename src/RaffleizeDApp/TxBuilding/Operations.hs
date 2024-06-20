@@ -7,7 +7,7 @@ import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleStakeValue, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, revealTicketToRaffleRT, updateRaffleStateValue, refundTicketToRaffle)
+import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, refundTicketToRaffle, revealTicketToRaffleRT, updateRaffleStateValue)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Lookups
@@ -93,8 +93,9 @@ updateRaffleTX newConfig raffleScriptRef ownAddrs raffleRefAC = do
   isValidByCommitDDL <- txIsValidByDDL ddl
   let updateRedeemer = RaffleOwner (Update newConfig)
   spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC updateRedeemer raffleizeValidatorGY
+  let new_rValue = rValue #- (rStake . rConfig $ rsd) #+ rStake newConfig
   let new_rsd = rsd {rConfig = newConfig}
-  isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) rValue
+  isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) new_rValue
   let raffleUserAC = deriveUserFromRefAC raffleRefAC
   spendsRaffleUserNFT <- txMustSpendFromAddress raffleUserAC ownAddrs
 
@@ -117,7 +118,7 @@ cancelRaffleTX raffleScriptRef ownAddrs recipient raffleRefAC = do
   let raffleUserAC = deriveUserFromRefAC raffleRefAC
   spendsRaffleUserNFT <- txMustSpendFromAddress raffleUserAC ownAddrs
   isBurningRaffleUserNFT <- txNFTAction (Burn raffleUserAC)
-  stakeValue <- valueFromPlutus' $ raffleStakeValue rsd
+  stakeValue <- valueFromPlutus' $ rStake (rConfig rsd)
   isGettingStakeValue <- txIsPayingValueToAddress recipient stakeValue
 
   return $
