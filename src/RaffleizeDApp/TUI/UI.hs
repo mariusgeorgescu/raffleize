@@ -54,19 +54,6 @@ import RaffleizeDApp.Utils
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
 
-raffleFormToConfig :: RaffleConfigFormState -> Value -> Maybe RaffleConfig
-raffleFormToConfig RaffleConfigFormState {..} stake = do
-  cddl <- timeToPlutus <$> gyIso8601ParseM @Maybe (Data.Text.unpack _commitDdl)
-  rddl <- timeToPlutus <$> gyIso8601ParseM @Maybe (Data.Text.unpack _revealDdl)
-  return $
-    RaffleConfig
-      { rCommitDDL = cddl
-      , rRevealDDL = rddl
-      , rTicketPrice = toLovelace $ fromIntegral _ticketPrice
-      , rMinTickets = fromIntegral _minNoTickets
-      , rStake = stake
-      }
-
 ----------------------------------------------------------------------
 
 -- *   Main State
@@ -322,6 +309,19 @@ raffleizeTransactionnHandler roc@(RaffleizeOffchainContext _ providersCtx) secre
           continue initialState {message = successMessage <> showLink nid "tx" txOutRef <> "\n"}
         else continue s
 
+raffleFormToConfig :: RaffleConfigFormState -> Value -> Maybe RaffleConfig
+raffleFormToConfig RaffleConfigFormState {..} stake = do
+  cddl <- timeToPlutus <$> gyIso8601ParseM @Maybe (Data.Text.unpack _commitDdl)
+  rddl <- timeToPlutus <$> gyIso8601ParseM @Maybe (Data.Text.unpack _revealDdl)
+  return $
+    RaffleConfig
+      { rCommitDDL = cddl
+      , rRevealDDL = rddl
+      , rTicketPrice = toLovelace $ fromIntegral _ticketPrice
+      , rMinTickets = fromIntegral _minNoTickets
+      , rStake = stake
+      }
+
 -- | Handle events Create Raffle Screen
 handleCreateUpdateRaffleEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
 handleCreateUpdateRaffleEvents s@RaffleizeUI {..} event | currentScreen == CreateRaffleScreen || currentScreen == UpdateRaffleScreen = do
@@ -443,6 +443,12 @@ handleMyTicketsEvents s@RaffleizeUI {..} event
           continue s {myTicketsForm = newMtForm}
 handleMyTicketsEvents _ _ = error "Invalid use of handleMyTicketsEvents"
 
+formStateFromRaffleConfig :: RaffleConfig -> RaffleConfigFormState
+formStateFromRaffleConfig RaffleConfig {..} = do
+  let commitSuggestion = Data.Text.pack . gyIso8601Show $ timeFromPlutus rCommitDDL
+  let revealSuggestion = Data.Text.pack . gyIso8601Show $ timeFromPlutus rRevealDDL
+  RaffleConfigFormState commitSuggestion revealSuggestion (fromIntegral rTicketPrice `div` 1000000) (fromIntegral rMinTickets) mempty
+
 -- | Handle events in My Tickets Screen
 handleMyRafflesEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
 handleMyRafflesEvents s@RaffleizeUI {..} event
@@ -461,8 +467,10 @@ handleMyRafflesEvents s@RaffleizeUI {..} event
                     (KChar 'u') ->
                       if ("RaffleOwner", "Update") `elem` riAvailableActions selectedRaffleInfo
                         then do
-                          let newConstructedValueState = mkConstructValueState balance (rStake $ rConfig $ riRsd selectedRaffleInfo)
-                          continue s {currentScreen = UpdateRaffleScreen, myConstrctValueState = newConstructedValueState, updatingRaffle = Just selectedRaffleInfo}
+                          let selectedRaffleConfig = rConfig $ riRsd selectedRaffleInfo
+                          let newConstructedValueState = mkConstructValueState balance (rStake selectedRaffleConfig)
+                          let newRaffleConfigForm = updateFormState (formStateFromRaffleConfig selectedRaffleConfig) raffleConfigForm
+                          continue s {currentScreen = UpdateRaffleScreen, raffleConfigForm = newRaffleConfigForm, myConstrctValueState = newConstructedValueState, updatingRaffle = Just selectedRaffleInfo}
                         else continue s
                     (KChar 'c') -> actionHandler (RaffleOwner Cancel)
                     (KChar 'r') -> actionHandler (RaffleOwner RecoverStake)
