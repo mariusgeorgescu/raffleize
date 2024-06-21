@@ -296,8 +296,8 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
 handleConstrutValueEvents _state _event = error "Invalid use of handleConstrutValueEvents"
 
 -- Refactor helper functions
-raffleizeTransactionnHandler :: RaffleizeOffchainContext -> GYPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources (Next RaffleizeUI)
-raffleizeTransactionnHandler roc@(RaffleizeOffchainContext _ providersCtx) secretKey raffleizeAction contextNFT mAddr s validateAction =
+raffleizeTransactionHandler :: RaffleizeOffchainContext -> GYPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources (Next RaffleizeUI)
+raffleizeTransactionHandler roc@(RaffleizeOffchainContext _ providersCtx) secretKey raffleizeAction contextNFT mAddr s validateAction =
   let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
    in if validateAction
         then do
@@ -339,7 +339,7 @@ handleCreateUpdateRaffleEvents s@RaffleizeUI {..} event | currentScreen == Creat
                 case mRaffleConfig of
                   Just rConfig -> do
                     let (raffleizeAction, contextNFT) = if currentScreen == CreateRaffleScreen then (User (CreateRaffle rConfig), Nothing) else (RaffleOwner (Update rConfig), rRaffleID . riRsd <$> updatingRaffle)
-                    raffleizeTransactionnHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey raffleizeAction contextNFT recpient s True
+                    raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey raffleizeAction contextNFT recpient s True
                   Nothing -> continue s
             (k, _) | k == KChar '+' || k == KIns -> continue s {currentScreen = ConstructValueScreen}
             _ -> do
@@ -387,7 +387,7 @@ handleBuyTicketScreenEvents s@RaffleizeUI {..} event | currentScreen == BuyTicke
             let contextNFT = rRaffleID . riRsd $ selectedActiveRaffle
             let secretHash = PlutusTx.Builtins.blake2b_256 $ fromString @BuiltinByteString secretString
             let isAllowedToBuy = ("User", "BuyTicket") `elem` riAvailableActions selectedActiveRaffle
-            raffleizeTransactionnHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (User (BuyTicket secretHash)) (Just contextNFT) mRecipient s isAllowedToBuy
+            raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (User (BuyTicket secretHash)) (Just contextNFT) mRecipient s isAllowedToBuy
         _ -> do
           updated_form <- handleFormEvent event btForm
           continue s {buyTicketForm = updated_form}
@@ -401,15 +401,26 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
           mtFormState = formState mtForm
           mySelectedTicket = mtFormState ^. selectedTicket
        in case (event, maybeSecretKey, validatorsConfig, mySelectedTicket) of
-            (VtyEvent (EvKey KEnter _modifiers), Just secretKey, Just validatorsTxOutRefs, Just selectedTicketInfo) -> do
-              let revealedTicketSecret = Data.Text.unpack $ formState revealSecretForm ^. revealedSecret
-              let revealedSecretBS = fromString @BuiltinByteString revealedTicketSecret
-              let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
-              let isAllowedToReveal = ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo
-              raffleizeTransactionnHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just contextNFT) Nothing s isAllowedToReveal
-            _ -> do
-              newFormState <- handleFormEvent event revealSecretForm
-              continue s {revealSecretForm = newFormState}
+            (VtyEvent (EvKey key _modifiers), Just secretKey, Just validatorsTxOutRefs, Just selectedTicketInfo) -> do
+              case key of
+                KEnter -> do
+                  let revealedTicketSecret = Data.Text.unpack $ formState revealSecretForm ^. revealedSecret
+                  let revealedSecretBS = fromString @BuiltinByteString revealedTicketSecret
+                  let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
+                  let isAllowedToReveal = ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo
+                  raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just contextNFT) Nothing s isAllowedToReveal
+                _ -> do
+                  newRevealSecretForm <- handleFormEvent event revealSecretForm
+                  let newRevealedTicketSecret = Data.Text.unpack $ formState newRevealSecretForm ^. revealedSecret
+                  let newRevealedSecretBS = fromString @BuiltinByteString newRevealedTicketSecret
+                  let fieldValidations =
+                        [ setFieldValid
+                            (PlutusTx.Builtins.blake2b_256 newRevealedSecretBS #== tSecretHash (tiTsd selectedTicketInfo))
+                            RevealedSecretField
+                        ]
+                  let validatedForm = foldr' ($) newRevealSecretForm fieldValidations
+                  continue s {revealSecretForm = validatedForm}
+            _ -> continue s
 handleRevealSecretEvents _state _event = error "Invalid use of handleRevealSecretEvents"
 
 -- | Handle events in My Tickets Screen
@@ -425,7 +436,7 @@ handleMyTicketsEvents s@RaffleizeUI {..} event
             Just selectedTicketInfo -> do
               let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
                   contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
-                  actionHandler action = raffleizeTransactionnHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` tiAvailableActions selectedTicketInfo)
+                  actionHandler action = raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` tiAvailableActions selectedTicketInfo)
               case key of
                 (KChar 's') -> if ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo then continue s {currentScreen = RevealTicketSecretScreen} else continue s
                 (KChar 'w') -> actionHandler (TicketOwner CollectStake)
@@ -462,7 +473,7 @@ handleMyRafflesEvents s@RaffleizeUI {..} event
                 Just selectedRaffleInfo -> do
                   let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
                   let contextNFT = rRaffleID $ riRsd selectedRaffleInfo
-                      actionHandler action = raffleizeTransactionnHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` riAvailableActions selectedRaffleInfo)
+                      actionHandler action = raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` riAvailableActions selectedRaffleInfo)
                   case key of
                     (KChar 'u') ->
                       if ("RaffleOwner", "Update") `elem` riAvailableActions selectedRaffleInfo

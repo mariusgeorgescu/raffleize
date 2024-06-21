@@ -8,7 +8,6 @@ import Brick.Widgets.Center
 import Brick.Widgets.List
 import Brick.Widgets.Table
 import Control.Lens
-import Data.Aeson qualified
 import Data.Maybe qualified
 import Data.Text qualified
 import Data.Vector qualified
@@ -19,6 +18,7 @@ import PlutusLedgerApi.V1
 import PlutusLedgerApi.V1.Time qualified
 import PlutusLedgerApi.V1.Value
 import PlutusPrelude (showText)
+import PlutusTx.Show qualified
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
@@ -92,7 +92,7 @@ invalidFieldText t = case t of
   SendRaffleAddressField -> "Enter a valid address or leave empty to receive the raffle NFT to the current address !"
   SendTicketAddressField -> "Enter a valid address or leave empty to receive the ticket to the current address !"
   ConstructedValueItemsList -> "Stake value must not be empty ! The stake value can contain maximum 2 asset classes"
-  RevealedSecretField -> "The secret must have maximum 32 characters !"
+  RevealedSecretField -> "The secret must hash must match with the onchain secret hash!"
   SecretField -> "The secret must have maximum 32 characters !"
   _ -> ""
 
@@ -308,14 +308,14 @@ data MyTicketsFormState = MyTicketsFormState
 makeLenses ''MyTicketsFormState
 
 drawTicketInfo :: TicketInfo -> Widget NameResources
-drawTicketInfo TicketInfo {..} = 
+drawTicketInfo TicketInfo {..} =
   joinBorders
     <$> borderWithLabel
       (txt (showText (tRaffle tiTsd)))
     $ hBox
       ( joinBorders
-          <$> [ drawTicketLockedValue
-              , drawTicketState
+          <$> [ drawTicketState
+              , drawTicketLockedValue
               ]
       )
   where
@@ -329,7 +329,7 @@ drawTicketInfo TicketInfo {..} =
             table
               [ [txt "Ticket Number: ", txt (showText (tNumber tiTsd))]
               , [txt "Ticket State: ", txt (showText tiStateLabel)]
-              , [txt "Secret Hash: ", txt (showText $ Data.Aeson.toJSON (tSecretHash tiTsd))]
+              , [txt "Secret Hash: ", txt (fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show (tSecretHash tiTsd))]
               , [txt "Revealed Secret: ", txt (showText (tSecret tiTsd))]
               ]
 
@@ -395,7 +395,7 @@ makeLenses ''RevealSecretFormState
 mkRevealSecretForm :: RevealSecretFormState -> Form RevealSecretFormState e NameResources
 mkRevealSecretForm =
   newForm
-    [(txt "Ticket Secret: " <=>) @@= editShowableFieldWithValidate revealedSecret RevealedSecretField ((<= secretMaxLength) . fromIntegral . Data.Text.length)]
+    [(txt "Ticket Secret: " <=>) @@= editTextField revealedSecret RevealedSecretField (Just 1)]
 
 drawRevealTicketSecretScreen :: Maybe (AssetClass, Integer) -> Form s e NameResources -> Widget NameResources
 drawRevealTicketSecretScreen (Just (selectedTicketRaffleId, selectedTicketNo)) revealSecretForm = center $ mkFormScreen (" REVEAL SECRET FOR TICKET  #" <> showText selectedTicketNo <> " OF RAFFLE " <> showText selectedTicketRaffleId) " REVEAL SECRET " revealSecretForm
