@@ -35,10 +35,6 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
   raffleStateData,
  )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateId, ticketStateData)
-import RaffleizeDApp.CustomTypes.TransferTypes (
-  RaffleInfo (RaffleInfo),
-  TicketInfo (TicketInfo),
- )
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude
 
@@ -506,17 +502,3 @@ paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
 -- This function checks if tokenname has the raffle prefix
 hasRefPrefix :: TokenName -> Bool
 hasRefPrefix (TokenName tnbs) = sliceByteString 0 4 tnbs #== refTokenPrefixBS
-
-mkRaffleInfo :: POSIXTimeRange -> (RaffleStateData, Value, String) -> RaffleInfo
-mkRaffleInfo tr (rsd, rVal, img) =
-  let raffleStateId = evaluateRaffleState (tr, rsd, rVal)
-      stateLabel = showRaffleStateLabel raffleStateId
-      actions = validActionLabelsForRaffleState raffleStateId
-   in RaffleInfo rsd rVal img stateLabel actions
-
-mkTicketInfo :: RaffleStateId -> Integer -> (TicketStateData, Value, String) -> TicketInfo
-mkTicketInfo raffleStateId currentRandom (tsd, tVal, tImg) =
-  let ticketStateId = evalTicketState tsd currentRandom raffleStateId
-      ticketStateLabel = showTicketStateLabel ticketStateId
-      actions = validActionLabelsForTicketState ticketStateId
-   in TicketInfo tsd tVal tImg ticketStateLabel actions
