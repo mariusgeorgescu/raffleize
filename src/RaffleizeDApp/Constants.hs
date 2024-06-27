@@ -65,3 +65,6 @@ tokenNameMaxLength = 32
 
 secretMaxLength :: Integer
 secretMaxLength = 64
+
+purescriptProjectSrcPath :: FilePath
+purescriptProjectSrcPath = "../raffleize-frontend-purescript/src/"

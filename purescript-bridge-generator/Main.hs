@@ -1,15 +1,36 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
-import CodeGen.TypeBridges
-import Data.Proxy
-import Language.PureScript.Bridge
-import RaffleizeDApp.CustomTypes.ActionTypes
-import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.CustomTypes.TransferTypes
+import CodeGen.TypeBridges (raffleizeBridge)
+import Data.Proxy (Proxy (..))
+import Language.PureScript.Bridge (
+  Language (Haskell),
+  SumType,
+  buildBridge,
+  equal,
+  mkSumType,
+  writePSTypes,
+ )
+import RaffleizeDApp.Constants (purescriptProjectSrcPath)
+import RaffleizeDApp.CustomTypes.ActionTypes (
+  AdminAction,
+  RaffleOwnerAction,
+  RaffleizeAction,
+  TicketOwnerAction,
+  UserAction,
+ )
+import RaffleizeDApp.CustomTypes.RaffleTypes (
+  RaffleConfig,
+  RaffleInfo,
+  RaffleParam,
+  RaffleStateData,
+ )
+import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
+import RaffleizeDApp.CustomTypes.TransferTypes (
+  RaffleizeInteraction,
+  UserAddresses,
+ )
 
 myTypes :: [SumType 'Haskell]
 myTypes =
@@ -29,4 +50,4 @@ myTypes =
 
 main :: IO ()
 main = do
-  writePSTypes "../raffleize-frontend-purescript/src/" (buildBridge raffleizeBridge) myTypes
+  writePSTypes purescriptProjectSrcPath (buildBridge raffleizeBridge) myTypes
