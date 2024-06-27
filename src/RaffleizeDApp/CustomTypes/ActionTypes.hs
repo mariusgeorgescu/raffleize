@@ -2,12 +2,15 @@
 
 module RaffleizeDApp.CustomTypes.ActionTypes where
 
-import PlutusLedgerApi.V1.Value
-import PlutusTx
+import PlutusLedgerApi.V1.Value (AssetClass)
+import PlutusTx (unstableMakeIsData)
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
-import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.CustomTypes.TicketTypes
-import Test.QuickCheck.Arbitrary.Generic
+import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleConfig)
+import RaffleizeDApp.CustomTypes.TicketTypes (Secret, SecretHash)
+import Test.QuickCheck.Arbitrary.Generic (
+  Arbitrary (arbitrary),
+  GenericArbitrary (GenericArbitrary),
+ )
 
 -------------------------------------------------------------------------------
 
@@ -15,12 +18,14 @@ import Test.QuickCheck.Arbitrary.Generic
 
 -------------------------------------------------------------------------------
 
+-- | Arbitraty insance for BuiltinByteStringF
 instance Arbitrary BuiltinByteString where
   arbitrary = stringToBuiltinByteString <$> arbitrary
 
 -- | Datatype representng the actions that can be peformed by any user.
 data UserAction
-  = CreateRaffle RaffleConfig
+  = CreateRaffle
+      RaffleConfig --- ^ The raffle configuration
   | BuyTicket
       SecretHash --- ^ The hash of the secret to be used in commt-reveal-schemme.
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
@@ -44,7 +49,7 @@ unstableMakeIsData ''TicketOwnerAction --- TODO must be changed with stable vers
 -- | Datatype representng the actions that can be peformed by Raffle Owner.
 data RaffleOwnerAction
   = Update
-      RaffleConfig --- ^ The raffle configuration.
+      RaffleConfig --- ^ The raF
   | Cancel
   | RecoverStake
   | RecoverStakeAndAmount
@@ -79,6 +84,9 @@ data RaffleizeAction
   deriving (Arbitrary) via GenericArbitrary RaffleizeAction
 
 unstableMakeIsData ''RaffleizeAction --- TODO must be changed with stable version
+
+type RaffleizeActionLabel = (String, String)
+
 
 {- | Datatype representng the actions supported by the Raffleize DApp.
 This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.

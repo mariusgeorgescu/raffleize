@@ -1,10 +1,33 @@
 module RaffleizeDApp.CustomTypes.TransferTypes where
 
-import Data.Aeson
+import Data.Aeson hiding (Value)
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
+import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.CustomTypes.TicketTypes
+
 import Prelude
+
+-- | Ticket information DTO
+data TicketInfo = TicketInfo
+  { tiTsd :: TicketStateData
+  , tiValue :: Value
+  , tiImage :: String
+  , tiStateLabel :: TicketStateLabel
+  , tiAvailableActions :: [RaffleizeActionLabel]
+  }
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+
+-- | Raffle information DTO
+data RaffleInfo = RaffleInfo
+  { riRsd :: RaffleStateData
+  , riValue :: Value
+  , riImage :: String
+  , riStateLabel :: String
+  , riAvailableActions :: [RaffleizeActionLabel]
+  }
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 data RaffleizeInteraction = RaffleizeInteraction
   { interactionContextNFT :: Maybe AssetClass

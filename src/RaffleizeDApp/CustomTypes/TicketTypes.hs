@@ -1,13 +1,19 @@
 module RaffleizeDApp.CustomTypes.TicketTypes where
 
-import PlutusLedgerApi.V1.Value
-import PlutusLedgerApi.V2
-import PlutusTx
-
-import PlutusTx.AssocMap
-import RaffleizeDApp.Constants
-import RaffleizeDApp.CustomTypes.Types
-import RaffleizeDApp.OnChain.Utils
+import PlutusLedgerApi.V1.Value (AssetClass)
+import PlutusLedgerApi.V2 (ScriptHash, fromList)
+import PlutusTx (unstableMakeIsData)
+import PlutusTx.AssocMap (lookup)
+import RaffleizeDApp.Constants (
+  metadataVersion,
+  ticketDescription,
+  ticketImageURI,
+  ticketName,
+ )
+import RaffleizeDApp.CustomTypes.Types (
+  Metadata,
+ )
+import RaffleizeDApp.OnChain.Utils (encodeUtf8KV, wrapTitle)
 
 -------------------------------------------------------------------------------
 
@@ -74,24 +80,6 @@ ticketImage datum = fromMaybe @BuiltinByteString "" $ lookup (encodeUtf8 "image"
 type TicketStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
 
 type TicketStateLabel = String
-
--- data TicketStateLabel2 = COMITTED | FULLY_REFUNDABLE | REVEALABLE | REVEALED | WINNING | LOSING | EXTRA_REFUNDABLE | UNREVEALED_EXPIRED
---   deriving (Generic, Eq, ToJSON, FromJSON)
-
--- unstableMakeIsData ''TicketStateLabel2 ---  must be changed with stable version
-
--- instance P.Eq TicketStateLabel2 where
---   (==) :: TicketStateLabel2 -> TicketStateLabel2 -> Bool
---   x == y = toBuiltinData x #== toBuiltinData y
-
-data TicketInfo = TicketInfo
-  { tiTsd :: TicketStateData
-  , tiValue :: Value
-  , tiImage :: String
-  , tiStateLabel :: TicketStateLabel
-  , tiAvailableActions :: [RaffleizeActionLabel]
-  }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 -------------------------------------------------------------------
 

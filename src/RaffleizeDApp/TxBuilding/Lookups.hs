@@ -8,6 +8,7 @@ import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V3 (POSIXTimeRange)
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Utils

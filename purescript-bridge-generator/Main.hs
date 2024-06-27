@@ -22,12 +22,12 @@ import RaffleizeDApp.CustomTypes.ActionTypes (
  )
 import RaffleizeDApp.CustomTypes.RaffleTypes (
   RaffleConfig,
-  RaffleInfo,
   RaffleParam,
   RaffleStateData,
  )
 import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
 import RaffleizeDApp.CustomTypes.TransferTypes (
+  RaffleInfo,
   RaffleizeInteraction,
   UserAddresses,
  )

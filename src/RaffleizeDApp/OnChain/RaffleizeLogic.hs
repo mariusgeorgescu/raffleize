@@ -7,7 +7,6 @@ import PlutusTx.Builtins (
   serialiseData,
  )
 
-import GHC.Err (error)
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
@@ -30,16 +29,18 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes (
   RaffleConfig (..),
   RaffleDatum,
-  RaffleInfo (..),
   RaffleParam (..),
   RaffleStateData (..),
   RaffleStateId,
   raffleStateData,
  )
-import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketInfo (TicketInfo), TicketStateData (..), TicketStateId, ticketStateData)
-import RaffleizeDApp.CustomTypes.Types
+import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateId, ticketStateData)
+import RaffleizeDApp.CustomTypes.TransferTypes (
+  RaffleInfo (RaffleInfo),
+  TicketInfo (TicketInfo),
+ )
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
-import Prelude hiding (error)
+import Prelude
 
 raffleTicketPriceValue :: RaffleStateData -> Value
 raffleTicketPriceValue RaffleStateData {rConfig} = adaValueFromLovelaces (rTicketPrice rConfig)
@@ -85,21 +86,6 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake #/= mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
@@ -138,7 +124,7 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
   RaffleOwner RecoverStake -> rValue #- rStake rConfig
   RaffleOwner RecoverStakeAndAmount -> rValue #- rStake rConfig #- raffleAccumulatedValue rsd
   RaffleOwner CollectAmount -> rValue #- raffleAccumulatedValue rsd
-  RaffleOwner (Update newconfig) -> (rValue #- rStake rConfig )#+ rStake newconfig
+  RaffleOwner (Update newconfig) -> (rValue #- rStake rConfig) #+ rStake newconfig
   TicketOwner (RevealTicketSecret _) -> rValue
   TicketOwner CollectStake -> rValue #- rStake rConfig
   TicketOwner RefundTicket ->
@@ -413,7 +399,7 @@ revealTicketToRaffleRT secret ticket@TicketStateData {tSecretHash, tRaffle} raff
       let updated_ticket = ticket {tSecret = Just secret}
           updated_raffle = raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger secret) `modInteger` rSoldTickets}
        in (updated_raffle, updated_ticket)
-    else error "secret does not match the secret hash"
+    else traceError "secret does not match the secret hash"
 
 refundTicketToRaffle :: TicketStateData -> RaffleStateData -> RaffleStateData
 refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefundedTickets, rRaffleID} =

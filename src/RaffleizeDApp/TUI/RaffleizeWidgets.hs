@@ -20,8 +20,10 @@ import PlutusLedgerApi.V1.Value
 import PlutusPrelude (showText)
 import PlutusTx.Show qualified
 import RaffleizeDApp.Constants
+import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TUI.Types

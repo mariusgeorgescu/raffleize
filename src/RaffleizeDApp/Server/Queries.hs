@@ -1,6 +1,6 @@
 module RaffleizeDApp.Server.Queries where
 
-import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups (lookupActiveRaffles)
 

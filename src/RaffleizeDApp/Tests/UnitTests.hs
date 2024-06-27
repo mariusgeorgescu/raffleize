@@ -10,6 +10,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 
 import Control.Monad
 import RaffleizeDApp.CustomTypes.ActionTypes
+import RaffleizeDApp.CustomTypes.TransferTypes (RaffleInfo (..))
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty

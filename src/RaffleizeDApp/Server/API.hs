@@ -1,7 +1,7 @@
 module RaffleizeDApp.Server.API where
 
 import Control.Monad.Reader
-import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleInfo)
+
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.Server.Queries
 import RaffleizeDApp.TxBuilding.Context

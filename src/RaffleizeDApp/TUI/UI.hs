@@ -38,6 +38,7 @@ import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   actionToLabel,
