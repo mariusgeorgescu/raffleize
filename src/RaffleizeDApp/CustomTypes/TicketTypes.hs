@@ -79,6 +79,7 @@ ticketImage datum = fromMaybe @BuiltinByteString "" $ lookup (encodeUtf8 "image"
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
 type TicketStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
 
+-- | @TicketStateLabel@ is a synonym for @String@
 type TicketStateLabel = String
 
 -------------------------------------------------------------------
