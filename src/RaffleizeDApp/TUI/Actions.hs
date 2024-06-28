@@ -100,7 +100,7 @@ raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey rafflei
 raffleizeActionToIntro :: Maybe AssetClass -> RaffleizeAction -> IO ()
 raffleizeActionToIntro ma ra =
   let inContextOf s = case ma of
-        (Just contextNFT) -> printf " Transaction in context of %s:\n\t" s <> show contextNFT
+        (Just contextNFT) -> printf "\n Transaction in context of %s:\n\t" s <> show contextNFT
         Nothing -> ""
    in do
         case ra of
