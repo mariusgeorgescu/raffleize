@@ -10,16 +10,16 @@ raffleImageURI :: BuiltinString
 raffleImageURI = "ipfs://bafybeiags6zsy42iplwkvj4m4crno57merd4a6uzkg62hdwli6qgl4n2ue"
 
 raffleDescription :: BuiltinString
-raffleDescription = "Ownership of a raffle"
+raffleDescription = "Raffle ownership"
 
 raffleName :: BuiltinString
 raffleName = "RAFFLEIZE: RAFFLE OWNER NFT"
 
 ticketImageURI :: BuiltinString
-ticketImageURI = "ipfs://bafybeid4u7fhlmw6mmha7hur7xojxqp26bxuxkpwke2a44qeeevnfvcgpy"
+ticketImageURI = "ipfs://bafkreiegckq33xoke7n7jqfc5jf23wyt2ccklz5itsxau2sttb63objiym"
 
 ticketDescription :: BuiltinString
-ticketDescription = "Ownership of a raffle ticket"
+ticketDescription = "Ticket ownership"
 
 ticketName :: BuiltinString
 ticketName = "RAFFLEIZE: TICKET OWNER NFT"
