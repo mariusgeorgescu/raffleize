@@ -13,5 +13,13 @@
         "--experimental"
     ],
     "terminal.integrated.defaultProfile.linux": "bash",
+    "cSpell.words": [
+        "Cardano",
+        "Georgescu",
+        "inclusivity",
+        "IPFS",
+        "Mindmap",
+        "Postconditions"
+    ],
 
 }
