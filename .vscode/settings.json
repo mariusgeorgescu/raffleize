@@ -7,25 +7,8 @@
     "haskell.serverExecutablePath": "${workspaceFolder}/.vscode/haskell-language-server.link",
     "haskell.upgradeGHCup": false,
     "python.analysis.typeCheckingMode": "basic",
-    "python.formatting.autopep8Args": [
-        "--max-line-length",
-        "80",
-        "--experimental"
-    ],
     "terminal.integrated.defaultProfile.linux": "bash",
     "cSpell.words": [
-        "Addrs",
-        "Builtins",
-        "Cardano",
-        "Georgescu",
-        "inclusivity",
-        "IPFS",
-        "Lovelaces",
-        "mempty",
-        "Mindmap",
-        "POSIX",
-        "Postconditions",
-        "trei"
     ],
 
 }
