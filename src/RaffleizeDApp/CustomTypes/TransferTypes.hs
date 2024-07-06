@@ -117,7 +117,7 @@ sampleRaffleParam :: RaffleParam
 sampleRaffleParam =
   RaffleParam
     { rMaxNoOfTickets = 20
-    , rMinRevealingWindow = 6_000 --- ^ Miliseconds
+    , rMinRevealingWindow = 6_000 --- ^ Milliseconds
     , rMinTicketPrice = 3_000_000 --- ^ Lovelaces
     , rRaffleValidatorHash = "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013"
     , rTicketValidatorHash = "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"

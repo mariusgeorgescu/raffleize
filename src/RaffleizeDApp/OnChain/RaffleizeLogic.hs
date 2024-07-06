@@ -345,7 +345,7 @@ validTicketStatesForRaffleizeAction ra = case ra of
 
 validateTicketAction :: RaffleizeAction -> TicketStateId -> Bool
 validateTicketAction action currentStateLabel =
-  traceIfFalse "Action not permited in this ticket state" $
+  traceIfFalse "Action not permitted in this ticket state" $
     currentStateLabel `pelem` validTicketStatesForRaffleizeAction action
 {-# INLINEABLE validateTicketAction #-}
 
@@ -448,9 +448,9 @@ generateTicketACFromTicket TicketStateData {tNumber, tRaffle} = generateRefAndUs
 
 isOneOutputTo :: [TxOut] -> PubKeyHash -> Bool
 isOneOutputTo [out] adminPKH =
-  traceIfFalse "The TxOut should be locked to the addmin addr" $
+  traceIfFalse "The TxOut should be locked to the admin addr" $
     isTxOutWith noConstraint (#== pubKeyHashAddress adminPKH) out
-isOneOutputTo _ _ = traceIfFalse "More than one ouput found" False
+isOneOutputTo _ _ = traceIfFalse "More than one output found" False
 {-# INLINEABLE isOneOutputTo #-}
 
 refTokenPrefixBS :: BuiltinByteString
