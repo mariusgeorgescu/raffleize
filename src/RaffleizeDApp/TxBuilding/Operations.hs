@@ -180,7 +180,7 @@ getCollateralOfExpiredTicketTX ticketScriptRef ownAddrs recipient ticketRefAC = 
     txMustSpendStateFromRefScriptWithRedeemer
       ticketScriptRef
       ticketRefAC
-      (RaffleOwner GetCollateraOfExpiredTicket)
+      (RaffleOwner GetCollateralOfExpiredTicket)
       ticketValidatorGY
   isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)
   ticketCollateralValue <- valueFromPlutus' tValue

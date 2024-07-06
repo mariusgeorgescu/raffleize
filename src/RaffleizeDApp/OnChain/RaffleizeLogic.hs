@@ -164,7 +164,7 @@ validRaffleStatesForRaffleizeAction action = case action of
       [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
       , 41 -- SUCCESS_LOCKED_AMOUNT
       ]
-    GetCollateraOfExpiredTicket -> [] -- ticket action, not on raffle state
+    GetCollateralOfExpiredTicket -> [] -- ticket action, not on raffle state
   TicketOwner toa -> case toa of
     (RevealTicketSecret _) -> [3]
     CollectStake ->
@@ -279,7 +279,7 @@ evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets,
 
 showTicketStateLabel :: TicketStateId -> String
 showTicketStateLabel r = case r of
-  90 -> "COMITTED"
+  90 -> "COMMITTED"
   91 -> "FULLY_REFUNDABLE"
   92 -> "REVEALABLE"
   93 -> "REVEALED"
@@ -291,7 +291,7 @@ showTicketStateLabel r = case r of
 
 evalTicketState :: TicketStateData -> Integer -> RaffleStateId -> TicketStateId
 evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
-  | raffleStateId #== 2 = 90 -- COMITTED
+  | raffleStateId #== 2 = 90 -- COMMITTED
   | raffleStateId #== 10 = 91 -- FULLY_REFUNDABLE
   | raffleStateId #== 20 = 91 -- FULLY_REFUNDABLE
   | raffleStateId #== 21 = 91 -- FULLY_REFUNDABLE
@@ -332,7 +332,7 @@ validActionLabelsForTicketState r = case r of
 validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateId]
 validTicketStatesForRaffleizeAction ra = case ra of
   RaffleOwner roa -> case roa of
-    GetCollateraOfExpiredTicket -> [97] ---- UNREVEALED_EXPIRED   | ticket action only,  not on raffle state
+    GetCollateralOfExpiredTicket -> [97] ---- UNREVEALED_EXPIRED   | ticket action only,  not on raffle state
     _ -> []
   TicketOwner toa -> case toa of
     (RevealTicketSecret _) -> [92] -- REVEALABLE

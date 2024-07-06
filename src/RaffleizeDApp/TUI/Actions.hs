@@ -126,7 +126,7 @@ raffleizeActionToIntro ma ra =
                 putStrLn $ yellowColorString "Recovering stake from unrevealed raffle... \n\t "
               CollectAmount -> do
                 putStrLn $ yellowColorString "Claiming collected amount from successfull raffle... \n\t "
-              GetCollateraOfExpiredTicket -> do
+              GetCollateralOfExpiredTicket -> do
                 putStrLn $ yellowColorString "Getting the ticket collateral refund for losing ticket of raffle... \n\t "
           TicketOwner toa -> do
             putStrLn $ inContextOf ("ticket" :: String)

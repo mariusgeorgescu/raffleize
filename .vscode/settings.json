@@ -14,12 +14,18 @@
     ],
     "terminal.integrated.defaultProfile.linux": "bash",
     "cSpell.words": [
+        "Addrs",
+        "Builtins",
         "Cardano",
         "Georgescu",
         "inclusivity",
         "IPFS",
+        "Lovelaces",
+        "mempty",
         "Mindmap",
-        "Postconditions"
+        "POSIX",
+        "Postconditions",
+        "trei"
     ],
 
 }

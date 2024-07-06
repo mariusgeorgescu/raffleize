@@ -111,7 +111,7 @@ raffleizeValidatorLamba
                     !burnsRaffleRef = isBurningNFT rRaffleID txInfoMint
                    in
                     case raffleOwnerAction of
-                      GetCollateraOfExpiredTicket -> traceError "never"
+                      GetCollateralOfExpiredTicket -> traceError "never"
                       Cancel ->
                         pand
                           [ burnsRaffleUser -- Must burn raffle user NFT.

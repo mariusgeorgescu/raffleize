@@ -46,5 +46,5 @@ interactionToTxSkeleton
             RecoverStake -> recoverStakeTX raffleValidatorRef receiveAddr contextNFT
             RecoverStakeAndAmount -> recoverStakeAndAmountTX raffleValidatorRef receiveAddr contextNFT
             CollectAmount -> collectAmountTX raffleValidatorRef receiveAddr contextNFT
-            GetCollateraOfExpiredTicket -> getCollateralOfExpiredTicketTX ticketValidatorRef usedAddrs receiveAddr contextNFT
+            GetCollateralOfExpiredTicket -> getCollateralOfExpiredTicketTX ticketValidatorRef usedAddrs receiveAddr contextNFT
           Admin CloseRaffle -> undefined -- TODO

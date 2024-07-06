@@ -54,7 +54,7 @@ data RaffleOwnerAction
   | RecoverStake
   | RecoverStakeAndAmount
   | CollectAmount
-  | GetCollateraOfExpiredTicket
+  | GetCollateralOfExpiredTicket
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
   deriving (Arbitrary) via GenericArbitrary RaffleOwnerAction
 

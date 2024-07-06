@@ -16,19 +16,25 @@ import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty
 
 unitTests :: TestTree
-unitTests = testGroup "Raffleize Unit Tests" [createRaffleTests, updateRaffleTests, otherTests]
+unitTests =
+  testGroup
+    "Raffleize Unit Tests"
+    [ createRaffleTests
+    , newStateTests
+    , expiredStateTests
+    , otherTests
+    ]
 
 otherTests :: TestTree
 otherTests =
   testGroup
     "OTHER RAFFLE TEST CASES"
-    [ testRun "CREATE NEW ->  EXPIRE -> RECOVER STAKE" createExpireRecoverScenario
-    , testRun "CREATE NEW ->  CANCEL" createAndCancelScenario
-    , testRun "CREATE NEW ->  BUY 3 -> UNDERFUNDED" underfundedScenario
+    [ testRun "CREATE NEW ->  BUY 3 -> UNDERFUNDED" underfundedScenario
     , testRun "UNDERFUNDED" underfundedScenario
-    -- testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
     ]
 
+-- testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
+
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
@@ -36,7 +42,7 @@ otherTests =
 
 ------------------------------------------------------------------------------------------------
 
--- ** SCENARIO: Create new raffle
+-- * Create new raffle scenarios
 
 ------------------------------------------------------------------------------------------------
 createRaffleTests :: TestTree
@@ -124,6 +130,20 @@ createRaffleTests =
               , rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeIron 9876) -- Raffle stake contains Ada;
               }
       raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+
+------------------------------------------------------------------------------------------------
+
+-- * Scenarios for raffle in status "NEW"
+
+------------------------------------------------------------------------------------------------
+newStateTests :: TestTree
+newStateTests =
+  testGroup
+    "Tests for raffles in status 'NEW'"
+    [ updateRaffleTests
+    , cancelRaffleTests
+    , buy1stTicketTest
+    ]
 
 ------------------------------------------------------------------------------------------------
 
@@ -217,65 +237,73 @@ updateRaffleTests =
 
 -- ------------------------------------------------------------------------------------------------
 
+-- -- ** SCENARIO: Cancel Raffle
+
+-- ------------------------------------------------------------------------------------------------
+
+cancelRaffleTests :: TestTree
+cancelRaffleTests =
+  testGroup
+    "CANCEL RAFFLE TEST CASES"
+    [ testRun "Test Case 3.1: Verify that the raffle owner can cancel the raffle before any tickets are bought" cancelRaffleTC1
+    ]
+  where
+    cancelRaffleTC1 :: Wallets -> Run ()
+    cancelRaffleTC1 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner Cancel) (Just raffleId) Nothing
+      mri2 <- queryRaffleRun w1 raffleId2
+      case mri2 of
+        Nothing -> return ()
+        Just _ri -> logError $ "Raffle should not exist: " <> show raffleId
+
+------------------------------------------------------------------------------------------------
+
+-- ** SCENARIO: Buy first ticket to a raffle
+
+------------------------------------------------------------------------------------------------
+
+buy1stTicketTest :: TestTree
+buy1stTicketTest =
+  testGroup
+    "BUY TICKET FOR 'NEW' RAFFLE"
+    [testRun "Test Case 4.1: Verify that a user can buy a ticket to a raffle in status new" buy1stTicketTC1]
+  where
+    buy1stTicketTC1 :: Wallets -> Run ()
+    buy1stTicketTC1 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+      void $ buyTicketToRaffleRun ri roc w1 secret
+
+------------------------------------------------------------------------------------------------
+
+-- * Scenarios for raffle in status "EXPIRED"
+
+------------------------------------------------------------------------------------------------
+expiredStateTests :: TestTree
+expiredStateTests =
+  testGroup
+    "Tests for raffles in status 'Expired''"
+    [testRun "Test Case 5.1: Verify that the raffle owner can recover stake from expired raffle" recoverExpiredTC1]
+
+-- ------------------------------------------------------------------------------------------------
+
 -- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Expired -> Recover Stake
 
 -- ------------------------------------------------------------------------------------------------
 
-createAndCancelScenario :: Wallets -> Run ()
-createAndCancelScenario Wallets {..} = do
-  roc <- deployValidatorsRun w9
-
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 20
-  let rddl = slotToEndPOSIXTime sltCfg 50
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
-          }
-  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
-  waitNSlots 2
+recoverExpiredTC1 :: Wallets -> Run ()
+recoverExpiredTC1 wallets@Wallets {..} = do
+  (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+  let raffleId = rRaffleID $ riRsd ri
+  waitNSlots 100 -- EXPIRED
   mri <- queryRaffleRun w1 raffleId
   case mri of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
-  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner Cancel) (Just raffleId) Nothing
-  mri2 <- queryRaffleRun w1 raffleId2
-  case mri2 of
-    Nothing -> return ()
-    Just _ri -> logError $ "Raffle should not exist: " <> show raffleId
-
--- ------------------------------------------------------------------------------------------------
-
--- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Expired -> Recover Stake
-
--- ------------------------------------------------------------------------------------------------
-
-createExpireRecoverScenario :: Wallets -> Run ()
-createExpireRecoverScenario Wallets {..} = do
-  roc <- deployValidatorsRun w9
-
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 20
-  let rddl = slotToEndPOSIXTime sltCfg 50
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
-          }
-  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
-  waitNSlots 20 -- Slot 31 - EXPIRED
-  mri <- queryRaffleRun w1 raffleId
-  case mri of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> when (riStateLabel ri /= "EXPIRED_LOCKED_STAKE") $ logError "not in status EXPIRED_LOCKED_STAKE"
-  waitNSlots 20
+    Just ri' -> when (riStateLabel ri' /= "EXPIRED_LOCKED_STAKE") $ logError "not in status EXPIRED_LOCKED_STAKE"
+  waitNSlots 1
   (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
   mri2 <- queryRaffleRun w1 raffleId2
   case mri2 of
