@@ -100,8 +100,8 @@ queryTicketRUN w tid = do
   logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
 
 deployValidatorsAndCreateNewRaffleRun :: Wallets -> RaffleConfig -> Run (RaffleInfo, RaffleizeTxBuildingContext)
-deployValidatorsAndCreateNewRaffleRun  Wallets {..} config = do 
-    -- . Deploy validators
+deployValidatorsAndCreateNewRaffleRun Wallets {..} config = do
+  -- . Deploy validators
   roc <- deployValidatorsRun w9
   -- . Create raffle
   (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
@@ -111,7 +111,6 @@ deployValidatorsAndCreateNewRaffleRun  Wallets {..} config = do
     Just ri -> do
       when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
       return (ri, roc)
-
 
 deployValidatorsAndCreateNewValidRaffleRun :: Wallets -> Run (RaffleInfo, RaffleizeTxBuildingContext)
 deployValidatorsAndCreateNewValidRaffleRun wallets = do
@@ -132,13 +131,12 @@ buyTicketToRaffleRun :: RaffleInfo -> RaffleizeTxBuildingContext -> Wallet -> Bu
 buyTicketToRaffleRun ri roc w secret = do
   let raffleId = rRaffleID $ riRsd ri
   let secretHash = blake2b_256 secret
-  soldTicketsBeforeBuy <- rSoldTickets . riRsd .  fromJust <$> queryRaffleRun w raffleId
+  soldTicketsBeforeBuy <- rSoldTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
   (_txId, ticketId) <- raffleizeTransactionRun w roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
   mri2 <- queryRaffleRun w raffleId
   case mri2 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
     Just ri2 -> do
-      logInfo' $ show ri2
       unless (riStateLabel ri2 == "COMMITTING") $ logError "not in status COMMITTING"
       unless (soldTicketsBeforeBuy + 1 == rSoldTickets (riRsd ri2)) $ logError "no. of tickets sold was not updated"
   mti <- queryTicketRun w ticketId
