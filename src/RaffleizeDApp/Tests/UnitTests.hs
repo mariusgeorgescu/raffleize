@@ -10,7 +10,8 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 
 import Control.Monad
 import RaffleizeDApp.CustomTypes.ActionTypes
-import RaffleizeDApp.CustomTypes.TransferTypes (RaffleInfo (..))
+import RaffleizeDApp.CustomTypes.TransferTypes (RaffleInfo (..), TicketInfo (tiTsd))
+import RaffleizeDApp.OnChain.RaffleizeLogic (generateTicketACFromTicket)
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty
@@ -30,7 +31,6 @@ otherTests =
   testGroup
     "OTHER RAFFLE TEST CASES"
     [ testRun "CREATE NEW ->  BUY 3 -> UNDERFUNDED" underfundedScenario
-    , testRun "UNDERFUNDED" underfundedScenario
     ]
 
 -- testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
@@ -317,9 +317,8 @@ recoverExpiredTC1 wallets@Wallets {..} = do
 -- ------------------------------------------------------------------------------------------------
 
 underfundedScenario :: Wallets -> Run ()
-underfundedScenario Wallets {..} = do
-  roc <- deployValidatorsRun w9
-
+underfundedScenario wallets@Wallets {..} = do
+  -- Create Raffle
   sltCfg <- gets (mockConfigSlotConfig . mockConfig)
   let cddl = slotToEndPOSIXTime sltCfg 20
   let rddl = slotToEndPOSIXTime sltCfg 50
@@ -331,99 +330,61 @@ underfundedScenario Wallets {..} = do
           , rMinTickets = 4
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
-
-  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
-  mri <- queryRaffleRun w1 raffleId
-  case mri of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
+  (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
+  let raffleId = rRaffleID $ riRsd ri
   waitNSlots 1
   let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
   let secretHash = blake2b_256 secret
-  (_txId, ticket1) <- raffleizeTransactionRun w2 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
-  (_txId, ticket2) <- raffleizeTransactionRun w3 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
-  (_txId, ticket3) <- raffleizeTransactionRun w4 roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
-  mri2 <- queryRaffleRun w1 raffleId
-  case mri2 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> do
-      when (riStateLabel ri /= "COMMITTING") $ logError "not in status COMMITTING"
-      when (rSoldTickets (riRsd ri) /= 3) $ logError "incorrect number of tickets sold"
-  waitNSlots 20
+  -- Buy 3 tickets
+  tickets <-
+    buyNTicketsToRaffleRun
+      ri
+      roc
+      [ (w2, secretHash)
+      , (w3, secretHash)
+      , (w4, secretHash)
+      ]
+
+  waitNSlots 100 --- Commit DDL pass
   mri3 <- queryRaffleRun w1 raffleId
   case mri3 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> when (riStateLabel ri /= "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+    Just ri3 -> unless (riStateLabel ri3 == "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
 
   (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+
   mri4 <- queryRaffleRun w1 raffleId2
   case mri4 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> when (riStateLabel ri /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+    Just ri4 -> unless (riStateLabel ri4 == "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
 
-  (_txId, _ticket12) <- raffleizeTransactionRun w2 roc (TicketOwner RefundTicket) (Just ticket1) Nothing
+  let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
+
+  (_txId, _ticket12) <- raffleizeTransactionRun w2 roc (TicketOwner RefundTicket) (Just (head ticketRefs)) Nothing
   mri6 <- queryRaffleRun w1 raffleId2
   case mri6 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> do
-      when (riStateLabel ri /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
-      when (rRefundedTickets (riRsd ri) /= 1) $ logError "incorrect number of tickets refunded"
+    Just ri5 -> do
+      when (riStateLabel ri5 /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+      when (rRefundedTickets (riRsd ri5) /= 1) $ logError "incorrect number of tickets refunded"
 
-  (_txId, _ticket22) <- raffleizeTransactionRun w3 roc (TicketOwner RefundTicket) (Just ticket2) Nothing
+  (_txId, _ticket22) <- raffleizeTransactionRun w3 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 1)) Nothing
   mri7 <- queryRaffleRun w1 raffleId2
   case mri7 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> do
-      when (riStateLabel ri /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
-      when (rRefundedTickets (riRsd ri) /= 2) $ logError "incorrect number of tickets refunded"
+    Just ri6 -> do
+      when (riStateLabel ri6 /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+      when (rRefundedTickets (riRsd ri6) /= 2) $ logError "incorrect number of tickets refunded"
 
-  (_txId, _ticket32) <- raffleizeTransactionRun w4 roc (TicketOwner RefundTicket) (Just ticket3) Nothing
+  (_txId, _ticket32) <- raffleizeTransactionRun w4 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 2)) Nothing
   mri8 <- queryRaffleRun w1 raffleId2
   case mri8 of
     Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> do
-      when (riStateLabel ri /= "UNDERFUNDED_FINAL") $ logError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri
-      when (rRefundedTickets (riRsd ri) /= 3) $ logError "incorrect number of tickets refunded"
+    Just ri7 -> do
+      when (riStateLabel ri7 /= "UNDERFUNDED_FINAL") $ logError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri
+      when (rRefundedTickets (riRsd ri7) /= 3) $ logError "incorrect number of tickets refunded"
 
   return ()
-
--- ------------------------------------------------------------------------------------------------
-
--- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Cancel Raffle |
-
--- ------------------------------------------------------------------------------------------------
-
--- createCancel :: Wallets -> Run ()
--- createCancel wallets@Wallets {..} = do
---   (raffleValidatorTxOutRef, raffleId) <- createNew wallets
-
---   --   Cancel the raffle
---   cancelRaffleRUN w1 raffleValidatorTxOutRef raffleId
-
--- ------------------------------------------------------------------------------------------------
-
--- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Update -> Expired
-
--- ------------------------------------------------------------------------------------------------
-
--- createUpdateExpired :: Wallets -> Run (GYTxOutRef, AssetClass)
--- createUpdateExpired wallets@Wallets {..} = do
---   (raffleValidatorTxOutRef, raffleId) <- createUpdate wallets
---   ---3. WAIT
---   waitNSlots 20 -- Slot 31 - EXPIRED
---   s <- queryRaffleRUN True w1 raffleId
---   when (s /= 10) $ logError "not in EXPIRED_LOCKED_STAKE"
---   return (raffleValidatorTxOutRef, raffleId)
-
--- ------------------------------------------------------------------------------------------------
-
--- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Update -> Cancel |
-
--- ------------------------------------------------------------------------------------------------
--- createUpdateCancel :: Wallets -> Run ()
--- createUpdateCancel wallets@Wallets {..} = do
---   (raffleValidatorTxOutRef, raffleId) <- createUpdate wallets
---   cancelRaffleRUN w1 raffleValidatorTxOutRef raffleId
 
 -- ----------------------
 -- -- SUCCESS SCENARIO
@@ -494,11 +455,6 @@ underfundedScenario Wallets {..} = do
 --   void $ queryRaffleRUN True w1 raffleId
 
 ---------------------
-------------------------
-------------------------
-------------------------
-------------------------
-------------------------
 ------------------------
 ------------------------
 ------------------------
