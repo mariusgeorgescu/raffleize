@@ -8,7 +8,7 @@ import GHC.Stack
 import GeniusYield.Test.Utils
 import GeniusYield.TxBuilder
 import GeniusYield.Types
-import Plutus.Model
+import Plutus.Model hiding (User)
 import PlutusLedgerApi.V1.Interval
 import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V3 (POSIXTimeRange)
@@ -46,7 +46,6 @@ raffleizeTransactionThatMustFailRun w roc raffleizeActon interactionContextNFT o
   result <- runReaderT (interactionToTxSkeleton raffleizeInteraction) roc
   (skeleton, _ac) <- runWallet' w result
   mustFail $ runWallet w $ sendSkeleton skeleton
-
   return ()
 
 deployReferenceScriptRun :: GYValidator 'PlutusV2 -> Wallet -> GYAddress -> Run GYTxOutRef
@@ -55,7 +54,7 @@ deployReferenceScriptRun validator fromWallet toWallet = do
   logInfo' $ "DEPLOYED VALIDATOR" <> show validator
   case valRef of
     Nothing -> error "failed to add the reference script"
-    Just gtor -> return gtor
+    Just gyTxOutRef -> return gyTxOutRef
 
 deployValidatorsRun :: Wallet -> Run RaffleizeTxBuildingContext
 deployValidatorsRun w = do
@@ -93,11 +92,36 @@ queryTicketRUN w tid = do
     getTicketStateDataAndValue tid `catchError` (error . show)
   logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
 
+deployValidatorsAndCreateNewValidRaffleRun :: Wallets -> Run (RaffleInfo, RaffleizeTxBuildingContext)
+deployValidatorsAndCreateNewValidRaffleRun Wallets {..} = do
+  -- . Deploy validators
+  roc <- deployValidatorsRun w9
+
+  -- . Create raffle
+  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+  let cddl = slotToEndPOSIXTime sltCfg 20
+  let rddl = slotToEndPOSIXTime sltCfg 50
+  let config =
+        RaffleConfig
+          { rCommitDDL = cddl
+          , rRevealDDL = rddl
+          , rTicketPrice = 5_000_000
+          , rMinTickets = 3
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          }
+  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+  mri <- queryRaffleRun w1 raffleId
+  case mri of
+    Nothing -> error "raffle was not created"
+    Just ri -> do
+      when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
+      return (ri, roc)
+
 -- revealNTicketsRUN :: GYTxOutRef -> GYTxOutRef -> AssetClass -> [(AssetClass, (Wallet, Secret))] -> Run ()
 -- revealNTicketsRUN refRaffleValidator refTicketValidator raffleId ws = do
 --   mapM_ (revealTicketRUN refRaffleValidator refTicketValidator) ws
 --   s <- queryRaffleRUN True (head (fst . snd <$> ws)) raffleId
---   when (s /= 3 && s /= 40) $ logError "not in REVEALIING or SUCCESS_LOCKED_STAKE_AND_AMOUNT"
+--   when (s /= 3 && s /= 40) $ logError "not in REVEALING or SUCCESS_LOCKED_STAKE_AND_AMOUNT"
 
 ------------------------------------------------------------------------------------------------
 

@@ -16,26 +16,13 @@ import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty
 
 unitTests :: TestTree
-unitTests = testGroup "Raffleize Unit Tests" [createRaffleTests, otherTests]
-
--- | Our unit tests for creating a raffle
-createRaffleTests :: TestTree
-createRaffleTests =
-  testGroup
-    "CREATE RAFFLE TEST CASES"
-    [ testRun "Test Case 1.1: Verify that a user can create a raffle with valid raffle configuration" createNewRaffleTC1
-    , testRun " Test Case 1.2: Verify that a user cannot create a raffle with Commit Deadline in the past" createNewRaffleTC2
-    , testRun " Test Case 1.3: Verify that a user cannot create a raffle with Reveal Deadline before Commit Deadline" createNewRaffleTC3
-    , testRun " Test Case 1.4: Verify that a user cannot create a raffle with empty stake" createNewRaffleTC4
-    , testRun " Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada" createNewRaffleTC5
-    ]
+unitTests = testGroup "Raffleize Unit Tests" [createRaffleTests, updateRaffleTests, otherTests]
 
 otherTests :: TestTree
 otherTests =
   testGroup
-    "CREATE RAFFLE TEST CASES"
-    [ testRun "CREATE NEW -> UPDATE" createAndUpdateScenario
-    , testRun "CREATE NEW ->  EXPIRE -> RECOVER STAKE" createExpireRecoverScenario
+    "OTHER RAFFLE TEST CASES"
+    [ testRun "CREATE NEW ->  EXPIRE -> RECOVER STAKE" createExpireRecoverScenario
     , testRun "CREATE NEW ->  CANCEL" createAndCancelScenario
     , testRun "CREATE NEW ->  BUY 3 -> UNDERFUNDED" underfundedScenario
     , testRun "UNDERFUNDED" underfundedScenario
@@ -52,188 +39,181 @@ otherTests =
 -- ** SCENARIO: Create new raffle
 
 ------------------------------------------------------------------------------------------------
+createRaffleTests :: TestTree
+createRaffleTests =
+  testGroup
+    "CREATE RAFFLE TEST CASES"
+    [ testRun "Test Case 1.1: Verify that a user can create a raffle with valid raffle configuration" createNewRaffleTC1
+    , testRun " Test Case 1.2: Verify that a user cannot create a raffle with Commit Deadline in the past" createNewRaffleTC2
+    , testRun " Test Case 1.3: Verify that a user cannot create a raffle with Reveal Deadline before Commit Deadline" createNewRaffleTC3
+    , testRun " Test Case 1.4: Verify that a user cannot create a raffle with empty stake" createNewRaffleTC4
+    , testRun " Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada" createNewRaffleTC5
+    ]
+  where
+    createNewRaffleTC1 :: Wallets -> Run ()
+    createNewRaffleTC1 wallets = void $ deployValidatorsAndCreateNewValidRaffleRun wallets
 
-{- | Test Case 1.1: Verify that a user can create a raffle with valid raffle configuration
-Preconditions:
-- Wallet has enough Ada to cover the raffle collateral and transaction fees
-Preconditions:
-- Raffle is in the "NEW" state.
--}
-createNewRaffleTC1 :: Wallets -> Run ()
-createNewRaffleTC1 Wallets {..} = do
-  -- . Deploy validators
-  roc <- deployValidatorsRun w9
+    createNewRaffleTC2 :: Wallets -> Run ()
+    createNewRaffleTC2 Wallets {..} = do
+      -- . Deploy validators
+      roc <- deployValidatorsRun w9
+      -- . Create raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 4 -- Deadline set in the past
+      let rddl = slotToEndPOSIXTime sltCfg 50
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 5_000_000
+              , rMinTickets = 3
+              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
 
-  -- . Create raffle
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 20
-  let rddl = slotToEndPOSIXTime sltCfg 50
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
-          }
-  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
-  mri <- queryRaffleRun w1 raffleId
-  case mri of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri -> do
-      when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
+    createNewRaffleTC3 :: Wallets -> Run ()
+    createNewRaffleTC3 Wallets {..} = do
+      -- . Deploy validators
+      roc <- deployValidatorsRun w9
+      -- . Create raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 51
+      let rddl = slotToEndPOSIXTime sltCfg 50 -- Reveal ddl before commit ddl
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 5_000_000
+              , rMinTickets = 3
+              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
 
-{- | Test Case 1.2: Verify that a user cannot create a raffle with Commit Deadline in the past
-Preconditions:
-- Wallet has enough Ada to cover the raffle collateral and transaction fees
-Preconditions:
-- Transaction fails
--}
-createNewRaffleTC2 :: Wallets -> Run ()
-createNewRaffleTC2 Wallets {..} = do
-  -- . Deploy validators
-  roc <- deployValidatorsRun w9
+    createNewRaffleTC4 :: Wallets -> Run ()
+    createNewRaffleTC4 Wallets {..} = do
+      -- . Deploy validators
+      roc <- deployValidatorsRun w9
+      -- . Create raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 25
+      let rddl = slotToEndPOSIXTime sltCfg 60
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 5_000_000
+              , rMinTickets = 3
+              , rStake = mempty -- Raffle stake is empty;
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
 
-  -- . Create raffle
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 4 -- Deadline set in the past
-  let rddl = slotToEndPOSIXTime sltCfg 50
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
-          }
-  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+    createNewRaffleTC5 :: Wallets -> Run ()
+    createNewRaffleTC5 Wallets {..} = do
+      -- . Deploy validators
+      roc <- deployValidatorsRun w9
+      -- . Create raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 25
+      let rddl = slotToEndPOSIXTime sltCfg 60
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 5_000_000
+              , rMinTickets = 3
+              , rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeIron 9876) -- Raffle stake contains Ada;
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
 
-{- | Test Case 1.3: Verify that a user cannot create a raffle with Reveal Deadline before Commit Deadline
-Preconditions:
-- Wallet has enough Ada to cover the raffle collateral and transaction fees
-Preconditions:
-- Transaction fails
--}
-createNewRaffleTC3 :: Wallets -> Run ()
-createNewRaffleTC3 Wallets {..} = do
-  -- . Deploy validators
-  roc <- deployValidatorsRun w9
+------------------------------------------------------------------------------------------------
 
-  -- . Create raffle
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 51
-  let rddl = slotToEndPOSIXTime sltCfg 50 -- Reveal ddl before commit ddl
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
-          }
-  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+-- ** SCENARIO: Update raffle configuration
 
-{- | Test Case 1.4: Verify that a user cannot create a raffle with empty stake
-Preconditions:
-- Wallet has enough Ada to cover the raffle collateral and transaction fees
-Preconditions:
-- Transaction fails
--}
-createNewRaffleTC4 :: Wallets -> Run ()
-createNewRaffleTC4 Wallets {..} = do
-  -- . Deploy validators
-  roc <- deployValidatorsRun w9
+------------------------------------------------------------------------------------------------
 
-  -- . Create raffle
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 25
-  let rddl = slotToEndPOSIXTime sltCfg 60
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = mempty
-          }
-  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+updateRaffleTests :: TestTree
+updateRaffleTests =
+  testGroup
+    "UPDATE RAFFLE TEST CASES"
+    [ testRun "Test Case 2.1: Verify that a user can update a raffle with valid raffle configuration" updateRaffleTC1
+    , testRun " Test Case 2.2: Verify that a user cannot update a raffle with Commit Deadline in the past" updateRaffleTC2
+    , testRun " Test Case 2.3: Verify that a user cannot update a raffle with Reveal Deadline before Commit Deadline" updateRaffleTC3
+    , testRun " Test Case 2.4: Verify that a user cannot update a raffle with empty stake" updateRaffleTC4
+    , testRun " Test Case 2.5: Verify that a user cannot update a raffle stake with a value containing Ada" updateRaffleTC5
+    ]
+  where
+    updateRaffleTC1 :: Wallets -> Run ()
+    updateRaffleTC1 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      let raffleConfig = rConfig $ riRsd ri
+      -- . Update the raffle
+      let newRaffleConfig =
+            raffleConfig
+              { rCommitDDL = rCommitDDL raffleConfig + 10
+              , rRevealDDL = rRevealDDL raffleConfig + 10
+              , rTicketPrice = 15_000_000
+              , rMinTickets = 20
+              , rStake = valueToPlutus (fakeIron 100) <> valueToPlutus (fakeGold 100)
+              }
+      (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
+      mri2 <- queryRaffleRun w1 raffleId2
+      case mri2 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri2 -> do
+          when (raffleId2 /= raffleId) $ logError "not same id"
+          let prevStakeValue = rStake (rConfig (riRsd ri))
+          let currentStakeValue = rStake (rConfig (riRsd ri2))
+          let updatedVal = riValue ri #- prevStakeValue #+ currentStakeValue
+          when (riValue ri2 #/= updatedVal) $ logError "locked value does not match the config "
 
-{- | Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada
-Preconditions:
-- Wallet has enough Ada to cover the raffle collateral and transaction fees
-Preconditions:
-- Transaction fails
--}
-createNewRaffleTC5 :: Wallets -> Run ()
-createNewRaffleTC5 Wallets {..} = do
-  -- . Deploy validators
-  roc <- deployValidatorsRun w9
+    updateRaffleTC2 :: Wallets -> Run ()
+    updateRaffleTC2 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      let raffleConfig = rConfig $ riRsd ri
+      -- . Update the raffle
+      let newRaffleConfig =
+            raffleConfig
+              { rCommitDDL = 10 -- Slot in the past
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
 
-  -- . Create raffle
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 25
-  let rddl = slotToEndPOSIXTime sltCfg 60
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeIron 9876)
-          }
-  raffleizeTransactionThatMustFailRun w1 roc (User (CreateRaffle config)) Nothing Nothing
+    updateRaffleTC3 :: Wallets -> Run ()
+    updateRaffleTC3 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      let raffleConfig = rConfig $ riRsd ri
+      -- . Update the raffle
+      let newRaffleConfig =
+            raffleConfig
+              { rRevealDDL = rCommitDDL raffleConfig - 1
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
 
--- ------------------------------------------------------------------------------------------------
+    updateRaffleTC4 :: Wallets -> Run ()
+    updateRaffleTC4 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      let raffleConfig = rConfig $ riRsd ri
+      -- . Update the raffle
+      let newRaffleConfig =
+            raffleConfig
+              { rStake = mempty -- Stake is empty;
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
 
--- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Update Raffle Config
-
--- ------------------------------------------------------------------------------------------------
-
-createAndUpdateScenario :: Wallets -> Run ()
-createAndUpdateScenario Wallets {..} = do
-  -- . Deploy validators
-  roc <- deployValidatorsRun w9
-
-  -- . Create raffle
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 20
-  let rddl = slotToEndPOSIXTime sltCfg 50
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
-          }
-  (_txId, raffleId) <- raffleizeTransactionRun w1 roc (User (CreateRaffle config)) Nothing Nothing
-  ri <- fromMaybe (error $ "Raffle not found: " <> show raffleId) <$> queryRaffleRun w1 raffleId
-  when (riStateLabel ri /= "NEW") $ logError "not in status NEW"
-  waitNSlots 3
-
-  -- . Update the raffle
-  sltCfg2 <- gets (mockConfigSlotConfig . mockConfig)
-  let newcddl = slotToEndPOSIXTime sltCfg2 16
-  let newrddl = slotToEndPOSIXTime sltCfg2 26
-  let newconfig =
-        RaffleConfig
-          { rCommitDDL = newcddl
-          , rRevealDDL = newrddl
-          , rTicketPrice = 10_000_000
-          , rMinTickets = 2
-          , rStake = valueToPlutus (fakeIron 100) <> valueToPlutus (fakeGold 100)
-          }
-  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner (Update newconfig)) (Just raffleId) Nothing
-  mri2 <- queryRaffleRun w1 raffleId2
-  case mri2 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri2 -> do
-      when (raffleId2 /= raffleId) $ logError "not same id"
-      when (raffleId2 /= raffleId) $ logError "not same id"
-      let prevStakeValue = rStake (rConfig (riRsd ri))
-      let currentStakeValue = rStake (rConfig (riRsd ri2))
-      let updatedVal = riValue ri #- prevStakeValue #+ currentStakeValue
-      when (riValue ri2 #/= updatedVal) $ logError "locked value does not match the config "
+    updateRaffleTC5 :: Wallets -> Run ()
+    updateRaffleTC5 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      let raffleConfig = rConfig $ riRsd ri
+      -- . Update the raffle
+      let newRaffleConfig =
+            raffleConfig
+              { rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeIron 9876) -- Raffle stake contains Ada;
+              }
+      raffleizeTransactionThatMustFailRun w1 roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
 
 -- ------------------------------------------------------------------------------------------------
 
@@ -494,10 +474,3 @@ underfundedScenario Wallets {..} = do
 ------------------------
 ------------------------
 ------------------------
-
---- >>> lengthOfByteString "5b39bfccb1447d4aae30e7a4fb0f4ba37e79ea96ec54b5ba7223979a15e4d0ae5b39bfccb1447d4aae30e7a4fb0f4ba37e79ea96ec54b5ba7223979a15e4d0ae=====------------------------"
--- 157
--- TODO DE ANALIZAT
-
---- >>> lengthOfByteString $ blake2b_256 "marius"
--- 32
