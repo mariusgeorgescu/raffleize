@@ -27,9 +27,9 @@ getValueBalance :: GYUTxOs -> Value
 getValueBalance = valueToPlutus . foldMapUTxOs utxoValue
 
 addressFromPaymentSigningKey :: GYNetworkId -> GYExtendedPaymentSigningKey -> GYAddress
-addressFromPaymentSigningKey nid eskey =
+addressFromPaymentSigningKey nid extendedSkey =
   let
-    vkey = getVerificationKey $ extendedPaymentSigningKeyToApi eskey
+    vkey = getVerificationKey $ extendedPaymentSigningKeyToApi extendedSkey
     pub_key = paymentVerificationKeyFromApi (castVerificationKey vkey)
     payment_key_hash = paymentKeyHash pub_key
     address = addressFromPaymentKeyHash nid payment_key_hash

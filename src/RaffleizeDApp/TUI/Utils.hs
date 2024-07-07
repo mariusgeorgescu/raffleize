@@ -27,11 +27,16 @@ readMnemonicFile path = do
   if fileExist
     then do
       putStrLn "Found"
-      words <- Data.Text.words <$> Data.Text.IO.readFile path
-      return $ eitherToMaybe $ walletKeysToExtendedPaymentSigningKey <$> walletKeysFromMnemonic words
+      readMnemonic <$> Data.Text.IO.readFile path
     else do
       putStrLn $ show path <> " not found"
       return Nothing
+
+isValidMnemonic :: Text -> Bool
+isValidMnemonic = isRight . walletKeysFromMnemonic . Data.Text.words
+
+readMnemonic :: Text -> Maybe GYExtendedPaymentSigningKey
+readMnemonic content = eitherToMaybe $ walletKeysToExtendedPaymentSigningKey <$> walletKeysFromMnemonic (Data.Text.words content)
 
 decodeConfigFile :: FromJSON a => FilePath -> IO (Maybe a)
 decodeConfigFile path = do

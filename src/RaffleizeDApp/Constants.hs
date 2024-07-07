@@ -35,8 +35,8 @@ atlasCoreConfig = "atlas_config.json"
 raffleizeValidatorsConfig :: FilePath
 raffleizeValidatorsConfig = "raffleize_validators_config.json"
 
-operationSkeyFilePath :: FilePath
-operationSkeyFilePath = "operation.skey"
+operationPrivFilePath :: FilePath
+operationPrivFilePath = "operation.prv"
 
 -- Exports
 
