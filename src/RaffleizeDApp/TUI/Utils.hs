@@ -1,6 +1,9 @@
 module RaffleizeDApp.TUI.Utils where
 
 import Data.Aeson
+import Data.Either.Extra (eitherToMaybe)
+import Data.Text qualified
+import Data.Text.IO qualified
 import GeniusYield.Types
 import RaffleizeDApp.Utils
 import System.Directory.Extra
@@ -13,6 +16,19 @@ readPaymentKeyFile path = do
     then do
       putStrLn "Found"
       Just <$> readPaymentSigningKey path
+    else do
+      putStrLn $ show path <> " not found"
+      return Nothing
+
+readMnemonicFile :: FilePath -> IO (Maybe GYExtendedPaymentSigningKey)
+readMnemonicFile path = do
+  putStrLn $ yellowColorString $ "Mnemonic phrase at " <> show path
+  fileExist <- doesFileExist path
+  if fileExist
+    then do
+      putStrLn "Found"
+      words <- Data.Text.words <$> Data.Text.IO.readFile path
+      return $ eitherToMaybe $ walletKeysToExtendedPaymentSigningKey <$> walletKeysFromMnemonic words
     else do
       putStrLn $ show path <> " not found"
       return Nothing

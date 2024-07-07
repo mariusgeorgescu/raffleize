@@ -64,7 +64,7 @@ import System.IO.Extra (readFile)
 data RaffleizeUI = RaffleizeUI
   { providersCtx :: ProviderCtx
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
-  , maybeSecretKey :: Maybe GYPaymentSigningKey
+  , maybeSecretKey :: Maybe GYExtendedPaymentSigningKey
   , balance :: Value
   , balanceList :: GenericList NameResources [] (CurrencySymbol, TokenName, Integer)
   , logo :: String
@@ -121,7 +121,7 @@ tui = do
 buildInitialState :: ProviderCtx -> String -> IO RaffleizeUI
 buildInitialState pCtx logo = do
   maybeValidatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  maybeSKey <- readPaymentKeyFile operationSkeyFilePath
+  maybeSKey <- readMnemonicFile operationSkeyFilePath
   allRafflesInfo <- getActiveRaffles pCtx
   let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
   let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
@@ -297,7 +297,7 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
 handleConstrutValueEvents _state _event = error "Invalid use of handleConstrutValueEvents"
 
 -- Refactor helper functions
-raffleizeTransactionHandler :: RaffleizeOffchainContext -> GYPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources (Next RaffleizeUI)
+raffleizeTransactionHandler :: RaffleizeOffchainContext -> GYExtendedPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources (Next RaffleizeUI)
 raffleizeTransactionHandler roc@(RaffleizeOffchainContext _ providersCtx) secretKey raffleizeAction contextNFT mAddr s validateAction =
   let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
    in if validateAction
@@ -644,7 +644,7 @@ mainScreen s =
                                ]
                         )
                   )
-    assetsWidget :: GYNetworkId -> Maybe GYPaymentSigningKey -> GenericList NameResources [] (CurrencySymbol, TokenName, Integer) -> Widget NameResources
+    assetsWidget :: GYNetworkId -> Maybe GYExtendedPaymentSigningKey -> GenericList NameResources [] (CurrencySymbol, TokenName, Integer) -> Widget NameResources
     assetsWidget nid (Just skey) valList =
       let addr = addressFromPaymentSigningKey nid skey
           val = unFlattenValue $ listElements valList

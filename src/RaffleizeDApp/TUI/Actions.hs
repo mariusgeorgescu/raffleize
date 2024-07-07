@@ -17,7 +17,7 @@ import RaffleizeDApp.TxBuilding.Transactions
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.Utils
 
-addressFromSkey :: ProviderCtx -> GYPaymentSigningKey -> GYAddress
+addressFromSkey :: ProviderCtx -> GYExtendedPaymentSigningKey -> GYAddress
 addressFromSkey pCtx skey =
   let nid = (cfgNetworkId . ctxCoreCfg) pCtx
    in addressFromPaymentSigningKey nid skey
@@ -28,7 +28,7 @@ getAddrUTxOs pCtx addr = do
   putStrLn $ yellowColorString msg
   runQuery pCtx $ lookupUTxOsAtfAddress addr
 
-getAddressAndValue :: ProviderCtx -> GYPaymentSigningKey -> IO (GYAddress, Value)
+getAddressAndValue :: ProviderCtx -> GYExtendedPaymentSigningKey -> IO (GYAddress, Value)
 getAddressAndValue pCtx skey = do
   let addr = addressFromSkey pCtx skey
   utxos <- getAddrUTxOs pCtx addr
@@ -55,7 +55,7 @@ getMyRaffles pCtx addr = do
 ----------------
 ----------------
 ----------------
-deployValidators :: ProviderCtx -> GYPaymentSigningKey -> IO ()
+deployValidators :: ProviderCtx -> GYExtendedPaymentSigningKey -> IO ()
 deployValidators pCtx skey = do
   putStrLn $ yellowColorString ("Deploying validators ..." :: String)
   let nid = (cfgNetworkId . ctxCoreCfg) pCtx
@@ -73,7 +73,7 @@ deployValidators pCtx skey = do
   B.writeFile raffleizeValidatorsConfig (encode . toJSON $ validators)
   putStrLn $ greenColorString ("exported to " <> raffleizeValidatorsConfig)
 
-mintTestTokens :: ProviderCtx -> GYPaymentSigningKey -> String -> Integer -> IO Text
+mintTestTokens :: ProviderCtx -> GYExtendedPaymentSigningKey -> String -> Integer -> IO Text
 mintTestTokens pCtx skey tn amount = do
   putStrLn $ yellowColorString "Minting test tokens... "
   putStrLn $ blueColorString $ "with token name: " <> show tn
@@ -85,7 +85,7 @@ mintTestTokens pCtx skey tn amount = do
   txOutRef <- runReaderT (submitTxAndWaitForConfirmation mintTxSigned) pCtx
   return $ showTxOutRef txOutRef
 
-raffleizeTransaction :: RaffleizeOffchainContext -> GYPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> IO Text
+raffleizeTransaction :: RaffleizeOffchainContext -> GYExtendedPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> IO Text
 raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey raffleizeActon interactionContextNFT optionalRecipient = do
   let my_addr = addressFromSkey providerCtx skey
   let userAddrs = UserAddresses [my_addr] my_addr Nothing
@@ -125,14 +125,14 @@ raffleizeActionToIntro ma ra =
               RecoverStakeAndAmount -> do
                 putStrLn $ yellowColorString "Recovering stake from unrevealed raffle... \n\t "
               CollectAmount -> do
-                putStrLn $ yellowColorString "Claiming collected amount from successfull raffle... \n\t "
+                putStrLn $ yellowColorString "Claiming collected amount from finished raffle... \n\t "
               GetCollateralOfExpiredTicket -> do
                 putStrLn $ yellowColorString "Getting the ticket collateral refund for losing ticket of raffle... \n\t "
           TicketOwner toa -> do
             putStrLn $ inContextOf ("ticket" :: String)
             case toa of
               (RevealTicketSecret secretBS) -> do
-                putStrLn $ yellowColorString "Reavealing the ticket secret... \n\t "
+                putStrLn $ yellowColorString "Revealing the ticket secret... \n\t "
                 putStrLn $ blueColorString $ "onchain revealed secret: " <> Data.Text.unpack (fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show secretBS)
               CollectStake -> do
                 putStrLn $ yellowColorString "Collecting stake with winning ticket: \n\t "
