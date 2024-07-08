@@ -655,10 +655,8 @@ successStateTests =
           , (w3, secret)
           , (w4, secret)
           ]
-
       waitNSlots 30 --- Commit DDL pass
       ri2 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
-
       let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
       _tickets2 <-
         reavealNTicketsRun
@@ -668,18 +666,13 @@ successStateTests =
           , (w3, ticketRefs !! 1, secret)
           , (w4, ticketRefs !! 2, secret)
           ]
-
       ri3 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
-
       (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
-
       ri4 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri4 == "SUCCESS_LOCKED_STAKE") $ logError "not in status SUCCESS_LOCKED_STAKE"
-
       -- WINNER is w2
       (_txId, _raffleId) <- raffleizeTransactionRun w2 roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
-
       ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
 
@@ -710,10 +703,8 @@ successStateTests =
           , (w3, secret)
           , (w4, secret)
           ]
-
       waitNSlots 30 --- Commit DDL pass
       ri2 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
-
       let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
       _tickets2 <-
         reavealNTicketsRun
@@ -723,15 +714,12 @@ successStateTests =
           , (w3, ticketRefs !! 1, secret)
           , (w4, ticketRefs !! 2, secret)
           ]
-
       ri3 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
-
       -- WINNER is w2
       (_txId, _raffleId) <- raffleizeTransactionRun w2 roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
       ri4 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri4 == "SUCCESS_LOCKED_AMOUNT") $ logError "not in status SUCCESS_LOCKED_AMOUNT"
-
       (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
       ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"

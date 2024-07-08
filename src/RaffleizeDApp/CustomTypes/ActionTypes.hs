@@ -87,7 +87,6 @@ unstableMakeIsData ''RaffleizeAction --- TODO must be changed with stable versio
 
 type RaffleizeActionLabel = (String, String)
 
-
 {- | Datatype representng the actions supported by the Raffleize DApp.
 This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
 -}

@@ -30,7 +30,6 @@ import RaffleizeDApp.TUI.Types
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 
-
 txOutRefWidget :: GYNetworkId -> GYTxOutRef -> Widget n
 txOutRefWidget nid t =
   let txoutrefText = showTxOutRef t
@@ -139,7 +138,7 @@ newtype MnemonicFormState = MnemonicFormState
 
 makeLenses ''MnemonicFormState
 
-mkMnemonicForm:: MnemonicFormState -> Form MnemonicFormState e NameResources
+mkMnemonicForm :: MnemonicFormState -> Form MnemonicFormState e NameResources
 mkMnemonicForm =
   newForm
     [ (txt "Recovery Phrase: " <+>) @@= editTextField mnemonicField MnemonicField (Just 5)

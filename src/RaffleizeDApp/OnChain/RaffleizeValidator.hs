@@ -174,20 +174,6 @@ untypedRaffleizeValidatorLamba = mkUntypedValidatorCustom . raffleizeValidatorLa
 
 -- 3. Pre-compilation
 
--- | The type synonym for the compiled spending validator script.
-
 -- | Function for producing the compiled spending validator script.
 compileRaffleizeValidator :: PubKeyHash -> CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
 compileRaffleizeValidator params = $$(compile [||untypedRaffleizeValidatorLamba||]) `unsafeApplyCode` liftCode plcVersion100 params
-
-------------------------
-------------------------
-------------------------
-------------------------
-------------------------
-
--- sampleAdminAddr :: PubKeyHash
--- sampleAdminAddr = "a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2"
-
--- sampleRaffleizeValidator :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
--- sampleRaffleizeValidator = compileRaffleizeValidator sampleAdminAddr

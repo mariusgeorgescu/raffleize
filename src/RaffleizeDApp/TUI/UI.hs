@@ -18,6 +18,7 @@ import Data.List qualified
 import Data.Maybe (fromMaybe)
 import Data.String (IsString (..))
 import Data.Text qualified
+import Data.Text.IO qualified
 import Data.Time
 import Data.Time.Format.ISO8601
 import Data.Vector qualified
@@ -54,7 +55,6 @@ import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
-import qualified Data.Text.IO
 
 ----------------------------------------------------------------------
 
@@ -546,7 +546,7 @@ handleMnemonicEvents s@RaffleizeUI {currentScreen, mnemonicForm, providersCtx} e
         (VtyEvent (EvKey KEnter _modifiers)) -> do
           liftIO clearScreen
           let mnFormState = formState mnemonicForm
-          liftIO $ Data.Text.IO.writeFile operationPrivFilePath (_mnemonicField mnFormState )
+          liftIO $ Data.Text.IO.writeFile operationPrivFilePath (_mnemonicField mnFormState)
           initialState <- liftIO $ buildInitialState providersCtx (logo s)
           continue
             initialState
