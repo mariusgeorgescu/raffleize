@@ -8,6 +8,7 @@ import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V3 (POSIXTimeRange)
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Utils
@@ -138,9 +139,8 @@ lookupRaffleInfoRefAC raffleRefAC = do
   stateValImg <- lookupRaffleStateValueAndImage raffleRefAC
   return $ mkRaffleInfo tr <$> stateValImg
 
-lookupTicketInfoByUserAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe TicketInfo)
-lookupTicketInfoByUserAC ticketUserAC = do
-  let ticketRefAC = deriveRefFromUserAC ticketUserAC
+lookupTicketInfoByRefAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe TicketInfo)
+lookupTicketInfoByRefAC ticketRefAC = do
   mticket <- lookupTickeStateValueAndImage ticketRefAC
   case mticket of
     Nothing -> return Nothing
@@ -157,6 +157,11 @@ lookupTicketInfoByUserAC ticketUserAC = do
           let ticketStateLabel = showTicketStateLabel ticketStateId
           let actions = validActionLabelsForTicketState ticketStateId
           return $ Just $ TicketInfo tsd tVal tImg ticketStateLabel actions
+
+lookupTicketInfoByUserAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe TicketInfo)
+lookupTicketInfoByUserAC ticketUserAC = do
+  let ticketRefAC = deriveRefFromUserAC ticketUserAC
+  lookupTicketInfoByRefAC ticketRefAC
 
 -- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
 lookupActiveRaffles :: (GYTxQueryMonad m) => m [RaffleInfo]

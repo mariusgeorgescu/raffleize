@@ -1,0 +1,624 @@
+{
+    "host": "raffleize.art",
+    "info": {
+        "description": "This is an API for the Raffleize Cardano DApp",
+        "license": {
+            "name": "MIT"
+        },
+        "title": "Raffleize API",
+        "version": "1.0"
+    },
+    "paths": {
+        "/": {
+            "get": {
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/build-tx": {
+            "post": {
+                "consumes": [
+                    "application/json;charset=utf-8"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "example": {
+                                "interactionContextNFT": [
+                                    "526166666c65697a6543757272656e637953796d626f6c",
+                                    "RaffleizeTokenName"
+                                ],
+                                "raffleizeAction": {
+                                    "contents": {
+                                        "tag": "Cancel"
+                                    },
+                                    "tag": "RaffleOwner"
+                                },
+                                "recipient": "00e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d1b930e9f7add78a174a21000e989ff551366dcd127028cb2aa39f616",
+                                "userAddresses": {
+                                    "changeAddress": "00e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d1b930e9f7add78a174a21000e989ff551366dcd127028cb2aa39f616",
+                                    "reservedCollateral": "4293386fef391299c9886dc0ef3e8676cbdbc2c9f2773507f1f838e00043a189#1",
+                                    "usedAddresses": [
+                                        "00e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d1b930e9f7add78a174a21000e989ff551366dcd127028cb2aa39f616"
+                                    ]
+                                }
+                            },
+                            "properties": {
+                                "interactionContextNFT": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "raffleizeAction": {
+                                    "properties": {
+                                        "contents": {
+                                            "properties": {
+                                                "tag": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "tag"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "tag": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "contents",
+                                        "tag"
+                                    ],
+                                    "type": "object"
+                                },
+                                "recipient": {
+                                    "type": "string"
+                                },
+                                "userAddresses": {
+                                    "properties": {
+                                        "changeAddress": {
+                                            "type": "string"
+                                        },
+                                        "reservedCollateral": {
+                                            "type": "string"
+                                        },
+                                        "usedAddresses": {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        }
+                                    },
+                                    "required": [
+                                        "usedAddresses",
+                                        "changeAddress",
+                                        "reservedCollateral"
+                                    ],
+                                    "type": "object"
+                                }
+                            },
+                            "required": [
+                                "recipient",
+                                "raffleizeAction",
+                                "interactionContextNFT",
+                                "userAddresses"
+                            ],
+                            "type": "object"
+                        }
+                    }
+                ],
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid `body`"
+                    }
+                }
+            }
+        },
+        "/info": {
+            "get": {
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "example": {
+                                "riAvailableActions": [
+                                    [
+                                        "User",
+                                        "BuyTicket"
+                                    ],
+                                    [
+                                        "RaffleOwner",
+                                        "Cancel"
+                                    ],
+                                    [
+                                        "RaffleOwner",
+                                        "Update"
+                                    ]
+                                ],
+                                "riImage": "ipfs://notarealurl",
+                                "riRsd": {
+                                    "rConfig": {
+                                        "rCommitDDL": 1718887778871,
+                                        "rMinTickets": 2,
+                                        "rRevealDDL": 1718889578871,
+                                        "rStake": [],
+                                        "rTicketPrice": 7000000
+                                    },
+                                    "rParam": {
+                                        "rMaxNoOfTickets": 20,
+                                        "rMinRevealingWindow": 6000,
+                                        "rMinTicketPrice": 3000000,
+                                        "rRaffleCollateral": 30000000,
+                                        "rRaffleValidatorHash": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                        "rTicketCollateral": 3500000,
+                                        "rTicketValidatorHash": "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
+                                    },
+                                    "rRaffleID": [
+                                        "526166666c65697a6543757272656e637953796d626f6c",
+                                        "RaffleizeTokenName"
+                                    ],
+                                    "rRandomSeed": 0,
+                                    "rRefundedTickets": 0,
+                                    "rRevealedTickets": 0,
+                                    "rSoldTickets": 0
+                                },
+                                "riStateLabel": "NEW",
+                                "riValue": []
+                            },
+                            "properties": {
+                                "riAvailableActions": {
+                                    "items": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "type": "array"
+                                },
+                                "riImage": {
+                                    "type": "string"
+                                },
+                                "riRsd": {
+                                    "properties": {
+                                        "rConfig": {
+                                            "properties": {
+                                                "rCommitDDL": {
+                                                    "type": "number"
+                                                },
+                                                "rMinTickets": {
+                                                    "type": "number"
+                                                },
+                                                "rRevealDDL": {
+                                                    "type": "number"
+                                                },
+                                                "rStake": {
+                                                    "example": [],
+                                                    "items": {},
+                                                    "maxItems": 0,
+                                                    "type": "array"
+                                                },
+                                                "rTicketPrice": {
+                                                    "type": "number"
+                                                }
+                                            },
+                                            "required": [
+                                                "rMinTickets",
+                                                "rCommitDDL",
+                                                "rRevealDDL",
+                                                "rStake",
+                                                "rTicketPrice"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "rParam": {
+                                            "properties": {
+                                                "rMaxNoOfTickets": {
+                                                    "type": "number"
+                                                },
+                                                "rMinRevealingWindow": {
+                                                    "type": "number"
+                                                },
+                                                "rMinTicketPrice": {
+                                                    "type": "number"
+                                                },
+                                                "rRaffleCollateral": {
+                                                    "type": "number"
+                                                },
+                                                "rRaffleValidatorHash": {
+                                                    "type": "string"
+                                                },
+                                                "rTicketCollateral": {
+                                                    "type": "number"
+                                                },
+                                                "rTicketValidatorHash": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "rTicketValidatorHash",
+                                                "rRaffleCollateral",
+                                                "rMinRevealingWindow",
+                                                "rMinTicketPrice",
+                                                "rMaxNoOfTickets",
+                                                "rTicketCollateral",
+                                                "rRaffleValidatorHash"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "rRaffleID": {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        "rRandomSeed": {
+                                            "type": "number"
+                                        },
+                                        "rRefundedTickets": {
+                                            "type": "number"
+                                        },
+                                        "rRevealedTickets": {
+                                            "type": "number"
+                                        },
+                                        "rSoldTickets": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "required": [
+                                        "rRevealedTickets",
+                                        "rParam",
+                                        "rRaffleID",
+                                        "rRandomSeed",
+                                        "rConfig",
+                                        "rSoldTickets",
+                                        "rRefundedTickets"
+                                    ],
+                                    "type": "object"
+                                },
+                                "riStateLabel": {
+                                    "type": "string"
+                                },
+                                "riValue": {
+                                    "example": [],
+                                    "items": {},
+                                    "maxItems": 0,
+                                    "type": "array"
+                                }
+                            },
+                            "required": [
+                                "riAvailableActions",
+                                "riValue",
+                                "riRsd",
+                                "riImage",
+                                "riStateLabel"
+                            ],
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/raffles": {
+            "get": {
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "items": {
+                                "example": {
+                                    "riAvailableActions": [
+                                        [
+                                            "User",
+                                            "BuyTicket"
+                                        ],
+                                        [
+                                            "RaffleOwner",
+                                            "Cancel"
+                                        ],
+                                        [
+                                            "RaffleOwner",
+                                            "Update"
+                                        ]
+                                    ],
+                                    "riImage": "ipfs://notarealurl",
+                                    "riRsd": {
+                                        "rConfig": {
+                                            "rCommitDDL": 1718887778871,
+                                            "rMinTickets": 2,
+                                            "rRevealDDL": 1718889578871,
+                                            "rStake": [],
+                                            "rTicketPrice": 7000000
+                                        },
+                                        "rParam": {
+                                            "rMaxNoOfTickets": 20,
+                                            "rMinRevealingWindow": 6000,
+                                            "rMinTicketPrice": 3000000,
+                                            "rRaffleCollateral": 30000000,
+                                            "rRaffleValidatorHash": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                            "rTicketCollateral": 3500000,
+                                            "rTicketValidatorHash": "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
+                                        },
+                                        "rRaffleID": [
+                                            "526166666c65697a6543757272656e637953796d626f6c",
+                                            "RaffleizeTokenName"
+                                        ],
+                                        "rRandomSeed": 0,
+                                        "rRefundedTickets": 0,
+                                        "rRevealedTickets": 0,
+                                        "rSoldTickets": 0
+                                    },
+                                    "riStateLabel": "NEW",
+                                    "riValue": []
+                                },
+                                "properties": {
+                                    "riAvailableActions": {
+                                        "items": {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "riImage": {
+                                        "type": "string"
+                                    },
+                                    "riRsd": {
+                                        "properties": {
+                                            "rConfig": {
+                                                "properties": {
+                                                    "rCommitDDL": {
+                                                        "type": "number"
+                                                    },
+                                                    "rMinTickets": {
+                                                        "type": "number"
+                                                    },
+                                                    "rRevealDDL": {
+                                                        "type": "number"
+                                                    },
+                                                    "rStake": {
+                                                        "example": [],
+                                                        "items": {},
+                                                        "maxItems": 0,
+                                                        "type": "array"
+                                                    },
+                                                    "rTicketPrice": {
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "rMinTickets",
+                                                    "rCommitDDL",
+                                                    "rRevealDDL",
+                                                    "rStake",
+                                                    "rTicketPrice"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "rParam": {
+                                                "properties": {
+                                                    "rMaxNoOfTickets": {
+                                                        "type": "number"
+                                                    },
+                                                    "rMinRevealingWindow": {
+                                                        "type": "number"
+                                                    },
+                                                    "rMinTicketPrice": {
+                                                        "type": "number"
+                                                    },
+                                                    "rRaffleCollateral": {
+                                                        "type": "number"
+                                                    },
+                                                    "rRaffleValidatorHash": {
+                                                        "type": "string"
+                                                    },
+                                                    "rTicketCollateral": {
+                                                        "type": "number"
+                                                    },
+                                                    "rTicketValidatorHash": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "rTicketValidatorHash",
+                                                    "rRaffleCollateral",
+                                                    "rMinRevealingWindow",
+                                                    "rMinTicketPrice",
+                                                    "rMaxNoOfTickets",
+                                                    "rTicketCollateral",
+                                                    "rRaffleValidatorHash"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "rRaffleID": {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            "rRandomSeed": {
+                                                "type": "number"
+                                            },
+                                            "rRefundedTickets": {
+                                                "type": "number"
+                                            },
+                                            "rRevealedTickets": {
+                                                "type": "number"
+                                            },
+                                            "rSoldTickets": {
+                                                "type": "number"
+                                            }
+                                        },
+                                        "required": [
+                                            "rRevealedTickets",
+                                            "rParam",
+                                            "rRaffleID",
+                                            "rRandomSeed",
+                                            "rConfig",
+                                            "rSoldTickets",
+                                            "rRefundedTickets"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "riStateLabel": {
+                                        "type": "string"
+                                    },
+                                    "riValue": {
+                                        "example": [],
+                                        "items": {},
+                                        "maxItems": 0,
+                                        "type": "array"
+                                    }
+                                },
+                                "required": [
+                                    "riAvailableActions",
+                                    "riValue",
+                                    "riRsd",
+                                    "riImage",
+                                    "riStateLabel"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    }
+                }
+            }
+        },
+        "/tickets/{address}": {
+            "get": {
+                "parameters": [
+                    {
+                        "format": "cbor hex",
+                        "in": "path",
+                        "maxLength": 114,
+                        "minLength": 114,
+                        "name": "address",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "items": {
+                                "example": {
+                                    "tiAvailableActions": [],
+                                    "tiImage": "ipfs://notarealurl",
+                                    "tiStateLabel": "REVEALED",
+                                    "tiTsd": {
+                                        "tNumber": 0,
+                                        "tRaffle": [
+                                            "526166666c65697a6543757272656e637953796d626f6c",
+                                            "RaffleizeTokenName"
+                                        ],
+                                        "tRaffleValidator": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                        "tSecret": "6d6172697573",
+                                        "tSecretHash": "63643831396231336636376337333931393735336563316131643262326630336263353235363336656466616333353834303461616432333563643565333136"
+                                    },
+                                    "tiValue": []
+                                },
+                                "properties": {
+                                    "tiAvailableActions": {
+                                        "example": [],
+                                        "items": {},
+                                        "maxItems": 0,
+                                        "type": "array"
+                                    },
+                                    "tiImage": {
+                                        "type": "string"
+                                    },
+                                    "tiStateLabel": {
+                                        "type": "string"
+                                    },
+                                    "tiTsd": {
+                                        "properties": {
+                                            "tNumber": {
+                                                "type": "number"
+                                            },
+                                            "tRaffle": {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            "tRaffleValidator": {
+                                                "type": "string"
+                                            },
+                                            "tSecret": {
+                                                "type": "string"
+                                            },
+                                            "tSecretHash": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "tRaffle",
+                                            "tSecretHash",
+                                            "tSecret",
+                                            "tNumber",
+                                            "tRaffleValidator"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "tiValue": {
+                                        "example": [],
+                                        "items": {},
+                                        "maxItems": 0,
+                                        "type": "array"
+                                    }
+                                },
+                                "required": [
+                                    "tiValue",
+                                    "tiAvailableActions",
+                                    "tiImage",
+                                    "tiStateLabel",
+                                    "tiTsd"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid `address`"
+                    }
+                }
+            }
+        }
+    },
+    "swagger": "2.0"
+}

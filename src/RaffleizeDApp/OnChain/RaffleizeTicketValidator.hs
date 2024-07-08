@@ -15,7 +15,7 @@ import PlutusTx (
  )
 import RaffleizeDApp.Constants (secretMaxLength)
 import RaffleizeDApp.CustomTypes.ActionTypes (
-  RaffleOwnerAction (GetCollateraOfExpiredTicket),
+  RaffleOwnerAction (GetCollateralOfExpiredTicket),
   RaffleizeRedeemer (RaffleOwnerRedeemer, TicketOwnerRedeemer),
   TicketOwnerAction (RefundCollateralLosing, RevealTicketSecret),
  )
@@ -66,7 +66,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
               && isBurningNFT ticketUserAC txInfoMint
          in
           case redeemer of
-            RaffleOwnerRedeemer GetCollateraOfExpiredTicket ->
+            RaffleOwnerRedeemer GetCollateralOfExpiredTicket ->
               let !raffleUserAC = deriveUserFromRefAC raffleRefAC
                   ---- RAFFLE STATE FROM REF INPUT
                   (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs

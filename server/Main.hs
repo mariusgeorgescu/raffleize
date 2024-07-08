@@ -17,7 +17,7 @@ import RaffleizeDApp.Constants (
   atlasCoreConfig,
   raffleizeValidatorsConfig,
  )
-import RaffleizeDApp.Server.API (raffleizeApi, raffleizeServer)
+import RaffleizeDApp.Server.API (raffleizeApi, raffleizeServer, apiSwagger)
 import RaffleizeDApp.TUI.Utils (decodeConfigFile)
 import RaffleizeDApp.TxBuilding.Context (
   ProviderCtx (ProviderCtx),
@@ -32,7 +32,8 @@ import Servant (
  )
 import System.Environment (lookupEnv)
 import Text.Read (read)
-
+import           Data.Aeson.Encode.Pretty    (encodePretty)
+import qualified Data.ByteString.Lazy.Char8  as BL8
 getPortFromEnv :: IO Int
 getPortFromEnv = do
   eport <- lookupEnv "PORT"
@@ -42,6 +43,8 @@ getPortFromEnv = do
 
 main :: IO ()
 main = do
+  putStrLn "Writing Swagger file ..."
+  BL8.writeFile  "swagger-api.json" (encodePretty apiSwagger)
   atlasConfig <- fromJust <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
   tbCtx <- fromJust <$> decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   let host = "0.0.0.0"

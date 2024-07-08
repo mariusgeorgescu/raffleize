@@ -86,8 +86,8 @@ buyTicketTX secretHash raffleScriptRef recipient raffleRefAC = do
 ------------------------------------------------------------------------------------------------
 
 -- |  Update Raffle Transaction
-updateRaffleTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) => RaffleConfig -> GYTxOutRef -> [GYAddress] -> AssetClass -> m (GYTxSkeleton 'PlutusV2)
-updateRaffleTX newConfig raffleScriptRef ownAddrs raffleRefAC = do
+updateRaffleTX :: (HasCallStack, GYTxMonad m, GYTxQueryMonad m) =>  GYAddress ->RaffleConfig -> GYTxOutRef -> [GYAddress] -> AssetClass -> m (GYTxSkeleton 'PlutusV2)
+updateRaffleTX recipient newConfig raffleScriptRef ownAddrs raffleRefAC = do
   (rsd, rValue) <- getRaffleStateDataAndValue raffleRefAC
   let ddl = min (rCommitDDL . rConfig $ rsd) (rCommitDDL newConfig) -- minimum between initial and new commit deadline
   isValidByCommitDDL <- txIsValidByDDL ddl
@@ -98,13 +98,16 @@ updateRaffleTX newConfig raffleScriptRef ownAddrs raffleRefAC = do
   isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) new_rValue
   let raffleUserAC = deriveUserFromRefAC raffleRefAC
   spendsRaffleUserNFT <- txMustSpendFromAddress raffleUserAC ownAddrs
-
+  let raffleUserNFTp = assetClassValue raffleUserAC 1
+  raffleUserNFT <- valueFromPlutus' raffleUserNFTp
+  isGettingRaffleUserNFT <- txIsPayingValueToAddress recipient raffleUserNFT
   return $
     mconcat
       [ isValidByCommitDDL
       , spendsRaffleRefNFT
       , spendsRaffleUserNFT
       , isRaffleStateUpdated
+      , isGettingRaffleUserNFT
       ]
 
 -- |  Cancel Transaction
@@ -177,7 +180,7 @@ getCollateralOfExpiredTicketTX ticketScriptRef ownAddrs recipient ticketRefAC = 
     txMustSpendStateFromRefScriptWithRedeemer
       ticketScriptRef
       ticketRefAC
-      (RaffleOwner GetCollateraOfExpiredTicket)
+      (RaffleOwner GetCollateralOfExpiredTicket)
       ticketValidatorGY
   isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)
   ticketCollateralValue <- valueFromPlutus' tValue

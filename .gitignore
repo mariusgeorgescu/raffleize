@@ -36,8 +36,6 @@ node_modules
 .psci
 output
 
-
-
 # Plantuml
 out
 
@@ -47,8 +45,6 @@ out
 *.DS_STORE
 *.link
 
-
-
 idealog.txt
 result
 
@@ -57,3 +53,4 @@ result
 atlas_config.json
 
 *.skey
+*.prv

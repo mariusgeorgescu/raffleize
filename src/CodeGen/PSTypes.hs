@@ -1,12 +1,30 @@
 module CodeGen.PSTypes where
 
-import Control.Lens
+import Control.Lens (view, (^.))
 import Control.Monad.Reader.Class (MonadReader)
-import Language.PureScript.Bridge.Builder
-import Language.PureScript.Bridge.TypeInfo
+import Language.PureScript.Bridge.Builder (
+  BridgeData,
+  psTypeParameters,
+ )
+import Language.PureScript.Bridge.TypeInfo (
+  HasHaskType (haskType),
+  PSType,
+  TypeInfo (
+    TypeInfo,
+    _typeModule,
+    _typeName,
+    _typePackage,
+    _typeParameters
+  ),
+  typeName,
+ )
 import Prelude
 
+------------------------------------------------------------------------------------------------
 
+-- *  Using type definitions from the purescript project
+
+------------------------------------------------------------------------------------------------
 
 -- | Use type definition in Raffleize.Types
 psClientType :: MonadReader BridgeData m => m PSType
@@ -20,4 +38,3 @@ psClientType = do
       , _typeName = inType ^. typeName
       , _typeParameters = params
       }
-

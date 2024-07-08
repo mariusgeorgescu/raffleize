@@ -89,25 +89,3 @@ untypedRaffleizePolicyLambda p = mkUntypedMintingPolicyCustom $ raffleizePolicyL
 -- | Compile the untyped lambda to a UPLC script and splice back to Haskell.
 compileRaffleizeMP :: RaffleParam -> CompiledCode (BuiltinData -> BuiltinData -> ())
 compileRaffleizeMP p = $$(compile [||untypedRaffleizePolicyLambda||]) `unsafeApplyCode` liftCode plcVersion100 p
-
-------------------------
-------------------------
-------------------------
-------------------------
-------------------------
-
--- sampleRaffleParam :: RaffleParam
--- sampleRaffleParam =
---   RaffleParam
---     { rMaxNoOfTickets = 20
---     , rMinRevealingWindow = 60_000 -- Miliseconds
---     , rMinTicketPrice = 2_000_000
---     , rValidatorHash =  ScriptHash ""
---     , rTicketCollateral = 2_000_000
---     , rRaffleCollateral = 2_000_000
---     }
-
--- sampleRaffleizeMP :: CompiledCode (BuiltinData -> BuiltinData -> ())
--- sampleRaffleizeMP = compileRaffleizeMP sampleRaffleParam
-
--- a = serialiseCompiledCode  sampleRaffleizeMP
