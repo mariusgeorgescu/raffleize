@@ -5,6 +5,7 @@ import Cardano.Simple.Ledger.TimeSlot
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe qualified
+import Data.Tuple.Extra (uncurry3)
 import GHC.Stack
 import GeniusYield.Test.Utils
 import GeniusYield.TxBuilder
@@ -123,7 +124,7 @@ deployValidatorsAndCreateNewValidRaffleRun wallets = do
           , rRevealDDL = rddl
           , rTicketPrice = 5_000_000
           , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876) 
           }
   deployValidatorsAndCreateNewRaffleRun wallets config
 
@@ -151,11 +152,27 @@ buyTicketToRaffleRun ri roc w secret = do
 buyNTicketsToRaffleRun :: RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, BuiltinByteString)] -> Run [TicketInfo]
 buyNTicketsToRaffleRun ri roc = mapM (uncurry (buyTicketToRaffleRun ri roc))
 
--- revealNTicketsRUN :: GYTxOutRef -> GYTxOutRef -> AssetClass -> [(AssetClass, (Wallet, Secret))] -> Run ()
--- revealNTicketsRUN refRaffleValidator refTicketValidator raffleId ws = do
---   mapM_ (revealTicketRUN refRaffleValidator refTicketValidator) ws
---   s <- queryRaffleRUN True (head (fst . snd <$> ws)) raffleId
---   when (s /= 3 && s /= 40) $ logError "not in REVEALING or SUCCESS_LOCKED_STAKE_AND_AMOUNT"
+revealTicketSecretRun :: RaffleInfo -> RaffleizeTxBuildingContext -> Wallet -> AssetClass -> BuiltinByteString -> Run TicketInfo
+revealTicketSecretRun ri roc w ticketId secret = do
+  unless (riStateLabel ri == "REVEALING") $ logError "not in status REVEALING"
+  let raffleId = rRaffleID $ riRsd ri
+  revealdTIcketsBefore <- rRevealedTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
+  (_txId, ticketId2) <- raffleizeTransactionRun w roc (TicketOwner (RevealTicketSecret secret)) (Just ticketId) Nothing
+  mri2 <- queryRaffleRun w raffleId
+  case mri2 of
+    Nothing -> logError $ "Raffle not found: " <> show raffleId
+    Just ri2 -> do
+      unless (revealdTIcketsBefore + 1 == rRevealedTickets (riRsd ri2)) $ logError "no. of tickets revealed was not updated"
+
+  mti <- queryTicketRun w ticketId2
+  case mti of
+    Nothing -> error $ "Ticket ref not found: " <> show ticketId2
+    Just ti -> do
+      unless (tSecret (tiTsd ti) == Just secret) $ logError "invalid onchain secret"
+      return ti
+
+reavealNTicketsRun :: RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, AssetClass, BuiltinByteString)] -> Run [TicketInfo]
+reavealNTicketsRun ri roc = mapM (uncurry3 (revealTicketSecretRun ri roc))
 
 ------------------------------------------------------------------------------------------------
 

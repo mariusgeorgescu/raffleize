@@ -23,17 +23,16 @@ unitTests =
     [ createRaffleTests
     , newStateTests
     , expiredStateTests
-    , otherTests
+    , underfundedStateTests
+    , successStateTests
     ]
 
-otherTests :: TestTree
-otherTests =
-  testGroup
-    "OTHER RAFFLE TEST CASES"
-    [ testRun "CREATE NEW ->  BUY 3 -> UNDERFUNDED" underfundedScenario
-    ]
-
--- testRun "SUCCESS SCENARIOS" raffleizeSuccessScenario
+-- unitTests :: TestTree
+-- unitTests =
+--   testGroup
+--     "Raffleize Unit Tests"
+--     [
+--     ]
 
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------
@@ -287,174 +286,369 @@ expiredStateTests =
   testGroup
     "Tests for raffles in status 'Expired''"
     [testRun "Test Case 5.1: Verify that the raffle owner can recover stake from expired raffle" recoverExpiredTC1]
+  where
+    recoverExpiredTC1 :: Wallets -> Run ()
+    recoverExpiredTC1 wallets@Wallets {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
+      let raffleId = rRaffleID $ riRsd ri
+      waitNSlots 100 -- EXPIRED
+      mri <- queryRaffleRun w1 raffleId
+      case mri of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri' -> when (riStateLabel ri' /= "EXPIRED_LOCKED_STAKE") $ logError "not in status EXPIRED_LOCKED_STAKE"
+      waitNSlots 1
+      (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+      mri2 <- queryRaffleRun w1 raffleId2
+      case mri2 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri2 -> when (riStateLabel ri2 /= "EXPIRED_FINAL") $ logError "not in status EXPIRED_FINAL"
 
 -- ------------------------------------------------------------------------------------------------
 
--- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Expired -> Recover Stake
+-- -- ** Scenarios for raffle in status "UNDERFUNDED"
 
 -- ------------------------------------------------------------------------------------------------
 
-recoverExpiredTC1 :: Wallets -> Run ()
-recoverExpiredTC1 wallets@Wallets {..} = do
-  (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun wallets
-  let raffleId = rRaffleID $ riRsd ri
-  waitNSlots 100 -- EXPIRED
-  mri <- queryRaffleRun w1 raffleId
-  case mri of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri' -> when (riStateLabel ri' /= "EXPIRED_LOCKED_STAKE") $ logError "not in status EXPIRED_LOCKED_STAKE"
-  waitNSlots 1
-  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
-  mri2 <- queryRaffleRun w1 raffleId2
-  case mri2 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri2 -> when (riStateLabel ri2 /= "EXPIRED_FINAL") $ logError "not in status EXPIRED_FINAL"
+underfundedStateTests :: TestTree
+underfundedStateTests =
+  testGroup
+    "Tests for raffles in status 'Underfunded"
+    [ testRun "Test Case 6.1: Recover Stake -> All Refunds" underfundedScenario
+    , testRun "Test Case 6.2: Refund -> Recover Stake -> Rest of refunds" underfundedScenario2
+    , testRun "Test Case 6.3: All Refunds -> Recover Stake" underfundedScenario3
+    ]
+  where
+    underfundedScenario :: Wallets -> Run ()
+    underfundedScenario wallets@Wallets {..} = do
+      -- Create Raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 20
+      let rddl = slotToEndPOSIXTime sltCfg 50
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 5_000_000
+              , rMinTickets = 4
+              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              }
+      (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
+      let raffleId = rRaffleID $ riRsd ri
+      waitNSlots 1
+      let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+      let secretHash = blake2b_256 secret
+      -- Buy 3 tickets
+      tickets <-
+        buyNTicketsToRaffleRun
+          ri
+          roc
+          [ (w2, secretHash)
+          , (w3, secretHash)
+          , (w4, secretHash)
+          ]
+
+      waitNSlots 100 --- Commit DDL pass
+      mri3 <- queryRaffleRun w1 raffleId
+      case mri3 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri3 -> unless (riStateLabel ri3 == "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+
+      (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+
+      mri4 <- queryRaffleRun w1 raffleId2
+      case mri4 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri4 -> unless (riStateLabel ri4 == "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+
+      let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
+
+      (_txId, _ticket12) <- raffleizeTransactionRun w2 roc (TicketOwner RefundTicket) (Just (head ticketRefs)) Nothing
+      mri6 <- queryRaffleRun w1 raffleId2
+      case mri6 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri5 -> do
+          when (riStateLabel ri5 /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+          when (rRefundedTickets (riRsd ri5) /= 1) $ logError "incorrect number of tickets refunded"
+
+      (_txId, _ticket22) <- raffleizeTransactionRun w3 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 1)) Nothing
+      mri7 <- queryRaffleRun w1 raffleId2
+      case mri7 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri6 -> do
+          when (riStateLabel ri6 /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+          when (rRefundedTickets (riRsd ri6) /= 2) $ logError "incorrect number of tickets refunded"
+
+      (_txId, _ticket32) <- raffleizeTransactionRun w4 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 2)) Nothing
+      mri8 <- queryRaffleRun w1 raffleId2
+      case mri8 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri7 -> do
+          when (riStateLabel ri7 /= "UNDERFUNDED_FINAL") $ logError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri
+          when (rRefundedTickets (riRsd ri7) /= 3) $ logError "incorrect number of tickets refunded"
+
+      return ()
+
+    underfundedScenario2 :: Wallets -> Run ()
+    underfundedScenario2 wallets@Wallets {..} = do
+      -- Create Raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 20
+      let rddl = slotToEndPOSIXTime sltCfg 50
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 5_000_000
+              , rMinTickets = 4
+              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              }
+      (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
+      let raffleId = rRaffleID $ riRsd ri
+      waitNSlots 1
+      let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+      let secretHash = blake2b_256 secret
+      -- Buy 3 tickets
+      tickets <-
+        buyNTicketsToRaffleRun
+          ri
+          roc
+          [ (w2, secretHash)
+          , (w3, secretHash)
+          , (w4, secretHash)
+          ]
+
+      waitNSlots 100 --- Commit DDL pass
+      mri3 <- queryRaffleRun w1 raffleId
+      case mri3 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri3 -> unless (riStateLabel ri3 == "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+
+      let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
+
+      (_txId, _ticket12) <- raffleizeTransactionRun w2 roc (TicketOwner RefundTicket) (Just (head ticketRefs)) Nothing
+      mri6 <- queryRaffleRun w1 raffleId
+      case mri6 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri5 -> do
+          when (riStateLabel ri5 /= "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+          when (rRefundedTickets (riRsd ri5) /= 1) $ logError "incorrect number of tickets refunded"
+
+      (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+      mri4 <- queryRaffleRun w1 raffleId2
+      case mri4 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri4 -> unless (riStateLabel ri4 == "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+
+      (_txId, _ticket22) <- raffleizeTransactionRun w3 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 1)) Nothing
+      mri7 <- queryRaffleRun w1 raffleId2
+      case mri7 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri6 -> do
+          when (riStateLabel ri6 /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+          when (rRefundedTickets (riRsd ri6) /= 2) $ logError "incorrect number of tickets refunded"
+
+      (_txId, _ticket32) <- raffleizeTransactionRun w4 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 2)) Nothing
+      mri8 <- queryRaffleRun w1 raffleId2
+      case mri8 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri7 -> do
+          when (riStateLabel ri7 /= "UNDERFUNDED_FINAL") $ logError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri
+          when (rRefundedTickets (riRsd ri7) /= 3) $ logError "incorrect number of tickets refunded"
+
+      return ()
+
+    underfundedScenario3 :: Wallets -> Run ()
+    underfundedScenario3 wallets@Wallets {..} = do
+      -- Create Raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 20
+      let rddl = slotToEndPOSIXTime sltCfg 50
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 5_000_000
+              , rMinTickets = 4
+              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              }
+      (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
+      let raffleId = rRaffleID $ riRsd ri
+      waitNSlots 1
+      let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+      let secretHash = blake2b_256 secret
+      -- Buy 3 tickets
+      tickets <-
+        buyNTicketsToRaffleRun
+          ri
+          roc
+          [ (w2, secretHash)
+          , (w3, secretHash)
+          , (w4, secretHash)
+          ]
+
+      waitNSlots 100 --- Commit DDL pass
+      mri3 <- queryRaffleRun w1 raffleId
+      case mri3 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri3 -> unless (riStateLabel ri3 == "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+
+      let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
+
+      (_txId, _ticket12) <- raffleizeTransactionRun w2 roc (TicketOwner RefundTicket) (Just (head ticketRefs)) Nothing
+      mri6 <- queryRaffleRun w1 raffleId
+      case mri6 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri5 -> do
+          when (riStateLabel ri5 /= "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+          when (rRefundedTickets (riRsd ri5) /= 1) $ logError "incorrect number of tickets refunded"
+
+      (_txId, _ticket22) <- raffleizeTransactionRun w3 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 1)) Nothing
+      mri7 <- queryRaffleRun w1 raffleId
+      case mri7 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri6 -> do
+          when (riStateLabel ri6 /= "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+          when (rRefundedTickets (riRsd ri6) /= 2) $ logError "incorrect number of tickets refunded"
+
+      (_txId, _ticket32) <- raffleizeTransactionRun w4 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 2)) Nothing
+      mri8 <- queryRaffleRun w1 raffleId
+      case mri8 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri7 -> do
+          when (riStateLabel ri7 /= "UNDERFUNDED_LOCKED_STAKE") $ logError $ "not in status UNDERFUNDED_LOCKED_STAKE: " <> riStateLabel ri
+          when (rRefundedTickets (riRsd ri7) /= 3) $ logError "incorrect number of tickets refunded"
+
+      (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+      mri4 <- queryRaffleRun w1 raffleId2
+      case mri4 of
+        Nothing -> logError $ "Raffle not found: " <> show raffleId
+        Just ri4 -> unless (riStateLabel ri4 == "UNDERFUNDED_FINAL") $ logError "not in status UNDERFUNDED_FINAL"
+      return ()
 
 -- ------------------------------------------------------------------------------------------------
 
--- -- ** SCENARIO: Deploy Reference Script -> Create Raffle -> Buy -> Underfunded -> Refund -> Recover Stake
+-- -- ** Scenarios for raffle in status "UNREVEALED"
 
 -- ------------------------------------------------------------------------------------------------
 
-underfundedScenario :: Wallets -> Run ()
-underfundedScenario wallets@Wallets {..} = do
-  -- Create Raffle
-  sltCfg <- gets (mockConfigSlotConfig . mockConfig)
-  let cddl = slotToEndPOSIXTime sltCfg 20
-  let rddl = slotToEndPOSIXTime sltCfg 50
-  let config =
-        RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 4
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
-          }
-  (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
-  let raffleId = rRaffleID $ riRsd ri
-  waitNSlots 1
-  let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
-  let secretHash = blake2b_256 secret
-  -- Buy 3 tickets
-  tickets <-
-    buyNTicketsToRaffleRun
-      ri
-      roc
-      [ (w2, secretHash)
-      , (w3, secretHash)
-      , (w4, secretHash)
-      ]
+-- ------------------------------------------------------------------------------------------------
 
-  waitNSlots 100 --- Commit DDL pass
-  mri3 <- queryRaffleRun w1 raffleId
-  case mri3 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri3 -> unless (riStateLabel ri3 == "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
+-- -- ** Scenarios for raffle in status "SUCCESS"
 
-  (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+-- ------------------------------------------------------------------------------------------------
 
-  mri4 <- queryRaffleRun w1 raffleId2
-  case mri4 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri4 -> unless (riStateLabel ri4 == "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
+successStateTests :: TestTree
+successStateTests =
+  testGroup
+    "Tests for raffles in status 'SUCCESS"
+    [ testRun "Test Case 8.1: Winner Claims Prize -> Get collected amount" sucessScenarioTC1
+    , testRun "Test Case 8.2: Get collected amount -> Winner Claims Prize" sucessScenarioTC2
+    ]
+  where
+    sucessScenarioTC1 :: Wallets -> Run ()
+    sucessScenarioTC1 wallets@Wallets {..} = do
+      -- Create Raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 20
+      let rddl = slotToEndPOSIXTime sltCfg 60
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 10_000_000
+              , rMinTickets = 3
+              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              }
+      (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
+      let raffleId = rRaffleID $ riRsd ri
+      waitNSlots 1
+      let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+      -- Buy 3 tickets
+      tickets <-
+        buyNTicketsToRaffleRun
+          ri
+          roc
+          [ (w2, secret)
+          , (w3, secret)
+          , (w4, secret)
+          ]
 
-  let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
+      waitNSlots 30 --- Commit DDL pass
+      ri2 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
 
-  (_txId, _ticket12) <- raffleizeTransactionRun w2 roc (TicketOwner RefundTicket) (Just (head ticketRefs)) Nothing
-  mri6 <- queryRaffleRun w1 raffleId2
-  case mri6 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri5 -> do
-      when (riStateLabel ri5 /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
-      when (rRefundedTickets (riRsd ri5) /= 1) $ logError "incorrect number of tickets refunded"
+      let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
+      _tickets2 <-
+        reavealNTicketsRun
+          ri2
+          roc
+          [ (w2, head ticketRefs, secret)
+          , (w3, ticketRefs !! 1, secret)
+          , (w4, ticketRefs !! 2, secret)
+          ]
 
-  (_txId, _ticket22) <- raffleizeTransactionRun w3 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 1)) Nothing
-  mri7 <- queryRaffleRun w1 raffleId2
-  case mri7 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri6 -> do
-      when (riStateLabel ri6 /= "UNDERFUNDED_LOCKED_REFUNDS") $ logError "not in status UNDERFUNDED_LOCKED_REFUNDS"
-      when (rRefundedTickets (riRsd ri6) /= 2) $ logError "incorrect number of tickets refunded"
+      ri3 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
+      unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
 
-  (_txId, _ticket32) <- raffleizeTransactionRun w4 roc (TicketOwner RefundTicket) (Just (ticketRefs !! 2)) Nothing
-  mri8 <- queryRaffleRun w1 raffleId2
-  case mri8 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri7 -> do
-      when (riStateLabel ri7 /= "UNDERFUNDED_FINAL") $ logError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri
-      when (rRefundedTickets (riRsd ri7) /= 3) $ logError "incorrect number of tickets refunded"
+      (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
 
-  return ()
+      ri4 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
+      unless (riStateLabel ri4 == "SUCCESS_LOCKED_STAKE") $ logError "not in status SUCCESS_LOCKED_STAKE"
 
--- ----------------------
--- -- SUCCESS SCENARIO
--- -----------------------
+      -- WINNER is w2
+      (_txId, _raffleId) <- raffleizeTransactionRun w2 roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
 
--- raffleizeSuccessScenario :: Wallets -> Run ()
--- raffleizeSuccessScenario Wallets {..} = do
---   -- Deploy the validator to be used as reference script
---   refTicketValidator <- deployReferenceScriptRUN ticketValidatorGY w9 (walletAddress w9)
---   refRaffleValidator <- deployReferenceScriptRUN raffleizeValidatorGY w9 (walletAddress w9)
+      ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
+      unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
 
---   sltCfg <- gets (mockConfigSlotConfig . mockConfig)
---   let cddl = slotToEndPOSIXTime sltCfg 20
---   let rddl = slotToEndPOSIXTime sltCfg 50
---   let config =
---         RaffleConfig
---           { rCommitDDL = cddl
---           , rRevealDDL = rddl
---           , rTicketPrice = 5_000_000
---           , rMinTickets = 3
---           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
---           }
+    sucessScenarioTC2 :: Wallets -> Run ()
+    sucessScenarioTC2 wallets@Wallets {..} = do
+      -- Create Raffle
+      sltCfg <- gets (mockConfigSlotConfig . mockConfig)
+      let cddl = slotToEndPOSIXTime sltCfg 20
+      let rddl = slotToEndPOSIXTime sltCfg 60
+      let config =
+            RaffleConfig
+              { rCommitDDL = cddl
+              , rRevealDDL = rddl
+              , rTicketPrice = 10_000_000
+              , rMinTickets = 3
+              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              }
+      (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
+      let raffleId = rRaffleID $ riRsd ri
+      waitNSlots 1
+      let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+      -- Buy 3 tickets
+      tickets <-
+        buyNTicketsToRaffleRun
+          ri
+          roc
+          [ (w2, secret)
+          , (w3, secret)
+          , (w4, secret)
+          ]
 
---   (_, raffleId) <- raffleizeTransactionRun w1 (RaffleizeTxBuildingContext refRaffleValidator refTicketValidator) (User (CreateRaffle config)) Nothing Nothing
+      waitNSlots 30 --- Commit DDL pass
+      ri2 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
 
---   -- Buy ticket to raffle
---   ws <- buyNTicketsRUN refRaffleValidator raffleId [w1, w2, w3, w4] ["unu", "doi", "trei", fromString @BuiltinByteString "84a289f6f0dc3d1e18dcac4687604d7184a289f6f0dc3d1e18dcac4687604d71"]
+      let ticketRefs = fst . generateTicketACFromTicket . tiTsd <$> tickets
+      _tickets2 <-
+        reavealNTicketsRun
+          ri2
+          roc
+          [ (w2, head ticketRefs, secret)
+          , (w3, ticketRefs !! 1, secret)
+          , (w4, ticketRefs !! 2, secret)
+          ]
 
---   waitNSlots 4
---   -- Revealing tickets
---   revealNTicketsRUN refRaffleValidator refTicketValidator raffleId (take 3 ws)
---   revealNTicketsRUN refRaffleValidator refTicketValidator raffleId (drop 3 ws)
---   mapM_ (queryTicketRUN w1) $ fst <$> ws
+      ri3 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
+      unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
 
---   _ <- runWallet' w1 $ do
---     collectAmountTXRun refRaffleValidator raffleId
---   logInfo' ("RAFFLE OWNER COLLECTED AMOUNT :" ++ show raffleId)
+      -- WINNER is w2
+      (_txId, _raffleId) <- raffleizeTransactionRun w2 roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
+      ri4 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
+      unless (riStateLabel ri4 == "SUCCESS_LOCKED_AMOUNT") $ logError "not in status SUCCESS_LOCKED_AMOUNT"
 
---   void $ queryRaffleRUN True w1 raffleId
-
---   _ <- runWallet' w1 $ do
---     winnerCollectStakeTXRun refRaffleValidator refTicketValidator (head (fst <$> ws))
---   logInfo' ("TICKET OWNER REDEEM STAKE :" ++ show raffleId)
-
---   s <- queryRaffleRUN True w1 raffleId
---   when (s /= 43) $ logError "not in SUCCESS_FINAL"
-
--- ----------------------
--- -- UNDERFUNDED SCENARIO
--- -----------------------
-
--- underfundedScenario :: Wallets -> Run ()
--- underfundedScenario wallets@Wallets {..} = do
---   -- Deploy the validator to be used as reference script
---   refTicketValidator <- deployReferenceScriptRUN ticketValidatorGY w9 (walletAddress w9)
---   (refRaffleValidator, raffleId) <- createNew wallets
-
---   -- Buy ticket to raffle
---   ws <- buyNTicketsRUN refRaffleValidator raffleId [w1, w2, w3, w4] ["unu", "doi", "trei", fromString @BuiltinByteString "84a289f6f0dc3d1e18dcac4687604d7184a289f6f0dc3d1e18dcac4687604d71"]
-
---   waitNSlots 4
---   -- Revealing tickets
---   -- revealNTicketsRUN refRaffleValidator refTicketValidator raffleId (take 3 ws)
---   revealNTicketsRUN refRaffleValidator refTicketValidator raffleId (drop 3 ws)
---   mapM_ (queryTicketRUN w1) $ fst <$> ws
---   waitNSlots 30 -- Slot 52
---   recoverStakeRaffleRUN w1 refRaffleValidator raffleId
---   void $ queryRaffleRUN True w1 raffleId
-
----------------------
-------------------------
-------------------------
-------------------------
+      (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
+      ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
+      unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
