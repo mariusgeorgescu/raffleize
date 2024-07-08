@@ -124,7 +124,7 @@ deployValidatorsAndCreateNewValidRaffleRun wallets = do
           , rRevealDDL = rddl
           , rTicketPrice = 5_000_000
           , rMinTickets = 3
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876) 
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
   deployValidatorsAndCreateNewRaffleRun wallets config
 
@@ -134,20 +134,14 @@ buyTicketToRaffleRun ri roc w secret = do
   let secretHash = blake2b_256 secret
   soldTicketsBeforeBuy <- rSoldTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
   (_txId, ticketId) <- raffleizeTransactionRun w roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
-  mri2 <- queryRaffleRun w raffleId
-  case mri2 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri2 -> do
-      unless (riStateLabel ri2 == "COMMITTING") $ logError "not in status COMMITTING"
-      unless (soldTicketsBeforeBuy + 1 == rSoldTickets (riRsd ri2)) $ logError "no. of tickets sold was not updated"
-  mti <- queryTicketRun w ticketId
-  case mti of
-    Nothing -> error $ "Ticket ref not found: " <> show ticketId
-    Just ti -> do
-      unless (tiStateLabel ti == "COMMITTED") $ logError "not in status COMMITTED"
-      unless (tSecretHash (tiTsd ti) == secretHash) $ logError "invalid onchain secret hash"
-      unless (Data.Maybe.isNothing (tSecret (tiTsd ti))) $ logError "secret must not be revealed"
-      return ti
+  ri2 <- fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
+  unless (riStateLabel ri2 == "COMMITTING") $ logError "not in status COMMITTING"
+  unless (soldTicketsBeforeBuy + 1 == rSoldTickets (riRsd ri2)) $ logError "no. of tickets sold was not updated"
+  ti <- fromMaybe (error "raffle not fund") <$> queryTicketRun w ticketId
+  unless (tiStateLabel ti == "COMMITTED") $ logError "not in status COMMITTED"
+  unless (tSecretHash (tiTsd ti) == secretHash) $ logError "invalid onchain secret hash"
+  unless (Data.Maybe.isNothing (tSecret (tiTsd ti))) $ logError "secret must not be revealed"
+  return ti
 
 buyNTicketsToRaffleRun :: RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, BuiltinByteString)] -> Run [TicketInfo]
 buyNTicketsToRaffleRun ri roc = mapM (uncurry (buyTicketToRaffleRun ri roc))
@@ -158,21 +152,29 @@ revealTicketSecretRun ri roc w ticketId secret = do
   let raffleId = rRaffleID $ riRsd ri
   revealdTIcketsBefore <- rRevealedTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
   (_txId, ticketId2) <- raffleizeTransactionRun w roc (TicketOwner (RevealTicketSecret secret)) (Just ticketId) Nothing
-  mri2 <- queryRaffleRun w raffleId
-  case mri2 of
-    Nothing -> logError $ "Raffle not found: " <> show raffleId
-    Just ri2 -> do
-      unless (revealdTIcketsBefore + 1 == rRevealedTickets (riRsd ri2)) $ logError "no. of tickets revealed was not updated"
-
-  mti <- queryTicketRun w ticketId2
-  case mti of
-    Nothing -> error $ "Ticket ref not found: " <> show ticketId2
-    Just ti -> do
-      unless (tSecret (tiTsd ti) == Just secret) $ logError "invalid onchain secret"
-      return ti
+  ri2 <- fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
+  unless (revealdTIcketsBefore + 1 == rRevealedTickets (riRsd ri2)) $ logError "no. of tickets revealed was not updated"
+  ti <- fromMaybe (error "ticket not fund") <$> queryTicketRun w ticketId2
+  unless (tSecret (tiTsd ti) == Just secret) $ logError "invalid onchain secret"
+  return ti
 
 reavealNTicketsRun :: RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, AssetClass, BuiltinByteString)] -> Run [TicketInfo]
 reavealNTicketsRun ri roc = mapM (uncurry3 (revealTicketSecretRun ri roc))
+
+refundTicketSecretRun :: Bool -> RaffleInfo -> RaffleizeTxBuildingContext -> Wallet -> AssetClass -> Run TicketInfo
+refundTicketSecretRun isExtra ri roc w ticketId = do
+  if isExtra
+    then unless (riStateLabel ri `elem` ["UNREVEALED_LOCKED_STAKE_AND_REFUNDS", "UNREVEALED_LOCKED_REFUNDS"]) $ logError "not in status UNREVEALED"
+    else unless (riStateLabel ri `elem` ["UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS", "UNDERFUNDED_LOCKED_REFUNDS"]) $ logError "not in status UNDERFUNDED"
+  let raffleId = rRaffleID $ riRsd ri
+  refundedTIcketsBefore <- rRefundedTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
+  (_txId, ticketId2) <- raffleizeTransactionRun w roc (TicketOwner (if isExtra then RefundTicketExtra else RefundTicket)) (Just ticketId) Nothing
+  ri2 <- fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
+  unless (refundedTIcketsBefore + 1 == rRefundedTickets (riRsd ri2)) $ logError "no. of tickets refunded was not updated"
+  fromMaybe (error "ticket not fund") <$> queryTicketRun w ticketId2
+
+refundNTicketsRun :: Bool -> RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, AssetClass)] -> Run [TicketInfo]
+refundNTicketsRun isExtra ri roc = mapM (uncurry (refundTicketSecretRun isExtra ri roc))
 
 ------------------------------------------------------------------------------------------------
 
