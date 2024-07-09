@@ -30,6 +30,7 @@ data NameResources
   | MintTokensAddressField
   | SendTicketAddressField
   | SendRaffleAddressField
+  | MnemonicField
   | Other
   deriving (Eq, Ord, Show, Generic)
 
@@ -44,6 +45,7 @@ data Screen
   | MyTicketsScreen
   | ConstructValueScreen
   | RevealTicketSecretScreen
+  | ImportWalletFromMnemonic
   deriving (Eq, Ord, Enum, Show)
 
 instance Splittable [] where

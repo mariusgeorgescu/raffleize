@@ -7,7 +7,6 @@ import PlutusTx.Builtins (
   serialiseData,
  )
 
-import GHC.Err (error)
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
@@ -30,16 +29,14 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes (
   RaffleConfig (..),
   RaffleDatum,
-  RaffleInfo (..),
   RaffleParam (..),
   RaffleStateData (..),
   RaffleStateId,
   raffleStateData,
  )
-import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketInfo (TicketInfo), TicketStateData (..), TicketStateId, ticketStateData)
-import RaffleizeDApp.CustomTypes.Types
+import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateId, ticketStateData)
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
-import Prelude hiding (error)
+import Prelude
 
 raffleTicketPriceValue :: RaffleStateData -> Value
 raffleTicketPriceValue RaffleStateData {rConfig} = adaValueFromLovelaces (rTicketPrice rConfig)
@@ -85,21 +82,6 @@ checkRaffle
       , traceIfFalse "empty stake" $
           rStake #/= mempty
       , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
-      -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffle #-}
@@ -138,7 +120,7 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
   RaffleOwner RecoverStake -> rValue #- rStake rConfig
   RaffleOwner RecoverStakeAndAmount -> rValue #- rStake rConfig #- raffleAccumulatedValue rsd
   RaffleOwner CollectAmount -> rValue #- raffleAccumulatedValue rsd
-  RaffleOwner (Update newconfig) -> (rValue #- rStake rConfig )#+ rStake newconfig
+  RaffleOwner (Update newconfig) -> (rValue #- rStake rConfig) #+ rStake newconfig
   TicketOwner (RevealTicketSecret _) -> rValue
   TicketOwner CollectStake -> rValue #- rStake rConfig
   TicketOwner RefundTicket ->
@@ -182,7 +164,7 @@ validRaffleStatesForRaffleizeAction action = case action of
       [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
       , 41 -- SUCCESS_LOCKED_AMOUNT
       ]
-    GetCollateraOfExpiredTicket -> [] -- ticket action, not on raffle state
+    GetCollateralOfExpiredTicket -> [] -- ticket action, not on raffle state
   TicketOwner toa -> case toa of
     (RevealTicketSecret _) -> [3]
     CollectStake ->
@@ -297,7 +279,7 @@ evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets,
 
 showTicketStateLabel :: TicketStateId -> String
 showTicketStateLabel r = case r of
-  90 -> "COMITTED"
+  90 -> "COMMITTED"
   91 -> "FULLY_REFUNDABLE"
   92 -> "REVEALABLE"
   93 -> "REVEALED"
@@ -309,7 +291,7 @@ showTicketStateLabel r = case r of
 
 evalTicketState :: TicketStateData -> Integer -> RaffleStateId -> TicketStateId
 evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
-  | raffleStateId #== 2 = 90 -- COMITTED
+  | raffleStateId #== 2 = 90 -- COMMITTED
   | raffleStateId #== 10 = 91 -- FULLY_REFUNDABLE
   | raffleStateId #== 20 = 91 -- FULLY_REFUNDABLE
   | raffleStateId #== 21 = 91 -- FULLY_REFUNDABLE
@@ -350,7 +332,7 @@ validActionLabelsForTicketState r = case r of
 validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateId]
 validTicketStatesForRaffleizeAction ra = case ra of
   RaffleOwner roa -> case roa of
-    GetCollateraOfExpiredTicket -> [97] ---- UNREVEALED_EXPIRED   | ticket action only,  not on raffle state
+    GetCollateralOfExpiredTicket -> [97] ---- UNREVEALED_EXPIRED   | ticket action only,  not on raffle state
     _ -> []
   TicketOwner toa -> case toa of
     (RevealTicketSecret _) -> [92] -- REVEALABLE
@@ -363,7 +345,7 @@ validTicketStatesForRaffleizeAction ra = case ra of
 
 validateTicketAction :: RaffleizeAction -> TicketStateId -> Bool
 validateTicketAction action currentStateLabel =
-  traceIfFalse "Action not permited in this ticket state" $
+  traceIfFalse "Action not permitted in this ticket state" $
     currentStateLabel `pelem` validTicketStatesForRaffleizeAction action
 {-# INLINEABLE validateTicketAction #-}
 
@@ -413,7 +395,7 @@ revealTicketToRaffleRT secret ticket@TicketStateData {tSecretHash, tRaffle} raff
       let updated_ticket = ticket {tSecret = Just secret}
           updated_raffle = raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger secret) `modInteger` rSoldTickets}
        in (updated_raffle, updated_ticket)
-    else error "secret does not match the secret hash"
+    else traceError "secret does not match the secret hash"
 
 refundTicketToRaffle :: TicketStateData -> RaffleStateData -> RaffleStateData
 refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefundedTickets, rRaffleID} =
@@ -466,9 +448,9 @@ generateTicketACFromTicket TicketStateData {tNumber, tRaffle} = generateRefAndUs
 
 isOneOutputTo :: [TxOut] -> PubKeyHash -> Bool
 isOneOutputTo [out] adminPKH =
-  traceIfFalse "The TxOut should be locked to the addmin addr" $
+  traceIfFalse "The TxOut should be locked to the admin addr" $
     isTxOutWith noConstraint (#== pubKeyHashAddress adminPKH) out
-isOneOutputTo _ _ = traceIfFalse "More than one ouput found" False
+isOneOutputTo _ _ = traceIfFalse "More than one output found" False
 {-# INLINEABLE isOneOutputTo #-}
 
 refTokenPrefixBS :: BuiltinByteString
@@ -520,17 +502,3 @@ paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
 -- This function checks if tokenname has the raffle prefix
 hasRefPrefix :: TokenName -> Bool
 hasRefPrefix (TokenName tnbs) = sliceByteString 0 4 tnbs #== refTokenPrefixBS
-
-mkRaffleInfo :: POSIXTimeRange -> (RaffleStateData, Value, String) -> RaffleInfo
-mkRaffleInfo tr (rsd, rVal, img) =
-  let raffleStateId = evaluateRaffleState (tr, rsd, rVal)
-      stateLabel = showRaffleStateLabel raffleStateId
-      actions = validActionLabelsForRaffleState raffleStateId
-   in RaffleInfo rsd rVal img stateLabel actions
-
-mkTicketInfo :: RaffleStateId -> Integer -> (TicketStateData, Value, String) -> TicketInfo
-mkTicketInfo raffleStateId currentRandom (tsd, tVal, tImg) =
-  let ticketStateId = evalTicketState tsd currentRandom raffleStateId
-      ticketStateLabel = showTicketStateLabel ticketStateId
-      actions = validActionLabelsForTicketState ticketStateId
-   in TicketInfo tsd tVal tImg ticketStateLabel actions

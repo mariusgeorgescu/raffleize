@@ -1,5 +1,6 @@
 module RaffleizeDApp.TxBuilding.Utils where
 
+import Cardano.Api (Key (getVerificationKey), castVerificationKey)
 import Data.Text qualified
 import GeniusYield.TxBuilder
 import GeniusYield.Types
@@ -9,6 +10,7 @@ import PlutusLedgerApi.V2
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.TxBuilding.Validators
 
@@ -24,12 +26,15 @@ getAdaBalance = fromValue . getValueBalance
 getValueBalance :: GYUTxOs -> Value
 getValueBalance = valueToPlutus . foldMapUTxOs utxoValue
 
-addressFromPaymentSigningKey :: GYNetworkId -> GYPaymentSigningKey -> GYAddress
-addressFromPaymentSigningKey nid skey =
-  let pub_key = paymentVerificationKey skey
-      payment_key_hash = paymentKeyHash pub_key
-      address = addressFromPaymentKeyHash nid payment_key_hash
-   in address
+addressFromPaymentSigningKey :: GYNetworkId -> GYExtendedPaymentSigningKey -> GYAddress
+addressFromPaymentSigningKey nid extendedSkey =
+  let
+    vkey = getVerificationKey $ extendedPaymentSigningKeyToApi extendedSkey
+    pub_key = paymentVerificationKeyFromApi (castVerificationKey vkey)
+    payment_key_hash = paymentKeyHash pub_key
+    address = addressFromPaymentKeyHash nid payment_key_hash
+   in
+    address
 
 pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime
 pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . slotFromApi . fromInteger

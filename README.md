@@ -113,7 +113,7 @@ By fulfilling these purposes, it contributes to the Cardano ecosystem in multipl
 ### 1.2 Intended Audience and Reading Suggestions
 👥  
 This document provides a clear blueprint of how the application should function and behave under various circumstances, and serves as a comprehensive guide detailing the functionalities, scenarios, and acceptance criteria of the application intended for:   
-1. 👨🏻‍💻 Developers (which mayh want to implement the specified functionalities using different technologies or frameworks)  
+1. 👨🏻‍💻 Developers (which may want to implement the specified functionalities using different technologies or frameworks)  
 2. 🕵🏻 Testers (to create test cases and ensure the application meets the stipulated requirements)  
 3. 👔 Other stakeholders individuals and entities interested in building on the Cardano blockchain looking for an inspiration source.
  
@@ -201,7 +201,7 @@ Here's an elaborated description of each component:
 
 #### High Level Architecture:
 
-There are three architectural versions envisaged for the DApp, each representing a different approach, varying by where the DApp static content is hosted, where transactions are constructed and how transactions are submited to the blockchain.
+There are three architectural versions envisaged for the DApp, each representing a different approach, varying by where the DApp static content is hosted, where transactions are constructed and how transactions are submitted to the blockchain.
 
 
 ##### Version 1: Centralized Hosting and Backend Transaction Handling
@@ -252,7 +252,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 ### Use-cases
 
-![Usecase Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Usecase/UsecaseDiagram-RaffleDApp.puml)
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Use-case/UsecaseDiagram-RaffleDApp.puml)
 
 #### NonAuthenticated User
 - **Characteristics** : Represents users who have not connected a wallet. They have limited access to the DApp features compared to authenticated users.
@@ -283,8 +283,8 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 - **Interactions** 
   - Update raffle configurations.
   - Cancel raffles.
-  - Collect the accumulated amount for succesfully finalized raflles.
-  - Recover the raffle stake in case of unsuccesfully finalized raffles (expired/underfunded/unrevealed).
+  - Collect the accumulated amount for successfully finalized raffles.
+  - Recover the raffle stake in case of unsuccessfully finalized raffles (expired/underfunded/unrevealed).
   - Recover the raffle stake and the accumulated amount in the case none of the ticket participated in revealing phase.
   - Collect the ticket collateral of an unrevealed tickets for the owned raffle.
 
@@ -299,15 +299,15 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 #### Ticket Token State Transitions
 
-![Usecase Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-TicketOwner_Token.puml)
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-TicketOwner_Token.puml)
 
 #### Raffle Token State Transitions
 
-![Usecase Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-RaffleOwner_Token.puml)
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-RaffleOwner_Token.puml)
 
 #### Raffle State Transitions
 
-![Usecase Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-Raffle_State_Token.puml)
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-Raffle_State_Token.puml)
 
 
 ### Transactions
@@ -335,7 +335,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 **Summary Description**:	This transaction allows anyone to create a raffle for some digital assets.  
 
 **Preconditions:**
-1. The raffle configration must be valid.
+1. The raffle configuration must be valid.
 2. The organizer must own the necessary Ada amount to cover the raffle collateral and transaction fees.
 3. The organizer must own the raffle stake value 
 
@@ -428,14 +428,14 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 **Preconditions:**
 1. The raffle validator script must be locked to a UTxO as reference script.
-2. The raffle collateral, raffle reference NFT the accumulated amout value (and optional the rafflle stake) must be locked to the raffle's validator address with valid datum.
+2. The raffle collateral, raffle reference NFT the accumulated amount value (and optional the raffle stake) must be locked to the raffle's validator address with valid datum.
 3. The raffle was finalized successfully (all tickets sold where revealed).
 4. The user must own the necessary Ada amount to cover the transaction fees.
 5. The user must own the raffle user NFT.
 
 **Postconditions:**
 1. The raffle user NFT is burned;
-2. The raffle collateral and raffle reference NFT (and optional the rafflle stake) are locked to the raffle validator's address with valid datum. 
+2. The raffle collateral and raffle reference NFT (and optional the raffle stake) are locked to the raffle validator's address with valid datum. 
 3. The accumulated value is locked to address/es indicated  when constructing the transaction.
 
 **Transaction:**
@@ -445,7 +445,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 #### Recover Stake
 ---
 **Actors**: Raffle Owner    
-**Summary Description**:	Recover the raffle stake in case of unsuccesfully finalized raffles (expired/underfunded/unrevealed).
+**Summary Description**:	Recover the raffle stake in case of unsuccessfully finalized raffles (expired/underfunded/unrevealed).
 
 **Preconditions:**
 1. The raffle validator script must be locked to a UTxO as reference script.
@@ -471,7 +471,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 **Preconditions:**
 1. The raffle validator script must be locked to a UTxO as reference script.
-2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amonut value must be locked to the raffle's validator address with valid datum.
+2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amount value must be locked to the raffle's validator address with valid datum.
 3. The raffle must be UNREVEALED with 0 tickets revealed.
 4. The user must own the necessary Ada amount to cover the transaction fees.
 5. The user must own the raffle user NFT.
@@ -493,7 +493,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 **Preconditions:**
 1. The ticket validator script must be locked to a UTxO as reference script.
-2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amonut value must be locked to the raffle's validator address with valid datum.
+2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amount value must be locked to the raffle's validator address with valid datum.
 3. The raffle must be UNREVEALED.
 4. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum..
 5. The ticket must be BURNABLE_BY_RAFFLE_OWNER (unrevealed ticket and for an unrevealed raffle)
@@ -514,12 +514,12 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 #### Reveal Secret
 ---
 **Actors**: Ticket Owner    
-**Summary Description**:	This transaction allows to the ticket owner to reveal the ticket secret matching the ticket secrethash. 
+**Summary Description**:	This transaction allows to the ticket owner to reveal the ticket secret matching the ticket secret hash. 
 
 **Preconditions:**
 1. The raffle validator script must be locked to a UTxO as reference script.
 1. The ticket validator script must be locked to a UTxO as reference script.
-2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amonut value must be locked to the raffle's validator address with valid datum.
+2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amount value must be locked to the raffle's validator address with valid datum.
 3. The raffle must be REVEALING:
     - commit deadline passed;
     - min no. of tickets sold;
@@ -557,7 +557,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 **Postconditions:**
 1. The ticket reference NFT is burned.
 2. The ticket user NFT is burned.
-3. The raffle collateral and raffle reference NFT (and optional the rafflle accumulated amount) are locked to the raffle validator's address with valid datum. 
+3. The raffle collateral and raffle reference NFT (and optional the raffle accumulated amount) are locked to the raffle validator's address with valid datum. 
 4. The raffle stake value and ticket collateral value are locked to address/es indicated  when constructing the transaction.
 
 **Transaction:**
@@ -603,9 +603,9 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 3. The raffle collateral, raffle reference NFT the raffle stake value and the raffle accumulated amount must be locked to the raffle's validator address with valid datum.
 4. The raffle must be in unrevealed state.
     - commit deadline passed and min no of tickets reached;
-    - revealead deadline passed and not all tickets revealed;
+    - revealed deadline passed and not all tickets revealed;
 5. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum.
-6. The ticket must be reavealed.
+6. The ticket must be revealed.
 7. The user must own the necessary Ada amount to cover the transaction fees.
 8. The user must own the ticket user NFT.
 
@@ -624,7 +624,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 #### Collateral Refund 
 ---
 **Actors**: Ticket Owner    
-**Summary Description**: This transaction allows the owner of a reavealed losing ticket to get back the collateral.
+**Summary Description**: This transaction allows the owner of a revealed losing ticket to get back the collateral.
 
 **Preconditions:**
 1. The raffle validator script must be locked to a UTxO as reference script.
@@ -665,7 +665,7 @@ Use functional programming languages for the DApp’s frontend and backend (e.g.
 
 #### Security Considerations
 **Smart Contract Security:** Audited and secure smart contracts to prevent vulnerabilities and exploits.  
-**Testing:** Rigorous testing of the offchain code to prevent vulnerabilities.
+**Testing:** Rigorous testing of the off-chain code to prevent vulnerabilities.
 #### Design Conventions or Programming Standards
 **Code Quality and Maintainability:**
 Adherence to industry-standard coding practices for readability, maintainability, and scalability.  

@@ -192,21 +192,6 @@ isBurningNFT :: AssetClass -> Value -> Bool
 isBurningNFT ac txInfoMint = traceIfFalse "NFT not burned" $ assetClassValueOf txInfoMint ac #== pnegate 1
 {-# INLINEABLE isBurningNFT #-}
 
--- integerToBs :: Integer -> BuiltinByteString
--- integerToBs x = integerToBSHelper (if x #< 0 then pnegate x else x) (x #< 0) emptyByteString
---   where
---     integerToBSHelper :: Integer -> Bool -> BuiltinByteString -> BuiltinByteString
---     integerToBSHelper x' isNegative acc -- quotient is 0 means x is single-digit
---       | x' #== 0 && isNegative = consByteString 45 acc -- prepend '-' for negative numbers
---       | x' #== 0 && isNegative #== False = acc
---       | otherwise =
---           let (q, r) = x' `quotRem` 10
---            in integerToBSHelper q isNegative (digitToBS r #<> acc)
-
---     digitToBS :: Integer -> BuiltinByteString
---     digitToBS d = consByteString (48 #+ fromInteger d) emptyByteString -- 48 is ASCII code for '0'
--- {-# INLINEABLE integerToBs #-}
-
 integerToBs24 :: Integer -> BuiltinByteString
 integerToBs24 = dropByteString 1 . serialiseData . toBuiltinData -- Removing First Byte  (works for value > 24)
 {-# INLINEABLE integerToBs24 #-}
@@ -236,12 +221,6 @@ bsToIntegerDirect bs !acc !index =
 
 --- >>> bsToInteger "marius"
 -- 120265298769267
-
--- raisedTo :: Integer -> Integer -> Integer
--- raisedTo !_x !y | y #== 0 = 1
--- raisedTo !x !y | y #== 1 = x
--- raisedTo !x !y = x #* raisedTo x (y #- 1)
--- {-# INLINEABLE raisedTo #-}
 
 -- | Helper function to check if a 'TxOut' contains exactly 1 quantity of an AssetClass
 outHas1of :: TxOut -> AssetClass -> Bool

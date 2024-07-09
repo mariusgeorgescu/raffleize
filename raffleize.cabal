@@ -161,7 +161,9 @@ executable server
   hs-source-dirs: server
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
   build-depends:
+    , aeson-pretty
     , atlas-cardano
+    , bytestring
     , http-types
     , raffleize
     , servant-server

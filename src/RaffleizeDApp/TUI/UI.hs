@@ -18,6 +18,7 @@ import Data.List qualified
 import Data.Maybe (fromMaybe)
 import Data.String (IsString (..))
 import Data.Text qualified
+import Data.Text.IO qualified
 import Data.Time
 import Data.Time.Format.ISO8601
 import Data.Vector qualified
@@ -38,6 +39,7 @@ import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   actionToLabel,
@@ -63,11 +65,12 @@ import System.IO.Extra (readFile)
 data RaffleizeUI = RaffleizeUI
   { providersCtx :: ProviderCtx
   , validatorsConfig :: Maybe RaffleizeTxBuildingContext
-  , maybeSecretKey :: Maybe GYPaymentSigningKey
+  , maybeSecretKey :: Maybe GYExtendedPaymentSigningKey
   , balance :: Value
   , balanceList :: GenericList NameResources [] (CurrencySymbol, TokenName, Integer)
   , logo :: String
   , message :: Text
+  , mnemonicForm :: Form MnemonicFormState RaffleizeEvent NameResources
   , mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources
   , raffleConfigForm :: Form RaffleConfigFormState RaffleizeEvent NameResources
   , activeRafflesForm :: Form ActiveRafflesFormState RaffleizeEvent NameResources
@@ -120,8 +123,9 @@ tui = do
 buildInitialState :: ProviderCtx -> String -> IO RaffleizeUI
 buildInitialState pCtx logo = do
   maybeValidatorsConfig <- decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
-  maybeSKey <- readPaymentKeyFile operationSkeyFilePath
+  maybeSKey <- readMnemonicFile operationPrivFilePath
   allRafflesInfo <- getActiveRaffles pCtx
+  let mnemonicForm = mkMnemonicForm (MnemonicFormState mempty)
   let mintTokenForm = mkMintTokenForm (MintTokenFormState "test-tokens" 1)
   let buyTicketForm = mkBuyTicketForm (BuyTicketFormState mempty mempty)
   let activeRafflesForm = mkActiveRafflesForm (ActiveRafflesFormState (Data.Vector.fromList allRafflesInfo) Nothing)
@@ -149,7 +153,7 @@ buildInitialState pCtx logo = do
       return (rf, tf, cf, balance)
   let balanceList = Brick.Widgets.List.list ValueItemsList (flattenValue balance) 5
   let constructValueState = mkConstructValueState balance mempty
-  return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance balanceList logo mempty mintTokenForm raffleConfigForm activeRafflesForm Nothing myRafflesForm buyTicketForm myTicketsForm revealSecretForm constructValueState MainScreen)
+  return (RaffleizeUI pCtx maybeValidatorsConfig maybeSKey balance balanceList logo mempty mnemonicForm mintTokenForm raffleConfigForm activeRafflesForm Nothing myRafflesForm buyTicketForm myTicketsForm revealSecretForm constructValueState MainScreen)
 
 refreshState :: RaffleizeUI -> IO RaffleizeUI
 refreshState RaffleizeUI {..} = do
@@ -169,6 +173,7 @@ handleEvent s e =
       EvKey KEsc [] -> continue s {message = "", currentScreen = MainScreen}
       EvKey key _modifiers ->
         case currentScreen s of
+          ImportWalletFromMnemonic -> handleMnemonicEvents s e
           MintTokenScreen -> handleMintTokensEvents s e
           ActiveRafflesScreen -> handleActiveRafflesEvents s e
           CreateRaffleScreen -> handleCreateUpdateRaffleEvents s e
@@ -178,39 +183,39 @@ handleEvent s e =
           MyTicketsScreen -> handleMyTicketsEvents s e
           RevealTicketSecretScreen -> handleRevealSecretEvents s e
           MyRafflesScreen -> handleMyRafflesEvents s e
-          MainScreen -> case key of
-            (KChar c) -> case c of
-              'q' -> halt s
-              'v' -> continue s {currentScreen = ActiveRafflesScreen}
-              'g' -> do
-                liftIO $ generateNewSkey operationSkeyFilePath
-                s' <- liftIO $ refreshState s
-                continue s'
-              'e' -> do
-                liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
-                continue s {message = "VALIDATORS SUCCESFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
-              _ ->
-                if isJust (maybeSecretKey s)
-                  then do
-                    case c of
-                      'm' -> continue s {currentScreen = MintTokenScreen}
-                      'c' -> continue s {currentScreen = CreateRaffleScreen}
-                      'r' -> continue s {currentScreen = MyRafflesScreen}
-                      't' -> continue s {currentScreen = MyTicketsScreen}
-                      'l' -> do
-                        liftIO clearScreen
-                        initialState <- liftIO $ refreshState s
-                        continue initialState {message = "Updated"}
-                      'd' -> do
-                        liftIO clearScreen
-                        liftIO $ deployValidators (providersCtx s) (fromJust (maybeSecretKey s))
-                        initialState <- liftIO $ refreshState s
-                        continue initialState {message = "VALIDATORS SUCCESFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
-                      _ -> continue s
-                  else continue s
-            _ -> do
-              newBalanceList <- handleListEvent vtye (balanceList s)
-              continue s {balanceList = newBalanceList}
+          MainScreen ->
+            if not . Data.Text.null $ message s
+              then continue s
+              else case key of
+                (KChar c) -> case c of
+                  'q' -> halt s
+                  'v' -> continue s {currentScreen = ActiveRafflesScreen}
+                  'i' -> continue s {currentScreen = ImportWalletFromMnemonic}
+                  'e' -> do
+                    liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
+                    continue s {message = "VALIDATORS SUCCESSFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
+                  _ ->
+                    if isJust (maybeSecretKey s)
+                      then do
+                        case c of
+                          'm' -> continue s {currentScreen = MintTokenScreen}
+                          'c' -> continue s {currentScreen = CreateRaffleScreen}
+                          'r' -> continue s {currentScreen = MyRafflesScreen}
+                          't' -> continue s {currentScreen = MyTicketsScreen}
+                          'l' -> do
+                            liftIO clearScreen
+                            initialState <- liftIO $ refreshState s
+                            continue initialState {message = "Updated"}
+                          'd' -> do
+                            liftIO clearScreen
+                            liftIO $ deployValidators (providersCtx s) (fromJust (maybeSecretKey s))
+                            initialState <- liftIO $ refreshState s
+                            continue initialState {message = "VALIDATORS SUCCESSFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
+                          _ -> continue s
+                      else continue s
+                _ -> do
+                  newBalanceList <- handleListEvent vtye (balanceList s)
+                  continue s {balanceList = newBalanceList}
       _ -> continue s
     _ -> continue s
 
@@ -296,7 +301,7 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
 handleConstrutValueEvents _state _event = error "Invalid use of handleConstrutValueEvents"
 
 -- Refactor helper functions
-raffleizeTransactionHandler :: RaffleizeOffchainContext -> GYPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources (Next RaffleizeUI)
+raffleizeTransactionHandler :: RaffleizeOffchainContext -> GYExtendedPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources (Next RaffleizeUI)
 raffleizeTransactionHandler roc@(RaffleizeOffchainContext _ providersCtx) secretKey raffleizeAction contextNFT mAddr s validateAction =
   let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
    in if validateAction
@@ -464,8 +469,7 @@ formStateFromRaffleConfig RaffleConfig {..} = do
 handleMyRafflesEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
 handleMyRafflesEvents s@RaffleizeUI {..} event
   | currentScreen == MyRafflesScreen = do
-      let mrForm = myRafflesForm
-          mrFormState = formState mrForm
+      let mrFormState = formState myRafflesForm
           maybeSelectedRaffle = mrFormState ^. selectedMyRaffle
        in case (event, maybeSecretKey, validatorsConfig) of
             (VtyEvent (EvKey key _modifiers), Just secretKey, Just validatorsTxOutRefs) ->
@@ -502,38 +506,61 @@ handleMyRafflesEvents _ _ = error "Invalid use of handleMyRafflesEvents"
 handleMintTokensEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
 handleMintTokensEvents s@RaffleizeUI {currentScreen, maybeSecretKey, mintTokenForm, providersCtx} event
   | currentScreen == MintTokenScreen =
-      let mtForm = mintTokenForm
-       in case (event, maybeSecretKey) of
-            (VtyEvent (EvKey key _modifiers), Just secretKey) ->
-              case (key, allFieldsValid mtForm) of
-                (KEnter, True) ->
-                  do
-                    liftIO clearScreen
-                    let mtFormState = formState mtForm
-                    txOutRef <-
-                      liftIO $
-                        mintTestTokens
-                          providersCtx
-                          secretKey
-                          (Data.Text.unpack (mtFormState ^. tokenNameField))
-                          (fromIntegral (mtFormState ^. mintAmount))
-                    let nid = (cfgNetworkId . ctxCoreCfg) providersCtx
-                    initialState <- liftIO $ buildInitialState providersCtx (logo s)
-                    continue
-                      initialState
-                        { message = "TEST TOKENS SUCCESFULLY MINTED !\n" <> showLink nid "tx" txOutRef
-                        }
-                _ -> do
-                  newMtForm <- handleFormEvent event mtForm
-                  let newMtFormState = formState newMtForm
-                  let fieldValidations =
-                        [ setFieldValid (Data.Text.length (newMtFormState ^. tokenNameField) <= tokenNameMaxLength) TokenNameField
-                        , setFieldValid (newMtFormState ^. mintAmount > 0) MintAmountField
-                        ]
-                  let validatedForm = foldr' ($) newMtForm fieldValidations
-                  continue s {mintTokenForm = validatedForm}
-            _ -> continue s
+      case (event, maybeSecretKey) of
+        (VtyEvent (EvKey key _modifiers), Just secretKey) ->
+          case (key, allFieldsValid mintTokenForm) of
+            (KEnter, True) ->
+              do
+                liftIO clearScreen
+                let mtFormState = formState mintTokenForm
+                txOutRef <-
+                  liftIO $
+                    mintTestTokens
+                      providersCtx
+                      secretKey
+                      (Data.Text.unpack (mtFormState ^. tokenNameField))
+                      (fromIntegral (mtFormState ^. mintAmount))
+                let nid = (cfgNetworkId . ctxCoreCfg) providersCtx
+                initialState <- liftIO $ buildInitialState providersCtx (logo s)
+                continue
+                  initialState
+                    { message = "TEST TOKENS SUCCESSFULLY MINTED !\n" <> showLink nid "tx" txOutRef
+                    }
+            _ -> do
+              newMtForm <- handleFormEvent event mintTokenForm
+              let newMtFormState = formState newMtForm
+              let fieldValidations =
+                    [ setFieldValid (Data.Text.length (newMtFormState ^. tokenNameField) <= tokenNameMaxLength) TokenNameField
+                    , setFieldValid (newMtFormState ^. mintAmount > 0) MintAmountField
+                    ]
+              let validatedForm = foldr' ($) newMtForm fieldValidations
+              continue s {mintTokenForm = validatedForm}
+        _ -> continue s
 handleMintTokensEvents _state _event = error "Invalid use of handleMintTokensEvents"
+
+-- | Handle events in Mint Tokens Screen
+handleMnemonicEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleMnemonicEvents s@RaffleizeUI {currentScreen, mnemonicForm, providersCtx} event
+  | currentScreen == ImportWalletFromMnemonic =
+      case event of
+        (VtyEvent (EvKey KEnter _modifiers)) -> do
+          liftIO clearScreen
+          let mnFormState = formState mnemonicForm
+          liftIO $ Data.Text.IO.writeFile operationPrivFilePath (_mnemonicField mnFormState)
+          initialState <- liftIO $ buildInitialState providersCtx (logo s)
+          continue
+            initialState
+              { message = "WALLET IMPORTED SUCCESSFULLY !\n" <> showText operationPrivFilePath
+              }
+        _ -> do
+          newMnForm <- handleFormEvent event mnemonicForm
+          let newMnFormState = formState newMnForm
+          let fieldValidations =
+                [ setFieldValid (isValidMnemonic (newMnFormState ^. mnemonicField)) MnemonicField
+                ]
+          let validatedForm = foldr' ($) newMnForm fieldValidations
+          continue s {mnemonicForm = validatedForm}
+handleMnemonicEvents _state _event = error "Invalid use of handleMintTokensEvents"
 
 ------------------------------------------------------------------------------------------------
 
@@ -557,6 +584,7 @@ drawUI s =
             , if currentScreen s == MyTicketsScreen then drawMyTicketsScreen (myTicketsForm s) else emptyWidget
             , if currentScreen s == ConstructValueScreen then drawConstructValueWidget (myConstrctValueState s) else emptyWidget
             , if currentScreen s == RevealTicketSecretScreen then drawRevealTicketSecretScreen maybeSelectedTicket (revealSecretForm s) else emptyWidget
+            , if currentScreen s == ImportWalletFromMnemonic then drawMnemonicForm (mnemonicForm s) else emptyWidget
             , mainScreen s
             ]
 
@@ -627,7 +655,7 @@ mainScreen s =
                       <$> filter
                         (not . Data.Text.null)
                         ( ( if isNothing (maybeSecretKey s)
-                              then ["[G] - Generate new wallet skey"]
+                              then ["[I] - Import wallet from mnemonic"]
                               else
                                 [ "[V] - View all active raffles"
                                 , "[R] - View my raffles"
@@ -635,7 +663,7 @@ mainScreen s =
                                 , "[C] - Create raffle" -- TODO : CHECK ADA BALANCE
                                 , "[M] - Mint some test tokens"
                                 , "[D] - Deploy Raffleize Validators"
-                                , "[L] - Get wallet balance"
+                                , "[L] - Refresh wallet balance"
                                 ]
                           )
                             ++ [ "[E] - Export validators"
@@ -643,7 +671,7 @@ mainScreen s =
                                ]
                         )
                   )
-    assetsWidget :: GYNetworkId -> Maybe GYPaymentSigningKey -> GenericList NameResources [] (CurrencySymbol, TokenName, Integer) -> Widget NameResources
+    assetsWidget :: GYNetworkId -> Maybe GYExtendedPaymentSigningKey -> GenericList NameResources [] (CurrencySymbol, TokenName, Integer) -> Widget NameResources
     assetsWidget nid (Just skey) valList =
       let addr = addressFromPaymentSigningKey nid skey
           val = unFlattenValue $ listElements valList

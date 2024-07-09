@@ -18,5 +18,5 @@ qcProps =
 
 stateToActionsConsistency :: TestTree
 stateToActionsConsistency =
-  QC.testProperty "RaffleStateId - RaffleAction realtion is consistent with RaffleStateId - RaffleActionLabel relation" $
+  QC.testProperty "RaffleStateId - RaffleAction relation is consistent with RaffleStateId - RaffleActionLabel relation" $
     \(action :: RaffleizeAction) -> all (\state -> actionToLabel action `elem` validActionLabelsForRaffleState state) $ validRaffleStatesForRaffleizeAction action

@@ -20,8 +20,10 @@ import PlutusLedgerApi.V1.Value
 import PlutusPrelude (showText)
 import PlutusTx.Show qualified
 import RaffleizeDApp.Constants
+import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TUI.Types
@@ -94,6 +96,7 @@ invalidFieldText t = case t of
   ConstructedValueItemsList -> "Stake value must not be empty ! The stake value can contain maximum 2 asset classes"
   RevealedSecretField -> "The secret must hash must match with the onchain secret hash!"
   SecretField -> "The secret must have maximum 32 characters !"
+  MnemonicField -> "Enter a valid recovery phrase !"
   _ -> ""
 
 invalidFieldsWidget :: [NameResources] -> Widget n
@@ -121,6 +124,28 @@ formActionsWidget isValid desc other =
         ]
           <> other
       )
+
+------------------------------------------------------------------------------------------------
+
+-- *  Import Wallet Form
+
+------------------------------------------------------------------------------------------------
+
+newtype MnemonicFormState = MnemonicFormState
+  { _mnemonicField :: Text
+  }
+  deriving (Show)
+
+makeLenses ''MnemonicFormState
+
+mkMnemonicForm :: MnemonicFormState -> Form MnemonicFormState e NameResources
+mkMnemonicForm =
+  newForm
+    [ (txt "Recovery Phrase: " <+>) @@= editTextField mnemonicField MnemonicField (Just 5)
+    ]
+
+drawMnemonicForm :: Form s e NameResources -> Widget NameResources
+drawMnemonicForm = center . mkFormScreen " WALLET FROM MNEMONIC " " IMPORT FROM RECOVERY PHRASE "
 
 ------------------------------------------------------------------------------------------------
 
@@ -421,7 +446,7 @@ mkAddToStakeFormState =
 
 ------------------------------------------------------------------------------------------------
 
--- CONFIGSTAKE
+-- ** Construct Value Form
 
 ------------------------------------------------------------------------------------------------
 

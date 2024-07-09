@@ -9,14 +9,14 @@ import PlutusLedgerApi.V3 (
   Value,
  )
 import PlutusTx (makeLift, unstableMakeIsData)
-import PlutusTx.AssocMap
+import PlutusTx.AssocMap (fromList, lookup)
 import RaffleizeDApp.Constants (
   metadataVersion,
   raffleDescription,
   raffleImageURI,
   raffleName,
  )
-import RaffleizeDApp.CustomTypes.Types (Metadata, RaffleizeActionLabel)
+import RaffleizeDApp.CustomTypes.Types (Metadata)
 import RaffleizeDApp.OnChain.Utils (
   adaValueFromLovelaces,
   encodeUtf8KV,
@@ -127,15 +127,6 @@ mkRaffleDatum rsd =
 
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
 type RaffleStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
-
-data RaffleInfo = RaffleInfo
-  { riRsd :: RaffleStateData
-  , riValue :: Value
-  , riImage :: String
-  , riStateLabel :: String
-  , riAvailableActions :: [RaffleizeActionLabel]
-  }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 -------------------------------------------------------------------------------
 
