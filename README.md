@@ -252,7 +252,8 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 ### Use-cases
 
-![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Use-case/UsecaseDiagram-RaffleDApp.puml)
+
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Usecase/UsecaseDiagram-RaffleDApp.puml)
 
 #### NonAuthenticated User
 - **Characteristics** : Represents users who have not connected a wallet. They have limited access to the DApp features compared to authenticated users.
@@ -896,9 +897,12 @@ This project uses the Nix package manager to build
 ```
 direnv allow
 
-cabal update
+nix build
+```
 
-cabal build
+To run the test suite:
+```
+just test
 ```
 
 ***
@@ -907,7 +911,7 @@ cabal build
 
 #### Terminal User Interface 
 ```
-cabal run tui
+just tui
 ```
 
 ![Print screen from the terminal user interface](TUIimage.png)
@@ -916,12 +920,12 @@ cabal run tui
 
 For running the server 
 ```
-cabal run server
+just server
 ```
 
 #### Purescript bridge
 For running the purescript bridge generator
 
 ```
-cabal run psgen
+just  psgen
 ```

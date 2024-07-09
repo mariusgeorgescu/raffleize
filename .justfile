@@ -11,12 +11,15 @@
   cabal run . -- {{ OPTS }} 2>&1 || true
 
 #  cli
-@server :
-  cabal run server 
-@tui :
-  cabal run tui 
-@psgen :
-  cabal run psgen 
+@server:
+  nix run ".#raffleize:exe:server"
+@tui:
+  nix run ".#raffleize:exe:tui"
+@psgen:
+  nix run ".#raffleize:exe:psgen"
+@test:
+  nix run ".#raffleize:test:tests"
+
 
 
 # cabal repl
