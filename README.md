@@ -75,8 +75,19 @@ Table of Contents
       - [Definitions, Acronyms and Abbreviations](#definitions-acronyms-and-abbreviations)
         - [Acronyms and Abbreviations](#acronyms-and-abbreviations)
   - [4. Installation](#4-installation)
+    - [4.1 **Install prerequisites**](#41-install-prerequisites)
+      - [4.1.1 **Install `nix`**](#411-install-nix)
+      - [4.1.2 **Configure `nix.conf`**](#412-configure-nixconf)
+      - [4.1.3  **Installing `direnv`**](#413--installing-direnv)
+      - [**Installing `direnv` manually**](#installing-direnv-manually)
+    - [4.2.  **Configure `atlas_config.json`**](#42--configure-atlas_configjson)
+    - [4.3.  **Build environment**](#43--build-environment)
+    - [4.4.  **Use**](#44--use)
+      - [Terminal User Interface](#terminal-user-interface)
+      - [Raffleize Server](#raffleize-server)
+      - [Purescript bridge](#purescript-bridge)
 
-
+>
 
 ## Revision History
 | Name | Date | Reason For Changes | Version |
@@ -241,7 +252,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 ### Use-cases
 
-![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Use-case/UsecaseDiagram-RaffleDApp.puml)
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Usecase/UsecaseDiagram-RaffleDApp.puml)
 
 #### NonAuthenticated User
 - **Characteristics** : Represents users who have not connected a wallet. They have limited access to the DApp features compared to authenticated users.
@@ -777,6 +788,84 @@ List the user documentation components (such as user manuals, on-line help, and 
 
 ## 4. Installation
 
+### 4.1 **Install prerequisites**
+  * This project uses the Nix package manager to build a fully-functioning and reproducible Cardano development environment.
+  * Nix is only compatible with Unix-like operating systems, so you must be using a Linux distribution, MacOS, or WSL2 (Windows Subsystem for Linux) to install Raffleize.
+  * Your system must have `git` installed. Run `git -v` in a terminal window to confirm.
+
+***
+#### 4.1.1 **Install `nix`**
+***
+  - If you're setting up Nix on your system for the first time, try Determinate Systems' **[Zero-to-Nix](https://zero-to-nix.com)** in lieu of the official installer, as it provides an easier tool for **[installing](https://zero-to-nix.com/start/install)** and **[uninstalling](https://zero-to-nix.com/start/uninstall)** Nix.
+  - Alternatively, you may follow the instructions for **multi-user installation** for your OS at **[nixos.org](https://nixos.org/download.html)**. This approach will require some additional configuration and it will be harder to uninstall Nix should you need to. It is only recommended if you've previously installed Nix on your system, as it will detect and repair a previous installation as needed.
+  - When you are finished installing Nix, close the terminal session and open a fresh one.
+***
+#### 4.1.2 **Configure `nix.conf`**
+***
+  * Edit `/etc/nix/nix.conf`: this requires root access to edit. Use a terminal-based editor like `nano` (i.e.):
+
+      ```sh
+      sudo nano /etc/nix/nix.conf
+      ```
+
+    >**Note:** if no configuration file exists at `/etc/nix/nix.conf` it's possible the file is located elsewhere, depending on your OS. Run `find / -name "nix.conf" 2>/dev/null` to find the location of the file (this may take several minutes).
+
+  * Modify the file following the instructions below:
+
+    ```
+    # Sample /etc/nix/nix.conf
+
+    # Step 2a: Add this line to enable Flakes if missing (if you used the Zero-to-Nix installer this should already be added)
+    experimental-features = nix-command flakes ca-derivations
+
+    # Step 2b: Add your username to trusted-users (also include 'root' to prevent overriding default setting)
+    trusted-users = root your-username
+
+    # Step 2c: Avoid unwanted garbage collection with nix-direnv
+    keep-outputs = true
+    ```
+  
+  * Mac users with Apple silicon hardware (M1/M2 chip) also need to add the following, as `plutus-apps` currently doesn't build successfully on `aarch64` architecture:
+
+    ```
+    # Step 2d: Adjust system and platforms for aarch64 compatibility:
+    system = x86_64-darwin
+    extra-platforms = x86_64-darwin aarch64-darwin
+    ```
+
+  * **🚨 IMPORTANT!** You must restart the `nix-daemon` to apply the changes
+
+    **Linux:**
+
+      ```sh
+      sudo systemctl restart nix-daemon
+      ```
+
+    **MacOS:**
+
+      ```sh
+      sudo launchctl stop org.nixos.nix-daemon
+      sudo launchctl start org.nixos.nix-daemon
+      ```
+***
+#### 4.1.3  **Installing `direnv`**
+***
+Raffleize uses the `direnv` utility to provide seamless loading of the Nix environment whenever you navigate into the project directory tree. 
+#### **Installing `direnv` manually**
+  Raffleize requires `direnv` version `>= 2.30`, which may not be available in the packaging systems for certain older operating systems (for instance, any Ubuntu system below version `22.10`).
+
+  While not recommended, if you prefer to install `direnv` through a different method you may do the following:
+  
+  - Visit the **[direnv installation page](https://direnv.net/docs/installation.html)** and check which version is available for your OS in the `Packaging status` section. If `direnv` version `2.30` or higher is available for your machine, follow the instructions to install it. Otherwise use the **Readiness Test** to install a compatible version using Nix.
+  - The final step is to hook `direnv` into your shell. Running the **Readiness Test** (`./ready?`) will complete this step for you, but if you prefer to do it manually you can **[follow the instructions](https://direnv.net/docs/hook.html)** for your preferred shell here.
+
+  >**Note:** MacOS has two types of shell sessions: login and interactive. If using login sessions, you'll need to add the appropriate hook to your `.zprofile` or `.bash_profile` file (depending on which shell you use). `.zshrc` and `.bashrc` are used for interactive sessions. For convenience, the **Readiness Test** adds hooks to all four of these files for Mac users.
+
+
+***
+### 4.2.  **Configure `atlas_config.json`**
+***
+
 Since   building transaction bodies require gathering suitable information from the blockchain. 
 For this purpose, we'll require a provider. So at the project root directory a file named **"atlas_config.json"**, which should have the following format
 ```
@@ -799,32 +888,43 @@ For this purpose, we'll require a provider. So at the project root directory a f
 ```
 More info about the provider config can be found [here](https://atlas-app.io/getting-started/endpoints#defining-provider-configuration)
 
+***
+### 4.3.  **Build environment**
+***
 
 This project uses the Nix package manager to build
 ```
 direnv allow
 
-cabal update
-
-cabal build
-
-cabal test
-
-cabal run tui
-
+nix build
 ```
 
+To run the test suite:
+```
+just test
+```
+
+***
+### 4.4.  **Use**
+***
+
+#### Terminal User Interface 
+```
+just tui
+```
 
 ![Print screen from the terminal user interface](TUIimage.png)
 
+#### Raffleize Server
+
 For running the server 
 ```
-cabal run server
+just server
 ```
 
-
+#### Purescript bridge
 For running the purescript bridge generator
 
 ```
-cabal run psgen
+just  psgen
 ```
