@@ -252,6 +252,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 ### Use-cases
 
+
 ![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Usecase/UsecaseDiagram-RaffleDApp.puml)
 
 #### NonAuthenticated User
