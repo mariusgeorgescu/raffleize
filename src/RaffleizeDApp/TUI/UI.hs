@@ -310,6 +310,7 @@ raffleizeTransactionHandler roc@(RaffleizeOffchainContext _ providersCtx) secret
           liftIO $ raffleizeActionToIntro contextNFT raffleizeAction
           txOutRef <- liftIO $ raffleizeTransaction roc secretKey raffleizeAction contextNFT mAddr
           initialState <- liftIO $ refreshState s
+          liftIO clearScreen
           let successMessage = "Transaction confirmed ! \n You transaction is now onchain: \n\t"
           continue initialState {message = successMessage <> showLink nid "tx" txOutRef <> "\n"}
         else continue s
