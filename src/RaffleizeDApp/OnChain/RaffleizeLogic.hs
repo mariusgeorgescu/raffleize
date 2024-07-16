@@ -299,7 +299,7 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
       if isNothing tSecret
         then 92 -- REVEALABLE
         else 93 -- REVEALED
-  | raffleStateId #== 40 || raffleStateId #== 42 =
+  | raffleStateId #== 40 || raffleStateId #== 41 ||raffleStateId #== 42 || raffleStateId #== 43 =
       if randomSeed #== tNumber
         then 94 -- WINNING
         else 95 -- LOSING
@@ -314,8 +314,6 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
         -- \| raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
         -- \| raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
         -- \| raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
-        -- \| raffleStateId #== 41 = traceError "Raffle cannot be SUCCESS_LOCKED_AMOUNT"
-        -- \| raffleStateId #== 43 = traceError "Raffle cannot be SUCCESS_FINAL"
 evalTicketState _ _ _ = 9999 -- traceError "invalid state"  - TO DO - SOMETHING ABOUT
 {-# INLINEABLE evalTicketState #-}
 

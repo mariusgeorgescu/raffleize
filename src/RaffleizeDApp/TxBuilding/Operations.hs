@@ -284,7 +284,7 @@ refundCollateralOfLosingTicketTX ticketScriptRef ownAddr ticketRefAC = do
       ticketValidatorGY
   isBurningTicketRefNFT <- txNFTAction (Burn ticketRefAC)
   isBurningTicketUserNFT <- txNFTAction (Burn ticketUserAC)
-  ticketCollateralValue <- valueFromPlutus' tValue
+  ticketCollateralValue <- valueFromPlutus' (tValue #- assetClassValue ticketRefAC 1 )
   isGettingCollateralValue <- txIsPayingValueToAddress ownAddr ticketCollateralValue
   return $
     mconcat

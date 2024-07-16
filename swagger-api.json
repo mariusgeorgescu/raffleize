@@ -1,9 +1,9 @@
 {
-    "host": "raffleize.art",
+    "host": "http://raffleize.art",
     "info": {
         "description": "This is an API for the Raffleize Cardano DApp",
         "license": {
-            "name": "MIT"
+            "name": "GPL-3.0 license"
         },
         "title": "Raffleize API",
         "version": "1.0"

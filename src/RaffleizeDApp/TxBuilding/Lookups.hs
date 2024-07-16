@@ -1,5 +1,5 @@
 module RaffleizeDApp.TxBuilding.Lookups where
-
+  
 import GHC.Stack
 import GeniusYield.TxBuilder
 import GeniusYield.Types
