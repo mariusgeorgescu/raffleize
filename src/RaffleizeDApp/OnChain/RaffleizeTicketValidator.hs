@@ -88,7 +88,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
                   [ currentTicketState #== 95 -- LOSING
                   , burnsTicketUserAndRef -- Must burn tickets NFTs
                   , traceIfFalse "are you stupid?" $
-                      rRandomSeed rsd #== tNumber -- Must not be the winning ticket
+                      rRandomSeed rsd #/= tNumber -- Must not be the winning ticket
                   ]
             TicketOwnerRedeemer !toa _ ->
               -- rsd must be strict to ensure that raffle state is spent

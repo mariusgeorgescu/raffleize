@@ -39,7 +39,7 @@ interactionToTxSkeleton
             CollectStake -> winnerCollectStakeTX raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
             RefundTicket -> fullRefundTicketTX raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
             RefundTicketExtra -> extraRefundTicketTX raffleValidatorRef ticketValidatorRef receiveAddr contextNFT
-            RefundCollateralLosing -> refundCollateralOfLosingTicketTX raffleValidatorRef receiveAddr contextNFT
+            RefundCollateralLosing -> refundCollateralOfLosingTicketTX ticketValidatorRef receiveAddr contextNFT
           RaffleOwner raffleOwnerAction -> case raffleOwnerAction of
             Update newRaffleConfig -> updateRaffleTX receiveAddr newRaffleConfig raffleValidatorRef usedAddrs contextNFT
             Cancel -> cancelRaffleTX raffleValidatorRef usedAddrs receiveAddr contextNFT

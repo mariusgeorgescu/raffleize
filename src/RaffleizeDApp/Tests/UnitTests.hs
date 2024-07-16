@@ -9,7 +9,7 @@ import Plutus.Model (logError, mockConfig, mockConfigSlotConfig, waitNSlots)
 import PlutusTx.Builtins (blake2b_256)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.CustomTypes.TransferTypes (RaffleInfo (..), TicketInfo (tiTsd))
+import RaffleizeDApp.CustomTypes.TransferTypes (RaffleInfo (..), TicketInfo (tiStateLabel, tiTsd))
 import RaffleizeDApp.OnChain.RaffleizeLogic (generateTicketACFromTicket)
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.Tests.TestRuns
@@ -624,8 +624,8 @@ successStateTests :: TestTree
 successStateTests =
   testGroup
     "Tests for raffles in status 'SUCCESS"
-    [ testRun "Test Case 8.1: Winner Claims Prize -> Get collected amount" sucessScenarioTC1
-    , testRun "Test Case 8.2: Get collected amount -> Winner Claims Prize" sucessScenarioTC2
+    [ testRun "Test Case 8.1: (Refund Losing) -> Winner Claims Prize -> (Refund Losing) -> Get collected amount -> (Refund Losing)" sucessScenarioTC1
+    , testRun "Test Case 8.2: (Refund Losing) -> Get collected amount -> (Refund Losing) -> Winner Claims Prize -> (Refund Losing)" sucessScenarioTC2
     ]
   where
     sucessScenarioTC1 :: Wallets -> Run ()
@@ -645,7 +645,7 @@ successStateTests =
       (ri, roc) <- deployValidatorsAndCreateNewRaffleRun wallets config
       let raffleId = rRaffleID $ riRsd ri
       waitNSlots 1
-      let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+      let secret = "bbaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
       -- Buy 3 tickets
       tickets <-
         buyNTicketsToRaffleRun
@@ -654,6 +654,7 @@ successStateTests =
           [ (w2, secret)
           , (w3, secret)
           , (w4, secret)
+          , (w5, secret)
           ]
       waitNSlots 30 --- Commit DDL pass
       ri2 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
@@ -665,16 +666,30 @@ successStateTests =
           [ (w2, head ticketRefs, secret)
           , (w3, ticketRefs !! 1, secret)
           , (w4, ticketRefs !! 2, secret)
+          , (w5, ticketRefs !! 3, secret)
           ]
       ri3 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
+
+      void $ raffleizeTransactionRun w3 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 1)) Nothing
+      mti1 <- queryTicketRun w1 (ticketRefs !! 1)
+      unless (isNothing mti1) $ logError "Ticket must not exist !"
+
       (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
       ri4 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri4 == "SUCCESS_LOCKED_STAKE") $ logError "not in status SUCCESS_LOCKED_STAKE"
-      -- WINNER is w2
+
+      void $ raffleizeTransactionRun w4 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 2)) Nothing
+      mti2 <- queryTicketRun w1 (ticketRefs !! 2)
+      unless (isNothing mti2) $ logError "Ticket must not exist !"
+
       (_txId, _raffleId) <- raffleizeTransactionRun w2 roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
       ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
+
+      void $ raffleizeTransactionRun w5 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
+      mti3 <- queryTicketRun w1 (ticketRefs !! 3)
+      unless (isNothing mti3) $ logError "Ticket must not exist !"
 
     sucessScenarioTC2 :: Wallets -> Run ()
     sucessScenarioTC2 wallets@Wallets {..} = do
@@ -702,6 +717,7 @@ successStateTests =
           [ (w2, secret)
           , (w3, secret)
           , (w4, secret)
+          , (w5, secret)
           ]
       waitNSlots 30 --- Commit DDL pass
       ri2 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
@@ -713,13 +729,36 @@ successStateTests =
           [ (w2, head ticketRefs, secret)
           , (w3, ticketRefs !! 1, secret)
           , (w4, ticketRefs !! 2, secret)
+          , (w5, ticketRefs !! 3, secret)
           ]
       ri3 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
-      -- WINNER is w2
+
+      -- WINNER is ticket 0
+
+      ti0 <- fromMaybe (error "Ticket not fund") <$> queryTicketRun w1 (head ticketRefs)
+      unless (tiStateLabel ti0 == "WINNING") $ logError "NOT WINNING"
+      ti1 <- fromMaybe (error "Ticket not fund") <$> queryTicketRun w1 (ticketRefs !! 1)
+      unless (tiStateLabel ti1 == "LOSING") $ logError "NOT LOSING"
+      ti2 <- fromMaybe (error "Ticket not fund") <$> queryTicketRun w1 (ticketRefs !! 2)
+      unless (tiStateLabel ti2 == "LOSING") $ logError "NOT LOSING"
+
+      void $ raffleizeTransactionRun w3 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 1)) Nothing
+      mti1 <- queryTicketRun w1 (ticketRefs !! 1)
+      unless (isNothing mti1) $ logError "Ticket must not exist !"
+
       (_txId, _raffleId) <- raffleizeTransactionRun w2 roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
-      ri4 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
-      unless (riStateLabel ri4 == "SUCCESS_LOCKED_AMOUNT") $ logError "not in status SUCCESS_LOCKED_AMOUNT"
-      (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
       ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
-      unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
+      unless (riStateLabel ri5 == "SUCCESS_LOCKED_AMOUNT") $ logError "not in status SUCCESS_LOCKED_AMOUNT"
+
+      void $ raffleizeTransactionRun w4 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 2)) Nothing
+      mti2 <- queryTicketRun w1 (ticketRefs !! 2)
+      unless (isNothing mti2) $ logError "Ticket must not exist !"
+
+      (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
+      ri6 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
+      unless (riStateLabel ri6 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
+
+      void $ raffleizeTransactionRun w5 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
+      mti3 <- queryTicketRun w1 (ticketRefs !! 3)
+      unless (isNothing mti3) $ logError "Ticket must not exist !"
