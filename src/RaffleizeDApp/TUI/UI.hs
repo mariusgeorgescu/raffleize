@@ -413,7 +413,9 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
                   let revealedSecretBS = fromString @BuiltinByteString revealedTicketSecret
                   let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
                   let isAllowedToReveal = ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo
-                  raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just contextNFT) Nothing s isAllowedToReveal
+                  if PlutusTx.Builtins.blake2b_256 revealedSecretBS #== tSecretHash (tiTsd selectedTicketInfo)
+                    then raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just contextNFT) Nothing s isAllowedToReveal
+                    else continue s
                 _ -> do
                   newRevealSecretForm <- handleFormEvent event revealSecretForm
                   let newRevealedTicketSecret = Data.Text.unpack $ formState newRevealSecretForm ^. revealedSecret
