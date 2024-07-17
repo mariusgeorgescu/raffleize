@@ -6,11 +6,12 @@ import Control.Monad.State.Class (gets)
 import GeniusYield.Test.Utils
 import GeniusYield.Types
 import Plutus.Model (logError, mockConfig, mockConfigSlotConfig, waitNSlots)
+import PlutusLedgerApi.V1.Value (geq)
 import PlutusTx.Builtins (blake2b_256)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TransferTypes (RaffleInfo (..), TicketInfo (tiStateLabel, tiTsd))
-import RaffleizeDApp.OnChain.RaffleizeLogic (generateTicketACFromTicket)
+import RaffleizeDApp.OnChain.RaffleizeLogic (generateTicketACFromTicket, raffleCollateralValue)
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty
@@ -352,6 +353,7 @@ underfundedStateTests =
           ]
       ri4 <- fromMaybe (error "raffle not found") <$> queryRaffleRun w1 raffleId2
       unless (riStateLabel ri4 == "UNDERFUNDED_FINAL") $ logError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri4
+      unless (riValue ri4 `geq` raffleCollateralValue (riRsd ri4)) $ logError "Remained value lower tha raffle collateral"
 
     underfundedScenario2 :: Wallets -> Run ()
     underfundedScenario2 wallets@Wallets {..} = do
@@ -407,6 +409,7 @@ underfundedStateTests =
 
       ri5 <- fromMaybe (error "raffle not found") <$> queryRaffleRun w1 raffleId2
       unless (riStateLabel ri5 == "UNDERFUNDED_FINAL") $ logError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri5
+      unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logError "Remained value lower tha raffle collateral"
 
     underfundedScenario3 :: Wallets -> Run ()
     underfundedScenario3 wallets@Wallets {..} = do
@@ -454,6 +457,7 @@ underfundedStateTests =
       void $ raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
       ri6 <- fromMaybe (error "raffle not found") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri6 == "UNDERFUNDED_FINAL") $ logError "not in status UNDERFUNDED_FINAL"
+      unless (riValue ri6 `geq` raffleCollateralValue (riRsd ri6)) $ logError "Remained value lower than raffle collateral"
 
 -- ------------------------------------------------------------------------------------------------
 
@@ -505,6 +509,7 @@ unrevealedStateTests =
       (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStakeAndAmount) (Just raffleId) Nothing
       ri4 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri4 == "UNREVEALED_FINAL") $ logError "not in status UNREVEALED_FINAL"
+      unless (riValue ri4 `geq` raffleCollateralValue (riRsd ri4)) $ logError "Remained value lower tha raffle collateral"
 
     unrevealedScenarioTC2 :: Wallets -> Run ()
     unrevealedScenarioTC2 wallets@Wallets {..} = do
@@ -559,6 +564,7 @@ unrevealedStateTests =
           ]
       ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri5 == "UNREVEALED_FINAL") $ logError "not in status UNREVEALED_FINAL"
+      unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logError "Remained value lower tha raffle collateral"
 
     unrevealedScenarioTC3 :: Wallets -> Run ()
     unrevealedScenarioTC3 wallets@Wallets {..} = do
@@ -613,6 +619,7 @@ unrevealedStateTests =
       (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
       ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri5 == "UNREVEALED_FINAL") $ logError "not in status UNREVEALED_FINAL"
+      unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logError "Remained value lower tha raffle collateral"
 
 -- ------------------------------------------------------------------------------------------------
 
@@ -686,6 +693,11 @@ successStateTests =
       (_txId, _raffleId) <- raffleizeTransactionRun w2 roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
       ri5 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
+      unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logError "Remained value lower tha raffle collateral"
+
+      void $ raffleizeTransactionRun w5 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
+      mti3 <- queryTicketRun w1 (ticketRefs !! 3)
+      unless (isNothing mti3) $ logError "Ticket must not exist !"
 
       void $ raffleizeTransactionRun w5 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
       mti3 <- queryTicketRun w1 (ticketRefs !! 3)
@@ -758,6 +770,7 @@ successStateTests =
       (_txId, _raffleId) <- raffleizeTransactionRun w1 roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
       ri6 <- fromMaybe (error "Raffle not fund") <$> queryRaffleRun w1 raffleId
       unless (riStateLabel ri6 == "SUCCESS_FINAL") $ logError "not in status SUCCESS_FINAL"
+      unless (riValue ri6 `geq` raffleCollateralValue (riRsd ri6)) $ logError "Remained value lower tha raffle collateral"
 
       void $ raffleizeTransactionRun w5 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
       mti3 <- queryTicketRun w1 (ticketRefs !! 3)
