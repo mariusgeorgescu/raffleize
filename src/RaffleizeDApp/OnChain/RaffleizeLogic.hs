@@ -123,14 +123,11 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
   RaffleOwner (Update newconfig) -> (rValue #- rStake rConfig) #+ rStake newconfig
   TicketOwner (RevealTicketSecret _) -> rValue
   TicketOwner CollectStake -> rValue #- rStake rConfig
-  TicketOwner RefundTicket ->
-    let fullRefundValue = raffleTicketPriceValue rsd #+ raffleTicketCollateralValue rsd
-     in rValue #- fullRefundValue
+  TicketOwner RefundTicket -> rValue #- raffleTicketPriceValue rsd
   TicketOwner RefundTicketExtra ->
     let
       extraRefundValue =
         adaValueFromLovelaces (rSoldTickets #* rTicketPrice rConfig `divideInteger` rRevealedTickets)
-          #+ raffleTicketCollateralValue rsd
      in
       rValue #- extraRefundValue
   _ -> trace "no raffle state should exist after this action" pmempty
@@ -299,7 +296,7 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
       if isNothing tSecret
         then 92 -- REVEALABLE
         else 93 -- REVEALED
-  | raffleStateId #== 40 || raffleStateId #== 41 ||raffleStateId #== 42 || raffleStateId #== 43 =
+  | raffleStateId #== 40 || raffleStateId #== 41 || raffleStateId #== 42 || raffleStateId #== 43 =
       if randomSeed #== tNumber
         then 94 -- WINNING
         else 95 -- LOSING
