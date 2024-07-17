@@ -699,10 +699,6 @@ successStateTests =
       mti3 <- queryTicketRun w1 (ticketRefs !! 3)
       unless (isNothing mti3) $ logError "Ticket must not exist !"
 
-      void $ raffleizeTransactionRun w5 roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
-      mti3 <- queryTicketRun w1 (ticketRefs !! 3)
-      unless (isNothing mti3) $ logError "Ticket must not exist !"
-
     sucessScenarioTC2 :: Wallets -> Run ()
     sucessScenarioTC2 wallets@Wallets {..} = do
       -- Create Raffle
