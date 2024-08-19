@@ -26,7 +26,7 @@ getAddrUTxOs :: ProviderCtx -> GYAddress -> IO GYUTxOs
 getAddrUTxOs pCtx addr = do
   let msg = "Getting UTxOs of: \n\t" <> Data.Text.unpack (addressToText addr)
   putStrLn $ yellowColorString msg
-  runQuery pCtx $ lookupUTxOsAtfAddress addr
+  runQuery pCtx $ lookupUTxOsAtAddress addr
 
 getAddressAndValue :: ProviderCtx -> GYExtendedPaymentSigningKey -> IO (GYAddress, Value)
 getAddressAndValue pCtx skey = do

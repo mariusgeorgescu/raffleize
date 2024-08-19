@@ -1,5 +1,5 @@
 module RaffleizeDApp.TxBuilding.Lookups where
-  
+
 import GHC.Stack
 import GeniusYield.TxBuilder
 import GeniusYield.Types
@@ -26,8 +26,8 @@ import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
 
-lookupUTxOsAtfAddress :: (GYTxQueryMonad m) => GYAddress -> m GYUTxOs
-lookupUTxOsAtfAddress addr = utxosAtAddress addr Nothing
+lookupUTxOsAtAddress :: (GYTxQueryMonad m) => GYAddress -> m GYUTxOs
+lookupUTxOsAtAddress addr = utxosAtAddress addr Nothing
 
 lookupUTxOsAtValidator :: GYTxQueryMonad m => GYValidator v -> m GYUTxOs
 lookupUTxOsAtValidator validator = do
@@ -43,8 +43,8 @@ lookupUTxOsByStateTokens acs addr = do
 lookupRaffleInfosByACs :: (GYTxQueryMonad m) => [AssetClass] -> m [RaffleInfo]
 lookupRaffleInfosByACs acs = do
   now <- slotOfCurrentBlock
-  nowposix <- pPOSIXTimeFromGYSlot now
-  let tr = PlutusLedgerApi.V1.Interval.singleton nowposix
+  nowPOSIX <- pPOSIXTimeFromGYSlot now
+  let tr = PlutusLedgerApi.V1.Interval.singleton nowPOSIX
   raffleValidatorAddr <- scriptAddress raffleizeValidatorGY
   raffleUTxOs <- utxosToList <$> lookupUTxOsByStateTokens acs raffleValidatorAddr
   return $ mapMaybe (`raffleInfoFromUTxO` tr) raffleUTxOs
@@ -176,17 +176,24 @@ lookupActiveRaffles = do
 
 lookupTicketsOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [TicketInfo]
 lookupTicketsOfAddress addr = do
-  utxos <- lookupUTxOsAtfAddress addr
+  utxos <- lookupUTxOsAtAddress addr
   let val = getValueBalance utxos
   let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
   lookupTicketInfosByACs raffleizeUserTokens
 
 lookupRafflesOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [RaffleInfo]
 lookupRafflesOfAddress addr = do
-  utxos <- lookupUTxOsAtfAddress addr
+  utxos <- lookupUTxOsAtAddress addr
   let val = getValueBalance utxos
   let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
-  lookupRaffleInfosByACs raffleizeUserTokens
+  lookupRaffleInfosByACs (deriveRefFromUserAC <$> raffleizeUserTokens)
+
+lookupRafflesOfAddressses :: (GYTxQueryMonad m) => [GYAddress] -> m [RaffleInfo]
+lookupRafflesOfAddressses addrs = do
+  utxos <- mapM lookupUTxOsAtAddress addrs
+  let val = getValueBalance <$> utxos
+  let raffleizeUserTokens = concatMap getMyRaffleizeUserTokensFromValue  val
+  lookupRaffleInfosByACs (deriveRefFromUserAC <$> raffleizeUserTokens)
 
 ------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------

@@ -100,7 +100,7 @@ getMyRaffleizeUserTokensFromValue val =
   let
     raffleizeCS = mintingPolicyCurrencySymbol raffleizeMintingPolicyGY
    in
-    [AssetClass (cs, deriveRefFromUserTN tn) | (cs, tn, _) <- flattenValue val, raffleizeCS == cs]
+    [AssetClass (cs,  tn) | (cs, tn, _) <- flattenValue val, raffleizeCS == cs]
 
 {--  This function converts a 'GYDatum' to 'RaffleDatum', if does not succeeed it returns Nothing.
 --}

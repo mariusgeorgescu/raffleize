@@ -25,8 +25,9 @@ type InteractionInterface =
 type LookupsInterface =
   Get '[JSON] String
     :<|> "raffles" :> Get '[JSON] [RaffleInfo]
-    :<|> "info" :> Get '[JSON] RaffleInfo
-    :<|> "tickets" :> Capture "address" GYAddress :> Get '[JSON] [TicketInfo]
+    :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
+    :<|> "user-raffles2" :> Capture "address" GYAddress :> Get '[JSON] [RaffleInfo]
+    :<|> "user-tickets" :> Capture "address" GYAddress :> Get '[JSON] [TicketInfo]
 
 raffleizeApi :: Proxy RaffleizeAPI
 raffleizeApi = Proxy
@@ -44,4 +45,4 @@ handleInteraction :: RaffleizeOffchainContext -> RaffleizeInteraction -> IO Stri
 handleInteraction roc i = runReaderT (interactionToHexEncodedCBOR i) roc
 
 raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
-raffleizeServer roc@RaffleizeOffchainContext {..} = handleInteraction roc :<|> handleLookup :<|> handleGetRaffles providerCtx :<|> handleGetOneRaffle providerCtx :<|> handleGetMyTickets providerCtx
+raffleizeServer roc@RaffleizeOffchainContext {..} = handleInteraction roc :<|> handleLookup :<|> handleGetRaffles providerCtx :<|> handleGetRafflesByAddresses providerCtx :<|> handleGetRafflesByAddress providerCtx :<|> handleGetMyTickets providerCtx
