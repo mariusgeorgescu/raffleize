@@ -34,7 +34,7 @@ psClientType = do
   return
     TypeInfo
       { _typePackage = ""
-      , _typeModule = "Raffleize.Types"
+      , _typeModule = "Raffleize.Value"
       , _typeName = inType ^. typeName
       , _typeParameters = params
       }
