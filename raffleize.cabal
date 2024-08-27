@@ -21,9 +21,9 @@ flag defer-plugin-errors
   manual:      True
 
 common common
-  default-language: GHC2021
-  build-depends:    base
-  mixins:           base hiding (Prelude)
+  default-language:   GHC2021
+  build-depends:      base
+  mixins:             base hiding (Prelude)
   ghc-options:
     -Wall -fobject-code -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
@@ -32,109 +32,6 @@ common common
 
   if flag(defer-plugin-errors)
     ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
-
-common plutus-ghc-options
-  -- so unfoldings are present even when compiled without optmizations
-  ghc-options:
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -Wno-partial-type-signatures
-
-  -- expose all unfoldings, so plutustx compiler can do its job
-  ghc-options:
-    -fexpose-all-unfoldings -fobject-code -fplugin-opt
-    PlutusTx.Plugin:defer-errors
-
-  -- set target plutus-core version
-  ghc-options: -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
-
-  -- Compiler flags
-  ghc-options: -fplugin-opt PlutusTx.Plugin:no-remove-trace
-  ghc-options: -fplugin-opt PlutusTx.Plugin:no-optimize
-
-library
-  import:             common, plutus-ghc-options
-  exposed-modules:
-    CodeGen.PSTypes
-    CodeGen.TypeBridges
-    Prelude
-    RaffleizeDApp.Constants
-    RaffleizeDApp.CustomTypes.ActionTypes
-    RaffleizeDApp.CustomTypes.RaffleTypes
-    RaffleizeDApp.CustomTypes.TicketTypes
-    RaffleizeDApp.CustomTypes.TransferTypes
-    RaffleizeDApp.CustomTypes.Types
-    RaffleizeDApp.OnChain.RaffleizeLogic
-    RaffleizeDApp.OnChain.RaffleizeMintingPolicy
-    RaffleizeDApp.OnChain.RaffleizeTicketValidator
-    RaffleizeDApp.OnChain.RaffleizeValidator
-    RaffleizeDApp.OnChain.Utils
-    RaffleizeDApp.Server.API
-    RaffleizeDApp.Server.Queries
-    RaffleizeDApp.Tests.PropertyTests
-    RaffleizeDApp.Tests.TestRuns
-    RaffleizeDApp.Tests.UnitTests
-    RaffleizeDApp.TUI.Actions
-    RaffleizeDApp.TUI.RaffleizeWidgets
-    RaffleizeDApp.TUI.Types
-    RaffleizeDApp.TUI.UI
-    RaffleizeDApp.TUI.Utils
-    RaffleizeDApp.TxBuilding.Context
-    RaffleizeDApp.TxBuilding.Exceptions
-    RaffleizeDApp.TxBuilding.Interactions
-    RaffleizeDApp.TxBuilding.Lookups
-    RaffleizeDApp.TxBuilding.Operations
-    RaffleizeDApp.TxBuilding.Skeletons
-    RaffleizeDApp.TxBuilding.Transactions
-    RaffleizeDApp.TxBuilding.Utils
-    RaffleizeDApp.TxBuilding.Validators
-    RaffleizeDApp.Utils
-
-  -- Add new contracts here, i.e.:
-  -- Contracts.MyContract
-  other-modules:
-
-  -- Sample contracts:
-  hs-source-dirs:     src
-  build-depends:
-    , aeson
-    , ansi-terminal
-    , atlas-cardano
-    , base
-    , base16-bytestring
-    , brick
-    , bytestring
-    , cardano-api
-    , cardano-binary
-    , cardano-simple
-    , cassava
-    , containers
-    , data-default
-    , extra
-    , foldl
-    , freer-simple
-    , generic-arbitrary
-    , lens
-    , megaparsec
-    , mtl
-    , optparse-applicative
-    , plutus-core
-    , plutus-ledger-api
-    , plutus-simple-model
-    , plutus-tx
-    , plutus-tx-plugin
-    , purescript-bridge
-    , row-types
-    , serialise
-    , servant-server
-    , servant-swagger
-    , swagger2
-    , tasty
-    , tasty-quickcheck
-    , text
-    , time
-    , turtle
-    , vector
-    , vty
 
   default-extensions:
     DataKinds
@@ -155,42 +52,148 @@ library
     TypeFamilies
     TypeOperators
 
+common plutus-ghc-options
+  -- so unfoldings are present even when compiled without optmizations
+  ghc-options:
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -Wno-partial-type-signatures
+
+  -- expose all unfoldings, so plutustx compiler can do its job
+  ghc-options:
+    -fexpose-all-unfoldings -fobject-code -fplugin-opt
+    PlutusTx.Plugin:defer-errors
+
+  -- set target plutus-core version
+  ghc-options: -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
+
+  -- Compiler flags
+  ghc-options: -fplugin-opt PlutusTx.Plugin:no-remove-trace
+  ghc-options: -fplugin-opt PlutusTx.Plugin:no-optimize
+
+library
+  import:          common, plutus-ghc-options
+  exposed-modules:
+    Prelude
+    RaffleizeDApp.Constants
+    RaffleizeDApp.CustomTypes.ActionTypes
+    RaffleizeDApp.CustomTypes.RaffleTypes
+    RaffleizeDApp.CustomTypes.TicketTypes
+    RaffleizeDApp.CustomTypes.TransferTypes
+    RaffleizeDApp.CustomTypes.Types
+    RaffleizeDApp.OnChain.RaffleizeLogic
+    RaffleizeDApp.OnChain.RaffleizeMintingPolicy
+    RaffleizeDApp.OnChain.RaffleizeTicketValidator
+    RaffleizeDApp.OnChain.RaffleizeValidator
+    RaffleizeDApp.OnChain.Utils
+    RaffleizeDApp.TxBuilding.Context
+    RaffleizeDApp.TxBuilding.Exceptions
+    RaffleizeDApp.TxBuilding.Interactions
+    RaffleizeDApp.TxBuilding.Lookups
+    RaffleizeDApp.TxBuilding.Operations
+    RaffleizeDApp.TxBuilding.Skeletons
+    RaffleizeDApp.TxBuilding.Transactions
+    RaffleizeDApp.TxBuilding.Utils
+    RaffleizeDApp.TxBuilding.Validators
+    RaffleizeDApp.Utils
+
+  -- Add new contracts here, i.e.:
+  -- Contracts.MyContract
+  other-modules:
+
+  -- Sample contracts:
+  hs-source-dirs:  src
+
+  --- Cardano specific dependencies
+  build-depends:
+    , atlas-cardano
+    , cardano-api
+    , cardano-binary
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-tx-plugin
+
+  build-depends:
+    , aeson
+    , extra
+    , generic-arbitrary
+    , mtl
+    , swagger2
+    , text
+
 executable server
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: server
+  hs-source-dirs: src/RaffleizeDApp/Server
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    API
+    Queries
+
+  build-depends:  raffleize
   build-depends:
     , aeson-pretty
-    , atlas-cardano
     , bytestring
     , http-types
-    , raffleize
+    , lens
+    , mtl
     , servant-server
+    , servant-swagger
+    , swagger2
     , transformers
     , wai
     , wai-cors
     , warp
 
+  --- Cardano specific dependencies
+  build-depends:  atlas-cardano
+
 executable tui
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: tui
+  hs-source-dirs: src/RaffleizeDApp/TUI
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    Actions
+    RaffleizeWidgets
+    Types
+    UI
+
+  build-depends:  raffleize
   build-depends:
     , aeson
-    , atlas-cardano
+    , ansi-terminal
+    , brick
     , bytestring
-    , raffleize
+    , extra
+    , lens
+    , mtl
+    , text
+    , time
+    , vector
+    , vty
+
+  --- Cardano specific dependenciesƒ
+  build-depends:
+    , atlas-cardano
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-tx
 
 executable psgen
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: purescript-bridge-generator
+  hs-source-dirs: src/RaffleizeDApp/CodeGen
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    PSTypes
+    TypeBridges
+
+  build-depends:  raffleize
   build-depends:
+    , lens
+    , mtl
     , purescript-bridge
-    , raffleize
 
 test-suite tests
   import:         common
@@ -198,7 +201,22 @@ test-suite tests
   hs-source-dirs: src/RaffleizeDApp/Tests
   type:           exitcode-stdio-1.0
   ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    PropertyTests
+    TestRuns
+    UnitTests
+
+  build-depends:  raffleize
   build-depends:
-    , raffleize
+    , extra
+    , mtl
     , tasty
     , tasty-quickcheck
+
+  --- Cardano specific dependencies
+  build-depends:
+    , atlas-cardano
+    , cardano-simple
+    , plutus-ledger-api
+    , plutus-simple-model
+    , plutus-tx

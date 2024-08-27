@@ -1,4 +1,4 @@
-module RaffleizeDApp.Tests.UnitTests where
+module UnitTests where
 
 import Cardano.Simple.Ledger.TimeSlot
 import Control.Monad
@@ -13,8 +13,8 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TransferTypes (RaffleInfo (..), TicketInfo (tiStateLabel, tiTsd))
 import RaffleizeDApp.OnChain.RaffleizeLogic (generateTicketACFromTicket, raffleCollateralValue)
 import RaffleizeDApp.OnChain.Utils
-import RaffleizeDApp.Tests.TestRuns
 import Test.Tasty
+import TestRuns
 
 unitTests :: TestTree
 unitTests =

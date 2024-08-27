@@ -2,37 +2,40 @@ module RaffleizeDApp.OnChain.Utils where
 
 import Data.List.Extra (intercalate)
 import PlutusLedgerApi.V1.Value (
-  AssetClass (unAssetClass),
-  TokenName (..),
-  Value,
-  adaSymbol,
-  adaToken,
+  AssetClass (..),
   assetClass,
   assetClassValue,
   assetClassValueOf,
   flattenValue,
   geq,
-  singleton,
  )
-import PlutusLedgerApi.V2 (
+import PlutusLedgerApi.V3 (
   Address,
+  CurrencySymbol,
   Datum (getDatum),
   FromData,
   OutputDatum (OutputDatum),
+  POSIXTimeRange,
   ScriptContext,
   ScriptPurpose (Spending),
   ToData (..),
+  TokenName (..),
   TxId (TxId),
   TxInInfo (..),
   TxOut (TxOut, txOutAddress, txOutDatum, txOutValue),
   TxOutRef (TxOutRef),
   UnsafeFromData (..),
+  Value,
+  adaSymbol,
+  adaToken,
+  singleton,
  )
+import PlutusTx (unstableMakeIsData)
 import PlutusTx.Builtins (blake2b_256, serialiseData)
-import RaffleizeDApp.CustomTypes.Types (
-  AScriptContext (..),
-  ATxInfo (..),
- )
+
+unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
+unFlattenValue [] = mempty
+unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
 
 wrapTitle :: String -> String
 wrapTitle s =
@@ -72,6 +75,25 @@ mkUntypedMintingPolicy f a ctx =
       (unsafeFromBuiltinData a)
       (unsafeFromBuiltinData ctx)
 {-# INLINEABLE mkUntypedMintingPolicy #-}
+
+data ATxInfo = ATxInfo
+  { txInfoInputs :: [TxInInfo]
+  , txInfoReferenceInputs :: [TxInInfo]
+  , txInfoOutputs :: [TxOut]
+  , txInfoFee :: BuiltinData
+  , txInfoMint :: Value
+  , txInfoDCert :: BuiltinData
+  , txInfoWdrl :: BuiltinData
+  , txInfoValidRange :: POSIXTimeRange
+  , txInfoSignatories :: BuiltinData
+  , txInfoData :: BuiltinData
+  , txInfoId :: BuiltinData
+  }
+
+unstableMakeIsData ''ATxInfo
+
+data AScriptContext = AScriptContext {scriptContextTxInfo :: ATxInfo, scriptContextPurpose :: ScriptPurpose}
+unstableMakeIsData ''AScriptContext
 
 -- | A more efficient implementation of the `mkUntypedValidator` method of the `IsScriptContext` typeclass.
 mkUntypedValidatorCustom ::

@@ -1,4 +1,4 @@
-module RaffleizeDApp.TUI.UI where
+module UI where
 
 import Brick.AttrMap
 import Brick.Focus (focusGetCurrent, focusNext)
@@ -40,15 +40,14 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.CustomTypes.Types
+import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   actionToLabel,
   generateTicketACFromTicket,
  )
-import RaffleizeDApp.TUI.Actions
-import RaffleizeDApp.TUI.RaffleizeWidgets
-import RaffleizeDApp.TUI.Types
-import RaffleizeDApp.TUI.Utils
+import Actions
+import RaffleizeWidgets
+import Types
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators

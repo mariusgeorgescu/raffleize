@@ -1,4 +1,4 @@
-module RaffleizeDApp.TUI.Actions where
+module Actions where
 
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Data.Aeson hiding (Value)
@@ -10,6 +10,7 @@ import PlutusLedgerApi.V1.Value
 import PlutusTx.Show qualified (show)
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.ActionTypes
+
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups

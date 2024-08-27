@@ -1,4 +1,4 @@
-module RaffleizeDApp.TUI.RaffleizeWidgets where
+module RaffleizeWidgets where
 
 import Brick
 import Brick.Focus
@@ -11,7 +11,6 @@ import Control.Lens
 import Data.Maybe qualified
 import Data.Text qualified
 import Data.Vector qualified
-
 import GeniusYield.GYConfig
 import GeniusYield.Types
 import PlutusLedgerApi.V1
@@ -24,11 +23,11 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.CustomTypes.Types
+
 import RaffleizeDApp.OnChain.Utils
-import RaffleizeDApp.TUI.Types
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
+import Types
 
 txOutRefWidget :: GYNetworkId -> GYTxOutRef -> Widget n
 txOutRefWidget nid t =

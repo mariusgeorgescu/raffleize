@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main where
 
 import Control.Exception (try)
@@ -17,8 +15,8 @@ import RaffleizeDApp.Constants (
   atlasCoreConfig,
   raffleizeValidatorsConfig,
  )
-import RaffleizeDApp.Server.API (raffleizeApi, raffleizeServer, apiSwagger)
-import RaffleizeDApp.TUI.Utils (decodeConfigFile)
+import API (raffleizeApi, raffleizeServer, apiSwagger)
+import RaffleizeDApp.TxBuilding.Utils (decodeConfigFile)
 import RaffleizeDApp.TxBuilding.Context (
   ProviderCtx (ProviderCtx),
   RaffleizeOffchainContext (RaffleizeOffchainContext),

@@ -1,8 +1,5 @@
-{-# LANGUAGE DataKinds #-}
-
 module Main where
 
-import CodeGen.TypeBridges (raffleizeBridge)
 import Data.Proxy (Proxy (..))
 import Language.PureScript.Bridge (
   Language (Haskell),
@@ -13,6 +10,11 @@ import Language.PureScript.Bridge (
   writePSTypes,
  )
 import RaffleizeDApp.Constants (purescriptProjectSrcPath)
+import RaffleizeDApp.CustomTypes.RaffleTypes (
+  RaffleConfig,
+  RaffleParam,
+  RaffleStateData,
+ )
 import RaffleizeDApp.CustomTypes.ActionTypes (
   AdminAction,
   RaffleOwnerAction,
@@ -20,17 +22,13 @@ import RaffleizeDApp.CustomTypes.ActionTypes (
   TicketOwnerAction,
   UserAction,
  )
-import RaffleizeDApp.CustomTypes.RaffleTypes (
-  RaffleConfig,
-  RaffleParam,
-  RaffleStateData,
- )
 import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
 import RaffleizeDApp.CustomTypes.TransferTypes (
   RaffleInfo,
   RaffleizeInteraction,
   UserAddresses,
  )
+import TypeBridges (raffleizeBridge)
 
 myTypes :: [SumType 'Haskell]
 myTypes =

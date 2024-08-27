@@ -1,6 +1,5 @@
-module CodeGen.TypeBridges where
+module TypeBridges where
 
-import CodeGen.PSTypes (psClientType)
 import Language.PureScript.Bridge (
   BridgePart,
   defaultBridge,
@@ -12,6 +11,7 @@ import Language.PureScript.Bridge.PSTypes (
   psNumber,
   psString,
  )
+import PSTypes (psClientType)
 
 ------------------------------------------------------------------------------------------------
 

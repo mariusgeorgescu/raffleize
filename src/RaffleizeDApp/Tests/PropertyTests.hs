@@ -1,6 +1,6 @@
-module RaffleizeDApp.Tests.PropertyTests where
+module PropertyTests where
 
-import RaffleizeDApp.CustomTypes.ActionTypes (RaffleizeAction)
+import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   actionToLabel,
   validActionLabelsForRaffleState,

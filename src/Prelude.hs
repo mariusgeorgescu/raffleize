@@ -1,6 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RankNTypes #-}
-{-# OPTIONS_GHC -Wno-dodgy-imports #-}
 
 module Prelude (
   module PlutusTx.Prelude,

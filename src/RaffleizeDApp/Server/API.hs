@@ -1,12 +1,12 @@
-module RaffleizeDApp.Server.API where
+module API where
 
 import Control.Monad.Reader
 
 import Control.Lens
 import Data.Swagger
 import GeniusYield.Types (GYAddress)
+import Queries
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.Server.Queries
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Transactions
 import Servant

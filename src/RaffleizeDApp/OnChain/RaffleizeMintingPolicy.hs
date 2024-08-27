@@ -24,10 +24,6 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
   mkNewRaffle,
   mkRaffleDatum,
  )
-import RaffleizeDApp.CustomTypes.Types (
-  AScriptContext (AScriptContext),
-  ATxInfo (..),
- )
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   checkRaffle,
   evaluateRaffleState,
@@ -35,6 +31,8 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
   getRaffleStateDatumAndValue,
  )
 import RaffleizeDApp.OnChain.Utils (
+  AScriptContext (AScriptContext),
+  ATxInfo (..),
   adaValueFromLovelaces,
   hasTxInWithRef,
   hasTxOutWithInlineDatumAnd,

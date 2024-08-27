@@ -4,11 +4,11 @@ import GeniusYield.Imports hiding (fromMaybe)
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value
+import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, refundTicketToRaffle, revealTicketToRaffleRT, updateRaffleStateValue)
+import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, refundTicketToRaffle, revealTicketToRaffleRT, updateRaffleStateValue)
-import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Skeletons

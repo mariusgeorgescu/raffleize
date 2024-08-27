@@ -32,16 +32,6 @@ import RaffleizeDApp.CustomTypes.TicketTypes (
   TicketStateData (tNumber),
   mkTicketDatum,
  )
-import RaffleizeDApp.CustomTypes.Types (
-  AScriptContext (AScriptContext),
-  ATxInfo (
-    ATxInfo,
-    txInfoInputs,
-    txInfoMint,
-    txInfoOutputs,
-    txInfoValidRange
-  ),
- )
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   buyTicketToRaffle,
   checkRaffle,
@@ -59,6 +49,14 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
   validateRaffleAction,
  )
 import RaffleizeDApp.OnChain.Utils (
+  AScriptContext (AScriptContext),
+  ATxInfo (
+    ATxInfo,
+    txInfoInputs,
+    txInfoMint,
+    txInfoOutputs,
+    txInfoValidRange
+  ),
   getOwnInput,
   hasTxInWithToken,
   hasTxOutWithInlineDatumAnd,

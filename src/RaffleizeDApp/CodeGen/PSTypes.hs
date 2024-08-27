@@ -1,4 +1,4 @@
-module CodeGen.PSTypes where
+module PSTypes where
 
 import Control.Lens (view, (^.))
 import Control.Monad.Reader.Class (MonadReader)

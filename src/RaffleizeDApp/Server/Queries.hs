@@ -1,4 +1,4 @@
-module RaffleizeDApp.Server.Queries where
+module Queries where
 
 import GeniusYield.Types (GYAddress)
 import RaffleizeDApp.CustomTypes.TransferTypes

@@ -1,7 +1,10 @@
 module RaffleizeDApp.TxBuilding.Utils where
 
 import Cardano.Api (Key (getVerificationKey), castVerificationKey)
+import Data.Aeson (decodeFileStrict)
+import Data.Either.Extra
 import Data.Text qualified
+import Data.Text.IO qualified
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Interval qualified
@@ -13,6 +16,8 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.TxBuilding.Validators
+import RaffleizeDApp.Utils
+import System.Directory.Extra
 
 ------------------------
 
@@ -100,7 +105,7 @@ getMyRaffleizeUserTokensFromValue val =
   let
     raffleizeCS = mintingPolicyCurrencySymbol raffleizeMintingPolicyGY
    in
-    [AssetClass (cs,  tn) | (cs, tn, _) <- flattenValue val, raffleizeCS == cs]
+    [AssetClass (cs, tn) | (cs, tn, _) <- flattenValue val, raffleizeCS == cs]
 
 {--  This function converts a 'GYDatum' to 'RaffleDatum', if does not succeeed it returns Nothing.
 --}
@@ -198,3 +203,39 @@ tsdValueAndImageFromUTxO ticketStateUTxO = do
  Otherwise it returns Nothing.-}
 ticketInfoFromUTxO :: GYUTxO -> RaffleStateId -> Integer -> Maybe TicketInfo
 ticketInfoFromUTxO utxo raffleStateId currentRandom = mkTicketInfo raffleStateId currentRandom <$> tsdValueAndImageFromUTxO utxo
+
+-- -- ----------------------------------------------------------------------------------------
+
+-- * Mnemonic Utils
+
+------------------------------------------------------------------------------------------------
+
+readMnemonicFile :: FilePath -> IO (Maybe GYExtendedPaymentSigningKey)
+readMnemonicFile path = do
+  putStrLn $ yellowColorString $ "Mnemonic phrase at " <> show path
+  fileExist <- doesFileExist path
+  if fileExist
+    then do
+      putStrLn "Found"
+      readMnemonic <$> Data.Text.IO.readFile path
+    else do
+      putStrLn $ show path <> " not found"
+      return Nothing
+
+isValidMnemonic :: Text -> Bool
+isValidMnemonic = Data.Either.Extra.isRight . walletKeysFromMnemonic . Data.Text.words
+
+readMnemonic :: Text -> Maybe GYExtendedPaymentSigningKey
+readMnemonic content = eitherToMaybe $ walletKeysToExtendedPaymentSigningKey <$> walletKeysFromMnemonic (Data.Text.words content)
+
+decodeConfigFile :: FromJSON a => FilePath -> IO (Maybe a)
+decodeConfigFile path = do
+  putStrLn $ yellowColorString $ "Parsing config file at " <> show path
+  fileExist <- doesFileExist path
+  if fileExist
+    then do
+      putStrLn "Found"
+      decodeFileStrict path
+    else do
+      putStrLn $ show path <> " not found"
+      return Nothing

@@ -1,4 +1,4 @@
-module RaffleizeDApp.TUI.Types where
+module Types where
 
 import Brick.Widgets.List
 

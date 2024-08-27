@@ -1,4 +1,4 @@
-module RaffleizeDApp.Tests.TestRuns where
+module TestRuns where
 
 import Cardano.Simple.Ledger.Slot
 import Cardano.Simple.Ledger.TimeSlot
@@ -17,7 +17,7 @@ import PlutusLedgerApi.V3 (POSIXTimeRange)
 import PlutusTx.Builtins (blake2b_256)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
-import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData (tSecret, tSecretHash))
+import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.Utils
