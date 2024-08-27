@@ -1,4 +1,4 @@
-cabal-version: 3.6
+cabal-version: 3.8
 name:          raffleize
 version:       2.0.0.0
 
@@ -22,7 +22,7 @@ flag defer-plugin-errors
 
 common common
   default-language:   GHC2021
-  build-depends:      base
+  build-depends:      base >=4.18.2.0 && <5
   mixins:             base hiding (Prelude)
   ghc-options:
     -Wall -fobject-code -fno-ignore-interface-pragmas
@@ -114,12 +114,12 @@ library
     , plutus-tx-plugin
 
   build-depends:
-    , aeson
+    , aeson              ^>=2.2.3
     , extra
     , generic-arbitrary
-    , mtl
-    , swagger2
-    , text
+    , mtl                ^>=2.3.1
+    , swagger2           ^>=2.8.9
+    , text               ^>=2.0.2
 
 executable server
   import:         common
@@ -133,14 +133,14 @@ executable server
   build-depends:  raffleize
   build-depends:
     , aeson-pretty
-    , bytestring
-    , http-types
-    , lens
+    , bytestring       ^>=0.11.5
+    , http-types       ^>=0.12.4
+    , lens             ^>=5.2.3
     , mtl
     , servant-server
     , servant-swagger
     , swagger2
-    , transformers
+    , transformers     ^>=0.6.1
     , wai
     , wai-cors
     , warp
@@ -168,9 +168,9 @@ executable tui
     , extra
     , lens
     , mtl
-    , text
-    , time
-    , vector
+    , text           ^>=2.0.2
+    , time           ^>=1.12.2
+    , vector         ^>=0.13.1
     , vty
 
   --- Cardano specific dependenciesƒ
@@ -216,7 +216,6 @@ test-suite tests
   --- Cardano specific dependencies
   build-depends:
     , atlas-cardano
-    , cardano-simple
+    , clb
     , plutus-ledger-api
-    , plutus-simple-model
     , plutus-tx
