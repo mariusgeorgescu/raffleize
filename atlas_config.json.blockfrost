@@ -1,0 +1,15 @@
+{
+
+    "coreProvider": { "blockfrostKey" : "preprodcOPIHoIiXo9zrMRiQuWRC9xTN1bHFEr0" },
+    "networkId": "preprod",
+    "logging": [
+        {
+            "type": {
+                "tag": "stderr"
+            },
+            "severity": "Debug",
+            "verbosity": "V2"
+        }
+    ],
+    "logTiming": false
+}
