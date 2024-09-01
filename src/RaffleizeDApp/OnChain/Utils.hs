@@ -9,7 +9,7 @@ import PlutusLedgerApi.V1.Value (
   flattenValue,
   geq,
  )
-import PlutusLedgerApi.V3 (
+import PlutusLedgerApi.V2 (
   Address,
   CurrencySymbol,
   Datum (getDatum),
@@ -30,7 +30,7 @@ import PlutusLedgerApi.V3 (
   adaToken,
   singleton,
  )
-import PlutusTx (unstableMakeIsData)
+import PlutusTx (unstableMakeIsData, fromBuiltinData)
 import PlutusTx.Builtins (blake2b_256, serialiseData)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
@@ -55,7 +55,7 @@ mkUntypedValidator ::
   , UnsafeFromData b
   ) =>
   (a -> b -> ScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> BuiltinData -> ())
+  (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
 mkUntypedValidator f a b ctx =
   check $
     f
@@ -68,7 +68,7 @@ mkUntypedValidator f a b ctx =
 mkUntypedMintingPolicy ::
   (UnsafeFromData a) =>
   (a -> ScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> ())
+  (BuiltinData -> BuiltinData -> BuiltinUnit)
 mkUntypedMintingPolicy f a ctx =
   check $
     f
@@ -97,29 +97,37 @@ unstableMakeIsData ''AScriptContext
 
 -- | A more efficient implementation of the `mkUntypedValidator` method of the `IsScriptContext` typeclass.
 mkUntypedValidatorCustom ::
-  ( UnsafeFromData a
-  , UnsafeFromData b
+  ( FromData a
+  , FromData b
   ) =>
   (a -> b -> AScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> BuiltinData -> ())
-mkUntypedValidatorCustom f a b ctx =
+  (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
+mkUntypedValidatorCustom f  d r c =
   check $
     f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData b)
-      (unsafeFromBuiltinData ctx)
+      (parseData d "Invalid data") 
+      (parseData r "Invalid redeemer") 
+      (parseData c "Invalid context")
+  where
+    parseData md s = case fromBuiltinData  md of 
+      Just datum -> datum
+      _      -> traceError s
 {-# INLINEABLE mkUntypedValidatorCustom #-}
 
 -- | A more efficient implementation of the `mkUntypedMintingPolicy` method of the `IsScriptContext` typeclass.
 mkUntypedMintingPolicyCustom ::
-  (UnsafeFromData a) =>
+  (FromData a) =>
   (a -> AScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> ())
-mkUntypedMintingPolicyCustom f a ctx =
+  (BuiltinData -> BuiltinData -> BuiltinUnit)
+mkUntypedMintingPolicyCustom f  r c =
   check $
     f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData ctx)
+      (parseData r "Invalid redeemer") 
+      (parseData c "Invalid context")
+  where
+    parseData md s = case fromBuiltinData  md of 
+      Just datum -> datum
+      _      -> traceError s
 {-# INLINEABLE mkUntypedMintingPolicyCustom #-}
 
 ------------------------

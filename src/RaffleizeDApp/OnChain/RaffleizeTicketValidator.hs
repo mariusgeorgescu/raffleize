@@ -122,7 +122,7 @@ ticketValidatorLamba adminPKH (TicketDatum _ _ tsd@TicketStateData {..}) redeeme
 ------------------------------------
 
 -- | Untyped version of the spending validator lambda.
-untypedTicketValidatorLamba :: PubKeyHash -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+untypedTicketValidatorLamba :: PubKeyHash -> BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit
 untypedTicketValidatorLamba = mkUntypedValidatorCustom . ticketValidatorLamba
 
 -- 3. Pre-compilation
@@ -130,5 +130,5 @@ untypedTicketValidatorLamba = mkUntypedValidatorCustom . ticketValidatorLamba
 -- | The type synonym for the compiled spending validator script.
 
 -- | Function for producing the compiled spending validator script.
-compileTicketValidator :: PubKeyHash -> CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
+compileTicketValidator :: PubKeyHash -> CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
 compileTicketValidator pkh = $$(compile [||untypedTicketValidatorLamba||]) `unsafeApplyCode` liftCode plcVersion100 pkh

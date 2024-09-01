@@ -1,15 +1,19 @@
 {-# LANGUAGE DerivingVia #-}
-
+-- Required for `makeLift`:
+{-# LANGUAGE MultiParamTypeClasses #-}
+-- Required for `makeLift`:
+{-# LANGUAGE ScopedTypeVariables #-}
 module RaffleizeDApp.CustomTypes.RaffleTypes where
 
 import PlutusLedgerApi.V1.Value (AssetClass)
-import PlutusLedgerApi.V3 (
+import PlutusLedgerApi.V2 (
   POSIXTime (..),
   ScriptHash,
   Value,
  )
-import PlutusTx (makeLift, unstableMakeIsData)
-import PlutusTx.AssocMap (fromList, lookup)
+
+import PlutusTx (makeIsDataIndexed, makeLift, unstableMakeIsData)
+import PlutusTx.AssocMap (lookup, safeFromList)
 import RaffleizeDApp.Constants (
   metadataVersion,
   raffleDescription,
@@ -62,9 +66,10 @@ data RaffleParam = RaffleParam
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
 
-unstableMakeIsData ''RaffleParam --- TODO must be changed with stable version
+makeIsDataIndexed ''RaffleParam [('RaffleParam, 0)]
+makeLift ''RaffleParam
 
-makeLift ''RaffleParam --  generating Lift instance with TH
+--  generating Lift instance with TH
 
 {- | Raffle State Data
 This datatype is part of the RAFFLE STATE.
@@ -114,7 +119,7 @@ mkRaffleDatum :: RaffleStateData -> RaffleDatum
 mkRaffleDatum rsd =
   RaffleDatum
     { metadata =
-        fromList $
+        safeFromList $
           encodeUtf8KV
             #<$> [ ("description", raffleDescription)
                  , ("image", raffleImageURI)

@@ -4,7 +4,6 @@ import Data.Aeson hiding (Value)
 import Data.Aeson qualified (Value)
 import Data.Aeson.Types (Parser)
 import Data.String
-
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
 import PlutusLedgerApi.V2
 import PlutusTx
@@ -87,7 +86,7 @@ instance FromJSON AssetClass where
 
 instance ToJSON BuiltinByteString where
   toJSON :: BuiltinByteString -> Data.Aeson.Value
-  toJSON bs = toJSON $ fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show bs
+  toJSON bs = toJSON $ fromBuiltin @BuiltinString $ PlutusTx.Show.show bs
 
 instance FromJSON BuiltinByteString where
   parseJSON :: Data.Aeson.Value -> Parser BuiltinByteString

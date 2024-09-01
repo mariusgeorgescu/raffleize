@@ -1,3 +1,7 @@
+-- Required for `makeLift`:
+{-# LANGUAGE MultiParamTypeClasses #-}
+-- Required for `makeLift`:
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 #-}
@@ -80,10 +84,10 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
 raffleizePolicyLambda _ _ _ = traceError "invalid purpose"
 {-# INLINEABLE raffleizePolicyLambda #-}
 
-untypedRaffleizePolicyLambda :: RaffleParam -> BuiltinData -> BuiltinData -> ()
+untypedRaffleizePolicyLambda :: RaffleParam -> BuiltinData -> BuiltinData -> BuiltinUnit
 untypedRaffleizePolicyLambda p = mkUntypedMintingPolicyCustom $ raffleizePolicyLambda p
 {-# INLINEABLE untypedRaffleizePolicyLambda #-}
 
 -- | Compile the untyped lambda to a UPLC script and splice back to Haskell.
-compileRaffleizeMP :: RaffleParam -> CompiledCode (BuiltinData -> BuiltinData -> ())
+compileRaffleizeMP :: RaffleParam -> CompiledCode (BuiltinData -> BuiltinData -> BuiltinUnit)
 compileRaffleizeMP p = $$(compile [||untypedRaffleizePolicyLambda||]) `unsafeApplyCode` liftCode plcVersion100 p

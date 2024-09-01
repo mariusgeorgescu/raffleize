@@ -51,6 +51,7 @@ common common
     TypeApplications
     TypeFamilies
     TypeOperators
+    ViewPatterns
 
 common plutus-ghc-options
   -- so unfoldings are present even when compiled without optmizations
