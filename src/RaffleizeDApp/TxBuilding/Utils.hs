@@ -57,7 +57,7 @@ showLink nid s content = case nid of
   GYTestnetPreprod -> cexplorerPreprod <> s <> "/" <> content <> " "
   GYTestnetPreview -> cexplorerPreview <> s <> "/" <> content <> " "
   GYTestnetLegacy -> content
-  GYPrivnet -> content
+  GYPrivnet _f -> content
 
 {--  This function returns a Just tuple of the datum and value of a UTxO if the UTxO has inline datum,
 otherwise returns Nothing

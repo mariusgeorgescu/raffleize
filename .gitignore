@@ -50,7 +50,7 @@ result
 
 #Raffleize
 
-atlas_config.json
+atlas_config.*
 
 *.skey
 *.prv

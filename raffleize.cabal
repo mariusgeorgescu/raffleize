@@ -21,7 +21,7 @@ flag defer-plugin-errors
   manual:      True
 
 common common
-  default-language:   GHC2021
+  -- default-language:   GHC2021
   build-depends:      base >=4.18.2.0 && <5
   mixins:             base hiding (Prelude)
   ghc-options:
@@ -52,6 +52,9 @@ common common
     TypeFamilies
     TypeOperators
     ViewPatterns
+    BangPatterns
+    TupleSections
+    FlexibleContexts
 
 common plutus-ghc-options
   -- so unfoldings are present even when compiled without optmizations

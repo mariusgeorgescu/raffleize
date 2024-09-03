@@ -2,11 +2,11 @@ module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
 import GeniusYield.Api.TestTokens (mintTestTokens)
-import GeniusYield.Examples.Limbo (addRefScript')
 import GeniusYield.Imports (IsString (..))
 import GeniusYield.Types
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
+import RaffleizeDApp.TxBuilding.Skeletons (addRefScriptSkeleton)
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
@@ -40,7 +40,7 @@ mintTestTokensTxBody userAddresses tn amount = do
 deployReferenceScriptTxBody :: (MonadIO m, MonadReader ProviderCtx m) => GYScript 'PlutusV2 -> UserAddresses -> m GYTxBody
 deployReferenceScriptTxBody script userAddresses = do
   providerCtx <- ask
-  liftIO $ runTxI providerCtx userAddresses (addRefScript' script)
+  liftIO $ runTxI providerCtx userAddresses (addRefScriptSkeleton script)
 
 deployRaffleizeValidatortTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> m GYTxBody
 deployRaffleizeValidatortTxBody = deployReferenceScriptTxBody (validatorToScript raffleizeValidatorGY)

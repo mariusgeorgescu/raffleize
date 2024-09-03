@@ -5,7 +5,7 @@ import Control.Monad.Reader
 import Data.Either.Extra
 
 import GHC.Stack
-import GeniusYield.TxBuilder
+import GeniusYield.TxBuilder hiding (User)
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
@@ -15,7 +15,7 @@ import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Operations
 
 interactionToTxSkeleton ::
-  (HasCallStack, GYTxMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
+  (HasCallStack, GYTxUserQueryMonad  m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
   RaffleizeInteraction ->
   r (m (GYTxSkeleton 'PlutusV2, AssetClass))
 interactionToTxSkeleton

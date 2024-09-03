@@ -167,11 +167,11 @@ raffleizeValidatorLamba
 ------------------------------------
 
 -- | Untyped version of the spending validator lambda.
-untypedRaffleizeValidatorLamba :: PubKeyHash -> BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit
+untypedRaffleizeValidatorLamba :: PubKeyHash -> BuiltinData -> BuiltinData -> BuiltinData -> ()
 untypedRaffleizeValidatorLamba = mkUntypedValidatorCustom . raffleizeValidatorLamba
 
 -- 3. Pre-compilation
 
 -- | Function for producing the compiled spending validator script.
-compileRaffleizeValidator :: PubKeyHash -> CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
+compileRaffleizeValidator :: PubKeyHash -> CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
 compileRaffleizeValidator params = $$(compile [||untypedRaffleizeValidatorLamba||]) `unsafeApplyCode` liftCode plcVersion100 params

@@ -111,7 +111,7 @@ raffleizeActionToIntro ma ra =
               putStrLn $ blueColorString (show rconfig)
             (BuyTicket secretHashBS) -> do
               putStrLn $ yellowColorString "Buying ticket to raffle... \n\t "
-              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show secretHashBS)
+              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show bs)
           RaffleOwner roa -> do
             putStrLn $ inContextOf ("raffle" :: String)
             case roa of
@@ -134,7 +134,7 @@ raffleizeActionToIntro ma ra =
             case toa of
               (RevealTicketSecret secretBS) -> do
                 putStrLn $ yellowColorString "Revealing the ticket secret... \n\t "
-                putStrLn $ blueColorString $ "onchain revealed secret: " <> Data.Text.unpack (fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show secretBS)
+                putStrLn $ blueColorString $ "onchain revealed secret: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show secretBS)
               CollectStake -> do
                 putStrLn $ yellowColorString "Collecting stake with winning ticket: \n\t "
               RefundTicket -> do

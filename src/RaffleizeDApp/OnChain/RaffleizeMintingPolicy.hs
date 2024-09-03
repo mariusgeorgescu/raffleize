@@ -84,10 +84,10 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
 raffleizePolicyLambda _ _ _ = traceError "invalid purpose"
 {-# INLINEABLE raffleizePolicyLambda #-}
 
-untypedRaffleizePolicyLambda :: RaffleParam -> BuiltinData -> BuiltinData -> BuiltinUnit
+untypedRaffleizePolicyLambda :: RaffleParam -> BuiltinData -> BuiltinData -> ()
 untypedRaffleizePolicyLambda p = mkUntypedMintingPolicyCustom $ raffleizePolicyLambda p
 {-# INLINEABLE untypedRaffleizePolicyLambda #-}
 
 -- | Compile the untyped lambda to a UPLC script and splice back to Haskell.
-compileRaffleizeMP :: RaffleParam -> CompiledCode (BuiltinData -> BuiltinData -> BuiltinUnit)
+compileRaffleizeMP :: RaffleParam -> CompiledCode (BuiltinData -> BuiltinData -> ())
 compileRaffleizeMP p = $$(compile [||untypedRaffleizePolicyLambda||]) `unsafeApplyCode` liftCode plcVersion100 p

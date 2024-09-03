@@ -55,25 +55,29 @@ mkUntypedValidator ::
   , UnsafeFromData b
   ) =>
   (a -> b -> ScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
+  (BuiltinData -> BuiltinData -> BuiltinData -> ())
 mkUntypedValidator f a b ctx =
-  check $
+  if 
     f
       (unsafeFromBuiltinData a)
       (unsafeFromBuiltinData b)
       (unsafeFromBuiltinData ctx)
+  then ()
+  else traceError "validator: Validation Failed"
 {-# INLINEABLE mkUntypedValidator #-}
 
 -- | A more efficient implementation of the `mkUntypedMintingPolicy` method of the `IsScriptContext` typeclass.
 mkUntypedMintingPolicy ::
   (UnsafeFromData a) =>
   (a -> ScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> BuiltinUnit)
+  (BuiltinData -> BuiltinData -> ())
 mkUntypedMintingPolicy f a ctx =
-  check $
+  if 
     f
       (unsafeFromBuiltinData a)
       (unsafeFromBuiltinData ctx)
+  then ()
+  else traceError "validator: Validation Failed"
 {-# INLINEABLE mkUntypedMintingPolicy #-}
 
 data ATxInfo = ATxInfo
@@ -101,13 +105,15 @@ mkUntypedValidatorCustom ::
   , FromData b
   ) =>
   (a -> b -> AScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
+  (BuiltinData -> BuiltinData -> BuiltinData -> ())
 mkUntypedValidatorCustom f  d r c =
-  check $
+  if
     f
       (parseData d "Invalid data") 
       (parseData r "Invalid redeemer") 
       (parseData c "Invalid context")
+  then ()
+  else traceError "validator: Validation Failed"
   where
     parseData md s = case fromBuiltinData  md of 
       Just datum -> datum
@@ -118,12 +124,14 @@ mkUntypedValidatorCustom f  d r c =
 mkUntypedMintingPolicyCustom ::
   (FromData a) =>
   (a -> AScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> BuiltinUnit)
+  (BuiltinData -> BuiltinData -> ())
 mkUntypedMintingPolicyCustom f  r c =
-  check $
+  if
     f
       (parseData r "Invalid redeemer") 
       (parseData c "Invalid context")
+  then ()
+  else traceError "validator: Validation Failed"
   where
     parseData md s = case fromBuiltinData  md of 
       Just datum -> datum
