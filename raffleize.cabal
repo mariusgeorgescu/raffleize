@@ -55,6 +55,7 @@ common common
     BangPatterns
     TupleSections
     FlexibleContexts
+    BlockArguments
 
 common plutus-ghc-options
   -- so unfoldings are present even when compiled without optmizations
@@ -167,7 +168,7 @@ executable tui
   build-depends:
     , aeson
     , ansi-terminal
-    , brick
+    , brick 
     , bytestring
     , extra
     , lens

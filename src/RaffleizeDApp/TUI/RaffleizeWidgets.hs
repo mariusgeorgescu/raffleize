@@ -33,31 +33,31 @@ import Types
 txOutRefWidget :: GYNetworkId -> GYTxOutRef -> Widget n
 txOutRefWidget nid t =
   let txoutrefText = showTxOutRef t
-   in hyperlink (showLink nid "tx" txoutrefText) $ withAttr "good" $ txt txoutrefText
+   in hyperlink (showLink nid "tx" txoutrefText) $ withAttr (attrName "good") $ txt txoutrefText
 
 printProvider :: GYCoreConfig -> Widget n
-printProvider cfg = withAttr "good" . txt $ case cfgCoreProvider cfg of
+printProvider cfg = withAttr (attrName "good") . txt $ case cfgCoreProvider cfg of
   (GYNodeKupo {}) -> "KUPO"
   (GYMaestro {}) -> "MAESTRO"
   (GYBlockfrost {}) -> "BLOCKFROST"
 
 printNetwork :: GYCoreConfig -> Widget n
-printNetwork cfg = withAttr "good" . txt $ case cfgNetworkId cfg of
+printNetwork cfg = withAttr (attrName "good") . txt $ case cfgNetworkId cfg of
   GYMainnet -> "MAINNET"
   GYTestnetPreprod -> "PREPROD"
   GYTestnetPreview -> "PREVIEW"
   GYTestnetLegacy -> "TESTNET-LEGACY"
-  GYPrivnet -> "PRIVNET"
+  GYPrivnet _f -> "PRIVNET"
 
 symbolWidget :: Bool -> Widget n
-symbolWidget v = if v then withAttr "good" $ txt "✔" else withAttr "warning" $ txt "X"
+symbolWidget v = if v then withAttr (attrName "good") $ txt "✔" else withAttr (attrName "warning") $ txt "X"
 
 assetClassItemWidget :: CurrencySymbol -> TokenName -> Widget n
 assetClassItemWidget cs tn = str (show cs) <=> hBorder <=> str (toString tn)
 
 valueItemWidget :: Bool -> Bool -> (CurrencySymbol, TokenName, Integer) -> Widget n
 valueItemWidget selectable hasFocus (cs, tn, i) =
-  (if hasFocus && selectable then withAttr "selected" else id) $
+  (if hasFocus && selectable then withAttr (attrName "selected") else id) $
     vLimit 5 $
       hLimit 130 $
         border
@@ -100,7 +100,7 @@ invalidFieldText t = case t of
   _ -> ""
 
 invalidFieldsWidget :: [NameResources] -> Widget n
-invalidFieldsWidget ivfs = withAttr "warning" $ txt (Data.Text.intercalate "\n" $ invalidFieldText <$> ivfs)
+invalidFieldsWidget ivfs = withAttr (attrName "warning") $ txt (Data.Text.intercalate "\n" $ invalidFieldText <$> ivfs)
 
 mkFormScreen :: Text -> Text -> Form s e NameResources -> Widget NameResources
 mkFormScreen title actionsDesc raffleizeForm =
@@ -117,7 +117,7 @@ mkFormScreen title actionsDesc raffleizeForm =
 
 formActionsWidget :: Bool -> Text -> [Widget n] -> Widget n
 formActionsWidget isValid desc other =
-  withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
+  withAttr (attrName "action") . borderWithLabel (txt "AVAILABLE ACTIONS") $
     vBox
       ( [ txt "[ESC]   - Close          "
         , if isValid then txt ("[Enter] - " <> desc) else emptyWidget
@@ -224,7 +224,7 @@ drawRaffleInfo RaffleInfo {..} =
         )
 
 drawRaffleInfoListItem :: Bool -> RaffleInfo -> Widget NameResources
-drawRaffleInfoListItem isSelected ri = if isSelected then withAttr "action" $ drawRaffleInfo ri else drawRaffleInfo ri
+drawRaffleInfoListItem isSelected ri = if isSelected then withAttr (attrName "action") $ drawRaffleInfo ri else drawRaffleInfo ri
 
 mkActiveRafflesForm :: ActiveRafflesFormState -> Form ActiveRafflesFormState e NameResources
 mkActiveRafflesForm =
@@ -254,7 +254,7 @@ drawActiveRafflesForm arForm =
   where
     drawRaffleActionsWidget :: Maybe [RaffleizeActionLabel] -> Widget NameResources
     drawRaffleActionsWidget mActions =
-      withAttr "action" $
+      withAttr (attrName "action") $
         borderWithLabel (txt "AVAILABLE ACTIONS") $
           vBox $
             maybe [] (drawRaffleActionLabel <$>) mActions
@@ -305,7 +305,7 @@ drawMyRafflesForm mrForm =
   where
     drawMyRaffleActionsWidget :: Maybe [RaffleizeActionLabel] -> Widget NameResources
     drawMyRaffleActionsWidget mActions =
-      withAttr "action" $
+      withAttr (attrName "action") $
         borderWithLabel (txt "AVAILABLE ACTIONS") $
           vBox $
             maybe [] (drawMyRaffleActionLabel <$>) mActions
@@ -354,7 +354,7 @@ drawTicketInfo TicketInfo {..} =
             table
               [ [txt "Ticket Number: ", txt (showText (tNumber tiTsd))]
               , [txt "Ticket State: ", txt (showText tiStateLabel)]
-              , [txt "Secret Hash: ", txt (fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show (tSecretHash tiTsd))]
+              , [txt "Secret Hash: ", txt (fromBuiltin @BuiltinString $ PlutusTx.Show.show (tSecretHash tiTsd))]
               , [txt "Revealed Secret: ", txt (showText (tSecret tiTsd))]
               ]
 
@@ -364,7 +364,7 @@ mkMyTicketsForm =
     [(txt "My Tickets" <=>) @@= listField _myTickets selectedTicket drawTicketInfoListItem 10 MyTicketsListField]
   where
     drawTicketInfoListItem :: Bool -> TicketInfo -> Widget NameResources
-    drawTicketInfoListItem isSelected ti = if isSelected then withAttr "action" $ drawTicketInfo ti else drawTicketInfo ti
+    drawTicketInfoListItem isSelected ti = if isSelected then withAttr (attrName "action") $ drawTicketInfo ti else drawTicketInfo ti
 
 ------------------------------------------------------------------------------------------------
 
@@ -389,7 +389,7 @@ drawMyTicketsScreen mtForm =
   where
     drawMyTicketsActionsWidget :: Maybe [RaffleizeActionLabel] -> Widget NameResources
     drawMyTicketsActionsWidget mActions =
-      withAttr "action" $
+      withAttr (attrName "action") $
         borderWithLabel (txt "AVAILABLE ACTIONS") $
           vBox $
             maybe [] (drawMyTicketActionLabel <$>) mActions
@@ -492,7 +492,7 @@ drawConstructValueWidget ConstructValueState {addToValueForm, availableValueList
 
 constructValueActionsWidget :: Bool -> Bool -> Integer -> Widget n
 constructValueActionsWidget isValidToAdd isEmptyStake currentFocus =
-  withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
+  withAttr (attrName "action") . borderWithLabel (txt "AVAILABLE ACTIONS") $
     vBox
       [ txt "[ESC]           - Close          "
       , if currentFocus `elem` [1, 2] then (if isValidToAdd then txt "[Insert] | [+]  - Add to value" else emptyWidget) else (if isEmptyStake then emptyWidget else txt "[Delete] | [-]  - Remove from value")
@@ -504,7 +504,7 @@ drawAction (bkey, bdesc) = txt $ "[ " <> bkey <> " ]" <> "  -  " <> bdesc
 
 drawAvailableActions :: [Maybe (Text, Text)] -> Widget n
 drawAvailableActions mactions =
-  withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
+  withAttr (attrName "action") . borderWithLabel (txt "AVAILABLE ACTIONS") $
     vBox $
       drawAction <$> Data.Maybe.catMaybes mactions
 

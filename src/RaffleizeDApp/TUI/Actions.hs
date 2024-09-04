@@ -111,7 +111,7 @@ raffleizeActionToIntro ma ra =
               putStrLn $ blueColorString (show rconfig)
             (BuyTicket secretHashBS) -> do
               putStrLn $ yellowColorString "Buying ticket to raffle... \n\t "
-              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show bs)
+              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show secretHashBS)
           RaffleOwner roa -> do
             putStrLn $ inContextOf ("raffle" :: String)
             case roa of
