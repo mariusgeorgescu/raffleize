@@ -128,4 +128,8 @@ txNFTAction redeemer = do
 addRefScriptSkeleton :: GYTxQueryMonad m => GYScript 'PlutusV2 -> m (GYTxSkeleton v)
 addRefScriptSkeleton sc = do
     addr <- scriptAddress limboValidatorV2
+    addRefScriptToAddressSkeleton addr sc
+
+addRefScriptToAddressSkeleton :: GYTxQueryMonad m => GYAddress -> GYScript 'PlutusV2 -> m (GYTxSkeleton v)
+addRefScriptToAddressSkeleton addr sc = do
     return $ mustHaveOutput (mkGYTxOut addr mempty (datumFromPlutusData ())) { gyTxOutRefS = Just $ GYPlutusScript sc }
