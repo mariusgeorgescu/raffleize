@@ -41,7 +41,7 @@ isValidBetween s1 s2 =
 txIsValidByDDL :: (HasCallStack, GYTxQueryMonad m) => POSIXTime -> m (GYTxSkeleton 'PlutusV2)
 txIsValidByDDL ddl = do
   now <- slotOfCurrentBlock
-  after36hSlot <- advanceSlot' now 10 --25920 -- ~7h in seconds (era safe zone)
+  after36hSlot <- advanceSlot' now 25920  -- ~7h in seconds (era safe zone)
   after36hTime <- pPOSIXTimeFromGYSlot after36hSlot
   validUntil <- gySlotFromPOSIXTime (min ddl after36hTime)
   return $ isValidBetween now validUntil
