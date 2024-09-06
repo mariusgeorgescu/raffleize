@@ -1,6 +1,6 @@
 module UnitTests where
 
-
+import Control.Monad.Extra (when)
 import GeniusYield.Test.Clb (GYTxMonadClb, mkTestFor)
 import GeniusYield.Test.Utils
 import GeniusYield.TxBuilder
@@ -19,6 +19,7 @@ unitTests =
     "Raffleize Unit Tests"
     [ createRaffleTests
     , newStateTests
+    , expiredStateTests 
     ]
 
 -- ------------------------------------------------------------------------------------------------
@@ -157,15 +158,15 @@ updateRaffleTests =
               , rStake = valueToPlutus (fakeIron 100) <> valueToPlutus (fakeGold 100)
               }
       void $ raffleizeTransactionRun (w1 testWallets) roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
-      -- mri2 <- queryRaffleRun (w1 testWallets) raffleId2
-      -- case mri2 of
-      --   Nothing -> logTestError $ "Raffle not found: " <> show raffleId
-      --   Just ri2 -> do
-      --     when (raffleId2 /= raffleId) $ logTestError "not same id"
-      --     let prevStakeValue = rStake (rConfig (riRsd ri))
-      --     let currentStakeValue = rStake (rConfig (riRsd ri2))
-      --     let updatedVal = riValue ri #- prevStakeValue #+ currentStakeValue
-      --     when (riValue ri2 #/= updatedVal) $ logTestError "locked value does not match the config "
+    -- mri2 <- queryRaffleRun (w1 testWallets) raffleId2
+    -- case mri2 of
+    --   Nothing -> logTestError $ "Raffle not found: " <> show raffleId
+    --   Just ri2 -> do
+    --     when (raffleId2 /= raffleId) $ logTestError "not same id"
+    --     let prevStakeValue = rStake (rConfig (riRsd ri))
+    --     let currentStakeValue = rStake (rConfig (riRsd ri2))
+    --     let updatedVal = riValue ri #- prevStakeValue #+ currentStakeValue
+    --     when (riValue ri2 #/= updatedVal) $ logTestError "locked value does not match the config "
 
     updateRaffleTC2 :: TestInfo -> GYTxMonadClb ()
     updateRaffleTC2 TestInfo {..} = do
@@ -257,32 +258,32 @@ buy1stTicketTest =
       let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
       void $ buyTicketToRaffleRun ri roc (w1 testWallets) secret
 
--- ------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
 
--- -- * Scenarios for raffle in status "EXPIRED"
+-- * Scenarios for raffle in status "EXPIRED"
 
--- ------------------------------------------------------------------------------------------------
--- expiredStateTests :: TestTree
--- expiredStateTests =
---   testGroup
---     "Tests for raffles in status 'Expired''"
---     [mkTestFor "Test Case 5.1: Verify that the raffle owner can recover stake from expired raffle" recoverExpiredTC1]
---   where
---     recoverExpiredTC1 :: TestInfo -> GYTxMonadClb ()
---     recoverExpiredTC1 TestInfo {..} = do
---       (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun testWallets
---       let raffleId = rRaffleID $ riRsd ri
---       waitNSlots 100 -- EXPIRED
---       mri <- queryRaffleRun w1 raffleId
---       case mri of
---         Nothing -> logTestError $ "Raffle not found: " <> show raffleId
---         Just ri' -> when (riStateLabel ri' /= "EXPIRED_LOCKED_STAKE") $ logTestError "not in status EXPIRED_LOCKED_STAKE"
---       waitNSlots 1
---       (_txId, raffleId2) <- raffleizeTransactionRun w1 roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
---       mri2 <- queryRaffleRun w1 raffleId2
---       case mri2 of
---         Nothing -> logTestError $ "Raffle not found: " <> show raffleId
---         Just ri2 -> when (riStateLabel ri2 /= "EXPIRED_FINAL") $ logTestError "not in status EXPIRED_FINAL"
+------------------------------------------------------------------------------------------------
+expiredStateTests :: TestTree
+expiredStateTests =
+  testGroup
+    "Tests for raffles in status 'Expired''"
+    [mkTestFor "Test Case 5.1: Verify that the raffle owner can recover stake from expired raffle" recoverExpiredTC1]
+  where
+    recoverExpiredTC1 :: TestInfo -> GYTxMonadClb ()
+    recoverExpiredTC1 TestInfo {..} = do
+      (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun testWallets
+      let raffleId = rRaffleID $ riRsd ri
+      waitNSlots_ 100 -- EXPIRED
+      mri <- queryRaffleRun (w1 testWallets) raffleId
+      case mri of
+        Nothing -> logTestError $ "Raffle not found: " <> show raffleId
+        Just ri' -> when (riStateLabel ri' /= "EXPIRED_LOCKED_STAKE") $ logTestError "not in status EXPIRED_LOCKED_STAKE"
+      waitNSlots_ 1
+      (_txId, raffleId2) <- raffleizeTransactionRun (w1 testWallets) roc (RaffleOwner RecoverStake) (Just raffleId) Nothing
+      mri2 <- queryRaffleRun (w1 testWallets) raffleId2
+      case mri2 of
+        Nothing -> logTestError $ "Raffle not found: " <> show raffleId
+        Just ri2 -> when (riStateLabel ri2 /= "EXPIRED_FINAL") $ logTestError "not in status EXPIRED_FINAL"
 
 -- -- ------------------------------------------------------------------------------------------------
 
