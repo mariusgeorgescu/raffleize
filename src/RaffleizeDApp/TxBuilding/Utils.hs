@@ -42,7 +42,7 @@ addressFromPaymentSigningKey nid extendedSkey =
     address
 
 pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime
-pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . slotFromApi . fromInteger
+pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . unsafeSlotFromInteger
 
 pPOSIXTimeFromGYSlot :: GYTxQueryMonad m => GYSlot -> m POSIXTime
 pPOSIXTimeFromGYSlot = (timeToPlutus <$>) . slotToBeginTime

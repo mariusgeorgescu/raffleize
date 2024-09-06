@@ -1,22 +1,29 @@
 module TestRuns where
 
+import Control.Monad (unless)
+import Control.Monad.Extra (when)
 import Control.Monad.IO.Class
 import Control.Monad.Reader (ReaderT (..))
-import GeniusYield.Test.Clb (sendSkeleton')
+import Data.Maybe qualified
+import Data.Tuple.Extra (uncurry3)
+import GHC.Stack
+import GeniusYield.Test.Clb (GYTxMonadClb, mustFail, sendSkeleton')
 import GeniusYield.Test.Utils
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value (AssetClass)
 import RaffleizeDApp.CustomTypes.ActionTypes
+import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.CustomTypes.TransferTypes
+import RaffleizeDApp.OnChain.RaffleizeLogic (evaluateRaffleState, showRaffleStateLabel)
+import RaffleizeDApp.OnChain.Utils (showValue)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions (interactionToTxSkeleton)
+import RaffleizeDApp.TxBuilding.Lookups
+import RaffleizeDApp.TxBuilding.Utils (pPOSIXTimeFromSlotInteger)
 import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
 import RaffleizeDApp.Utils
-import RaffleizeDApp.CustomTypes.RaffleTypes
-    ( RaffleConfig, RaffleConfig(..) )
-import RaffleizeDApp.TxBuilding.Lookups
-import RaffleizeDApp.CustomTypes.TransferTypes
-import Control.Monad.Extra (when)
 
 -- -- import Cardano.Simple.Ledger.Slot
 -- -- import Cardano.Simple.Ledger.TimeSlot
@@ -49,15 +56,18 @@ import Control.Monad.Extra (when)
 -- -- Run TEST ACTIONS
 -- -----------------------
 
-raffleizeTransactionRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => User -> RaffleizeTxBuildingContext -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> m (GYTxId, AssetClass)
+raffleizeTransactionRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => User -> RaffleizeTxBuildingContext -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> m (GYTxId, AssetClass)
 raffleizeTransactionRun w rtxbc raffleizeActon interactionContextNFT optionalRecipient = do
-  my_addr <- ownChangeAddress
-  let userAddrs = UserAddresses [my_addr] my_addr Nothing
+  let userAddrs = UserAddresses (toList $ GeniusYield.TxBuilder.userAddresses w) (userChangeAddress w) Nothing
   let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
   result <- runReaderT (interactionToTxSkeleton raffleizeInteraction) rtxbc
   (skeleton, ac) <- result
-  (_, txId) <- withWalletBalancesCheck [] $ asUser w $ sendSkeleton' skeleton `catchError` (error . show)
+  (_, txId) <- withWalletBalancesCheck [] $ asUser w $ sendSkeleton' skeleton
   return (txId, ac)
+
+raffleizeTransactionThatMustFailRun :: (HasCallStack) => User -> RaffleizeTxBuildingContext -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> GYTxMonadClb ()
+raffleizeTransactionThatMustFailRun w roc raffleizeActon interactionContextNFT optionalRecipient =
+  mustFail $ raffleizeTransactionRun w roc raffleizeActon interactionContextNFT optionalRecipient
 
 deployReferenceScriptRun :: (GYTxGameMonad m) => GYValidator PlutusV2 -> User -> User -> m GYTxOutRef
 deployReferenceScriptRun validator fromWallet toWallet = do
@@ -69,128 +79,129 @@ deployValidatorsRun w = do
   refRaffleValidator <- deployReferenceScriptRun raffleizeValidatorGY w w
   return RaffleizeTxBuildingContext {raffleValidatorRef = refRaffleValidator, ticketValidatorRef = refTicketValidator}
 
-
-queryRaffleRun :: GYTxGameMonad m => User -> AssetClass -> m (Maybe RaffleInfo)
+queryRaffleRun :: (GYTxGameMonad m, HasCallStack) => User -> AssetClass -> m (Maybe RaffleInfo)
 queryRaffleRun w rid =
   withWalletBalancesCheck [] $ asUser w $ lookupRaffleInfoRefAC rid
 
+queryRaffleRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Bool -> User -> AssetClass -> m RaffleStateId
+queryRaffleRUN log w rid = do
+  (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
+    getRaffleStateDataAndValue rid `catchError` (error . show)
+  tr <- getTimeRangeForNextNSlots 1
+  let rStateId = evaluateRaffleState (tr, r, v)
+  when log $ do
+    logInfo (yellowColorString $ "The raffle is in state : " ++ showRaffleStateLabel rStateId)
+    logInfo $ yellowColorString $ show r ++ showValue "Raffle State Value" v
+  return rStateId
 
 deployValidatorsAndCreateNewRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Wallets -> RaffleConfig -> m (RaffleInfo, RaffleizeTxBuildingContext)
 deployValidatorsAndCreateNewRaffleRun Wallets {..} config = do
   -- . Deploy validators
   roc <- deployValidatorsRun w9
-  waitNSlots_ 3
+  waitNSlots_ 1
   void slotOfCurrentBlock
   -- . Create raffle
   (_txId, raffleId) <- raffleizeTransactionRun w1 roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
-  waitNSlots_ 3
+  waitNSlots_ 1
   void slotOfCurrentBlock
   mri <- queryRaffleRun w1 raffleId
   case mri of
     Nothing -> error "raffle was not created"
     Just ri -> do
-      when (riStateLabel ri /= "NEW") $ logMsg "TestError"  GYError "not in status NEW"
+      when (riStateLabel ri /= "NEW") $ logTestError "not in status NEW"
       return (ri, roc)
 
+deployValidatorsAndCreateNewValidRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Wallets -> m (RaffleInfo, RaffleizeTxBuildingContext)
+deployValidatorsAndCreateNewValidRaffleRun testWallets = do
+  cddl <- pPOSIXTimeFromSlotInteger 100
+  rddl <- pPOSIXTimeFromSlotInteger 200
+  let config =
+        RaffleConfig
+          { rCommitDDL = cddl
+          , rRevealDDL = rddl
+          , rTicketPrice = 5_000_000
+          , rMinTickets = 3
+          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          }
+  deployValidatorsAndCreateNewRaffleRun testWallets config
 
--- raffleizeTransactionThatMustFailRun :: HasCallStack => Wallet -> RaffleizeTxBuildingContext -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> Run ()
--- raffleizeTransactionThatMustFailRun w roc raffleizeActon interactionContextNFT optionalRecipient = do
---   my_addr <- runWallet' w ownAddress
---   let userAddrs = UserAddresses [my_addr] my_addr Nothing
---   let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
---   result <- runReaderT (interactionToTxSkeleton raffleizeInteraction) roc
---   (skeleton, _ac) <- runWallet' w result
---   mustFail $ runWallet w $ sendSkeleton skeleton
---   return ()
+queryTicketRun :: (GYTxGameMonad m) => User -> AssetClass -> m (Maybe TicketInfo)
+queryTicketRun w tid =
+  withWalletBalancesCheck [] $ asUser w $ lookupTicketInfoByRefAC tid
 
+queryTicketRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => User -> AssetClass -> m ()
+queryTicketRUN w tid = do
+  (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
+    getTicketStateDataAndValue tid `catchError` (error . show)
+  logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
 
+buyTicketToRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => RaffleInfo -> RaffleizeTxBuildingContext -> User -> BuiltinByteString -> m TicketInfo
+buyTicketToRaffleRun ri roc w secret = do
+  let raffleId = rRaffleID $ riRsd ri
+  let secretHash = blake2b_256 secret
+  soldTicketsBeforeBuy <- rSoldTickets . riRsd . Data.Maybe.fromMaybe (error "raffle not fund 1") <$> queryRaffleRun w raffleId
+  x <- Data.Maybe.fromMaybe (error "raffle not fund X") <$> queryRaffleRun w raffleId
+  logInfo (show x)
+  (_txId, ticketId) <- raffleizeTransactionRun w roc (RaffleizeDApp.CustomTypes.ActionTypes.User (BuyTicket secretHash)) (Just raffleId) Nothing
+  ri2 <- Data.Maybe.fromMaybe (error "raffle not fund 2") <$> queryRaffleRun w raffleId
+  unless (riStateLabel ri2 == "COMMITTING") $ logTestError "not in status COMMITTING"
+  unless (soldTicketsBeforeBuy + 1 == rSoldTickets (riRsd ri2)) $ logTestError "no. of tickets sold was not updated"
+  ti <- Data.Maybe.fromMaybe (error "raffle not fund") <$> queryTicketRun w ticketId
+  unless (tiStateLabel ti == "COMMITTED") $ logTestError "not in status COMMITTED"
+  unless (tSecretHash (tiTsd ti) == secretHash) $ logTestError "invalid onchain secret hash"
+  unless (Data.Maybe.isNothing (tSecret (tiTsd ti))) $ logTestError "secret must not be revealed"
+  return ti
 
--- queryTicketRun :: HasCallStack => Wallet -> AssetClass -> Run (Maybe TicketInfo)
--- queryTicketRun w tid =
---   runWallet' w $ lookupTicketInfoByRefAC tid
+buyNTicketsToRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => RaffleInfo -> RaffleizeTxBuildingContext -> [(User, BuiltinByteString)] -> m [TicketInfo]
+buyNTicketsToRaffleRun ri roc = mapM (uncurry (buyTicketToRaffleRun ri roc))
 
--- getTimeRangeForNextNSlots :: Integer -> Run POSIXTimeRange
--- getTimeRangeForNextNSlots i = do
---   mock <- get
---   sltCfg <- gets (mockConfigSlotConfig . mockConfig)
---   let now = mockCurrentSlot mock
---   let lower = slotToEndPOSIXTime sltCfg now
---   let upper = slotToEndPOSIXTime sltCfg (now + Slot i)
---   return $ intersection (from lower) (to upper)
+revealTicketSecretRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => RaffleInfo -> RaffleizeTxBuildingContext -> User -> AssetClass -> BuiltinByteString -> m TicketInfo
+revealTicketSecretRun ri roc w ticketId secret = do
+  unless (riStateLabel ri == "REVEALING") $ logTestError "not in status REVEALING"
+  let raffleId = rRaffleID $ riRsd ri
+  revealdTIcketsBefore <- rRevealedTickets . riRsd . Data.Maybe.fromJust <$> queryRaffleRun w raffleId
+  (_txId, ticketId2) <- raffleizeTransactionRun w roc (TicketOwner (RevealTicketSecret secret)) (Just ticketId) Nothing
+  ri2 <- Data.Maybe.fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
+  unless (revealdTIcketsBefore + 1 == rRevealedTickets (riRsd ri2)) $ logTestError "no. of tickets revealed was not updated"
+  ti <- Data.Maybe.fromMaybe (error "ticket not fund") <$> queryTicketRun w ticketId2
+  unless (tSecret (tiTsd ti) == Just secret) $ logTestError "invalid onchain secret"
+  return ti
 
--- queryRaffleRUN :: HasCallStack => Bool -> Wallet -> AssetClass -> Run RaffleStateId
--- queryRaffleRUN log w rid = do
---   (r, v) <- runWallet' w $ do
---     getRaffleStateDataAndValue rid `catchError` (error . show)
---   tr <- getTimeRangeForNextNSlots 0
---   let rStateId = evaluateRaffleState (tr, r, v)
---   when log $ do
---     logInfo (yellowColorString $ "The raffle is in state : " ++ showRaffleStateLabel rStateId)
---     logInfo $ yellowColorString $ show r ++ showValue "Raffle State Value" v
---   return rStateId
+reavealNTicketsRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => RaffleInfo -> RaffleizeTxBuildingContext -> [(User, AssetClass, BuiltinByteString)] -> m [TicketInfo]
+reavealNTicketsRun ri roc = mapM (uncurry3 (revealTicketSecretRun ri roc))
 
--- queryTicketRUN :: Wallet -> AssetClass -> Run ()
--- queryTicketRUN w tid = do
---   (r, v) <- runWallet' w $ do
---     getTicketStateDataAndValue tid `catchError` (error . show)
---   logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
+refundTicketSecretRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Bool -> RaffleInfo -> RaffleizeTxBuildingContext -> User -> AssetClass -> m TicketInfo
+refundTicketSecretRun isExtra ri roc w ticketId = do
+  if isExtra
+    then unless (riStateLabel ri `elem` ["UNREVEALED_LOCKED_STAKE_AND_REFUNDS", "UNREVEALED_LOCKED_REFUNDS"]) $ logTestError "not in status UNREVEALED"
+    else unless (riStateLabel ri `elem` ["UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS", "UNDERFUNDED_LOCKED_REFUNDS"]) $ logTestError "not in status UNDERFUNDED"
+  let raffleId = rRaffleID $ riRsd ri
+  refundedTIcketsBefore <- rRefundedTickets . riRsd . Data.Maybe.fromJust <$> queryRaffleRun w raffleId
+  (_txId, ticketId2) <- raffleizeTransactionRun w roc (TicketOwner (if isExtra then RefundTicketExtra else RefundTicket)) (Just ticketId) Nothing
+  ri2 <- Data.Maybe.fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
+  unless (refundedTIcketsBefore + 1 == rRefundedTickets (riRsd ri2)) $ logTestError "no. of tickets refunded was not updated"
+  Data.Maybe.fromMaybe (error "ticket not fund") <$> queryTicketRun w ticketId2
 
+refundNTicketsRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Bool -> RaffleInfo -> RaffleizeTxBuildingContext -> [(User, AssetClass)] -> m [TicketInfo]
+refundNTicketsRun isExtra ri roc = mapM (uncurry (refundTicketSecretRun isExtra ri roc))
 
-
--- deployValidatorsAndCreateNewValidRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Wallets -> m (RaffleInfo, RaffleizeTxBuildingContext)
--- deployValidatorsAndCreateNewValidRaffleRun wallets = do
---   -- currrentSlot <- slotOfCurrentBlock
-
-
--- buyTicketToRaffleRun :: RaffleInfo -> RaffleizeTxBuildingContext -> Wallet -> BuiltinByteString -> Run TicketInfo
--- buyTicketToRaffleRun ri roc w secret = do
---   let raffleId = rRaffleID $ riRsd ri
---   let secretHash = blake2b_256 secret
---   soldTicketsBeforeBuy <- rSoldTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
---   (_txId, ticketId) <- raffleizeTransactionRun w roc (User (BuyTicket secretHash)) (Just raffleId) Nothing
---   ri2 <- fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
---   unless (riStateLabel ri2 == "COMMITTING") $ logError "not in status COMMITTING"
---   unless (soldTicketsBeforeBuy + 1 == rSoldTickets (riRsd ri2)) $ logError "no. of tickets sold was not updated"
---   ti <- fromMaybe (error "raffle not fund") <$> queryTicketRun w ticketId
---   unless (tiStateLabel ti == "COMMITTED") $ logError "not in status COMMITTED"
---   unless (tSecretHash (tiTsd ti) == secretHash) $ logError "invalid onchain secret hash"
---   unless (Data.Maybe.isNothing (tSecret (tiTsd ti))) $ logError "secret must not be revealed"
---   return ti
-
--- buyNTicketsToRaffleRun :: RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, BuiltinByteString)] -> Run [TicketInfo]
--- buyNTicketsToRaffleRun ri roc = mapM (uncurry (buyTicketToRaffleRun ri roc))
-
--- revealTicketSecretRun :: RaffleInfo -> RaffleizeTxBuildingContext -> Wallet -> AssetClass -> BuiltinByteString -> Run TicketInfo
--- revealTicketSecretRun ri roc w ticketId secret = do
---   unless (riStateLabel ri == "REVEALING") $ logError "not in status REVEALING"
---   let raffleId = rRaffleID $ riRsd ri
---   revealdTIcketsBefore <- rRevealedTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
---   (_txId, ticketId2) <- raffleizeTransactionRun w roc (TicketOwner (RevealTicketSecret secret)) (Just ticketId) Nothing
---   ri2 <- fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
---   unless (revealdTIcketsBefore + 1 == rRevealedTickets (riRsd ri2)) $ logError "no. of tickets revealed was not updated"
---   ti <- fromMaybe (error "ticket not fund") <$> queryTicketRun w ticketId2
---   unless (tSecret (tiTsd ti) == Just secret) $ logError "invalid onchain secret"
---   return ti
-
--- reavealNTicketsRun :: RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, AssetClass, BuiltinByteString)] -> Run [TicketInfo]
--- reavealNTicketsRun ri roc = mapM (uncurry3 (revealTicketSecretRun ri roc))
-
--- refundTicketSecretRun :: Bool -> RaffleInfo -> RaffleizeTxBuildingContext -> Wallet -> AssetClass -> Run TicketInfo
--- refundTicketSecretRun isExtra ri roc w ticketId = do
---   if isExtra
---     then unless (riStateLabel ri `elem` ["UNREVEALED_LOCKED_STAKE_AND_REFUNDS", "UNREVEALED_LOCKED_REFUNDS"]) $ logError "not in status UNREVEALED"
---     else unless (riStateLabel ri `elem` ["UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS", "UNDERFUNDED_LOCKED_REFUNDS"]) $ logError "not in status UNDERFUNDED"
---   let raffleId = rRaffleID $ riRsd ri
---   refundedTIcketsBefore <- rRefundedTickets . riRsd . fromJust <$> queryRaffleRun w raffleId
---   (_txId, ticketId2) <- raffleizeTransactionRun w roc (TicketOwner (if isExtra then RefundTicketExtra else RefundTicket)) (Just ticketId) Nothing
---   ri2 <- fromMaybe (error "raffle not fund") <$> queryRaffleRun w raffleId
---   unless (refundedTIcketsBefore + 1 == rRefundedTickets (riRsd ri2)) $ logError "no. of tickets refunded was not updated"
---   fromMaybe (error "ticket not fund") <$> queryTicketRun w ticketId2
-
--- refundNTicketsRun :: Bool -> RaffleInfo -> RaffleizeTxBuildingContext -> [(Wallet, AssetClass)] -> Run [TicketInfo]
--- refundNTicketsRun isExtra ri roc = mapM (uncurry (refundTicketSecretRun isExtra ri roc))
-
+-- ------------------------------------------------------------------------------------------------
+-- ------------------------------------------------------------------------------------------------
 -- ------------------------------------------------------------------------------------------------
 
 printLogInfo :: (MonadIO m) => String -> m ()
 printLogInfo s = liftIO $ putStrLn $ greenColorString s
+
+logTestError :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => String -> m ()
+logTestError = logMsg "TestError" GYError
+
+logInfo :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => String -> m ()
+logInfo = logMsg "Info" GYInfo
+
+-- getTimeRangeForNextNSlots :: (GYTxGameMonad m) => Integer -> m POSIXTimeRange
+-- getTimeRangeForNextNSlots i = do
+--   now <- slotOfCurrentBlock
+--   let upperSlot = unsafeAdvanceSlot now (fromInteger i)
+--   lower <- timeToPlutus <$> slotToBeginTime now
+--   upper <- timeToPlutus <$> slotToEndTime upperSlot
+--   return $ intersection (from lower) (to upper)

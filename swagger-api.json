@@ -90,8 +90,8 @@
                                         }
                                     },
                                     "required": [
-                                        "contents",
-                                        "tag"
+                                        "tag",
+                                        "contents"
                                     ],
                                     "type": "object"
                                 },
@@ -122,8 +122,8 @@
                                 }
                             },
                             "required": [
-                                "recipient",
                                 "raffleizeAction",
+                                "recipient",
                                 "interactionContextNFT",
                                 "userAddresses"
                             ],
@@ -239,11 +239,11 @@
                                                     }
                                                 },
                                                 "required": [
-                                                    "rMinTickets",
-                                                    "rCommitDDL",
-                                                    "rRevealDDL",
                                                     "rStake",
-                                                    "rTicketPrice"
+                                                    "rTicketPrice",
+                                                    "rRevealDDL",
+                                                    "rMinTickets",
+                                                    "rCommitDDL"
                                                 ],
                                                 "type": "object"
                                             },
@@ -273,11 +273,11 @@
                                                 },
                                                 "required": [
                                                     "rTicketValidatorHash",
-                                                    "rRaffleCollateral",
-                                                    "rMinRevealingWindow",
-                                                    "rMinTicketPrice",
                                                     "rMaxNoOfTickets",
+                                                    "rMinTicketPrice",
+                                                    "rRaffleCollateral",
                                                     "rTicketCollateral",
+                                                    "rMinRevealingWindow",
                                                     "rRaffleValidatorHash"
                                                 ],
                                                 "type": "object"
@@ -302,13 +302,13 @@
                                             }
                                         },
                                         "required": [
-                                            "rRevealedTickets",
-                                            "rParam",
-                                            "rRaffleID",
                                             "rRandomSeed",
-                                            "rConfig",
+                                            "rRevealedTickets",
+                                            "rRefundedTickets",
                                             "rSoldTickets",
-                                            "rRefundedTickets"
+                                            "rParam",
+                                            "rConfig",
+                                            "rRaffleID"
                                         ],
                                         "type": "object"
                                     },
@@ -323,11 +323,11 @@
                                     }
                                 },
                                 "required": [
-                                    "riAvailableActions",
-                                    "riValue",
                                     "riRsd",
+                                    "riStateLabel",
                                     "riImage",
-                                    "riStateLabel"
+                                    "riAvailableActions",
+                                    "riValue"
                                 ],
                                 "type": "object"
                             },
@@ -445,11 +445,11 @@
                                                     }
                                                 },
                                                 "required": [
-                                                    "rMinTickets",
-                                                    "rCommitDDL",
-                                                    "rRevealDDL",
                                                     "rStake",
-                                                    "rTicketPrice"
+                                                    "rTicketPrice",
+                                                    "rRevealDDL",
+                                                    "rMinTickets",
+                                                    "rCommitDDL"
                                                 ],
                                                 "type": "object"
                                             },
@@ -479,11 +479,11 @@
                                                 },
                                                 "required": [
                                                     "rTicketValidatorHash",
-                                                    "rRaffleCollateral",
-                                                    "rMinRevealingWindow",
-                                                    "rMinTicketPrice",
                                                     "rMaxNoOfTickets",
+                                                    "rMinTicketPrice",
+                                                    "rRaffleCollateral",
                                                     "rTicketCollateral",
+                                                    "rMinRevealingWindow",
                                                     "rRaffleValidatorHash"
                                                 ],
                                                 "type": "object"
@@ -508,13 +508,13 @@
                                             }
                                         },
                                         "required": [
-                                            "rRevealedTickets",
-                                            "rParam",
-                                            "rRaffleID",
                                             "rRandomSeed",
-                                            "rConfig",
+                                            "rRevealedTickets",
+                                            "rRefundedTickets",
                                             "rSoldTickets",
-                                            "rRefundedTickets"
+                                            "rParam",
+                                            "rConfig",
+                                            "rRaffleID"
                                         ],
                                         "type": "object"
                                     },
@@ -529,11 +529,11 @@
                                     }
                                 },
                                 "required": [
-                                    "riAvailableActions",
-                                    "riValue",
                                     "riRsd",
+                                    "riStateLabel",
                                     "riImage",
-                                    "riStateLabel"
+                                    "riAvailableActions",
+                                    "riValue"
                                 ],
                                 "type": "object"
                             },
@@ -649,11 +649,11 @@
                                                     }
                                                 },
                                                 "required": [
-                                                    "rMinTickets",
-                                                    "rCommitDDL",
-                                                    "rRevealDDL",
                                                     "rStake",
-                                                    "rTicketPrice"
+                                                    "rTicketPrice",
+                                                    "rRevealDDL",
+                                                    "rMinTickets",
+                                                    "rCommitDDL"
                                                 ],
                                                 "type": "object"
                                             },
@@ -683,11 +683,11 @@
                                                 },
                                                 "required": [
                                                     "rTicketValidatorHash",
-                                                    "rRaffleCollateral",
-                                                    "rMinRevealingWindow",
-                                                    "rMinTicketPrice",
                                                     "rMaxNoOfTickets",
+                                                    "rMinTicketPrice",
+                                                    "rRaffleCollateral",
                                                     "rTicketCollateral",
+                                                    "rMinRevealingWindow",
                                                     "rRaffleValidatorHash"
                                                 ],
                                                 "type": "object"
@@ -712,13 +712,13 @@
                                             }
                                         },
                                         "required": [
-                                            "rRevealedTickets",
-                                            "rParam",
-                                            "rRaffleID",
                                             "rRandomSeed",
-                                            "rConfig",
+                                            "rRevealedTickets",
+                                            "rRefundedTickets",
                                             "rSoldTickets",
-                                            "rRefundedTickets"
+                                            "rParam",
+                                            "rConfig",
+                                            "rRaffleID"
                                         ],
                                         "type": "object"
                                     },
@@ -733,11 +733,11 @@
                                     }
                                 },
                                 "required": [
-                                    "riAvailableActions",
-                                    "riValue",
                                     "riRsd",
+                                    "riStateLabel",
                                     "riImage",
-                                    "riStateLabel"
+                                    "riAvailableActions",
+                                    "riValue"
                                 ],
                                 "type": "object"
                             },
@@ -822,10 +822,10 @@
                                             }
                                         },
                                         "required": [
-                                            "tRaffle",
-                                            "tSecretHash",
-                                            "tSecret",
                                             "tNumber",
+                                            "tRaffle",
+                                            "tSecret",
+                                            "tSecretHash",
                                             "tRaffleValidator"
                                         ],
                                         "type": "object"
@@ -838,11 +838,11 @@
                                     }
                                 },
                                 "required": [
-                                    "tiValue",
-                                    "tiAvailableActions",
-                                    "tiImage",
                                     "tiStateLabel",
-                                    "tiTsd"
+                                    "tiValue",
+                                    "tiTsd",
+                                    "tiImage",
+                                    "tiAvailableActions"
                                 ],
                                 "type": "object"
                             },

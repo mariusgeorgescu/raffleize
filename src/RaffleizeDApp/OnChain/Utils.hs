@@ -32,6 +32,7 @@ import PlutusLedgerApi.V2 (
  )
 import PlutusTx (unstableMakeIsData, fromBuiltinData)
 import PlutusTx.Builtins (blake2b_256, serialiseData)
+import qualified PlutusTx.Prelude
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -302,7 +303,7 @@ spendsToken proofToken sc =
   "The transaction must spend the state token"
     `traceIfFalse` case (`inputHas1of` proofToken) #<$> findOwnInputA sc of
       Nothing -> trace "Own input not found" False
-      Just result -> traceIfFalse ("Token not spent: " #<> (decodeUtf8 . unTokenName . snd . unAssetClass $ proofToken)) result
+      Just result -> traceIfFalse "Proof Token Not Spent" result
 {-# INLINEABLE spendsToken #-}
 
 tokenNameFromTxOutRef :: TxOutRef -> TokenName
