@@ -120,7 +120,7 @@ deployValidatorsAndCreateNewValidRaffleRun testWallets = do
           { rCommitDDL = cddl
           , rRevealDDL = rddl
           , rTicketPrice = 5_000_000
-          , rMinTickets = 3
+          , rMinTickets = 4
           , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
           }
   deployValidatorsAndCreateNewRaffleRun testWallets config
