@@ -102,7 +102,11 @@ library
     RaffleizeDApp.Utils
 
   ghc-options:    -Werror -threaded 
+
+
   other-modules:
+
+  -- Sample contracts:
   hs-source-dirs:  src
 
   --- Cardano specific dependencies

@@ -164,16 +164,16 @@ updateRaffleTests =
               , rMinTickets = 20
               , rStake = valueToPlutus (fakeIron 100) <> valueToPlutus (fakeGold 100)
               }
-      void $ raffleizeTransactionRun (w1 testWallets) roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
-    -- mri2 <- queryRaffleRun (w1 testWallets) raffleId2
-    -- case mri2 of
-    --   Nothing -> logTestError $ "Raffle not found: " <> show raffleId
-    --   Just ri2 -> do
-    --     when (raffleId2 /= raffleId) $ logTestError "not same id"
-    --     let prevStakeValue = rStake (rConfig (riRsd ri))
-    --     let currentStakeValue = rStake (rConfig (riRsd ri2))
-    --     let updatedVal = riValue ri #- prevStakeValue #+ currentStakeValue
-    --     when (riValue ri2 #/= updatedVal) $ logTestError "locked value does not match the config "
+      (_txId, raffleId2) <- raffleizeTransactionRun (w1 testWallets) roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
+      mri2 <- queryRaffleRun (w1 testWallets) raffleId2
+      case mri2 of
+        Nothing -> logTestError $ "Raffle not found: " <> show raffleId
+        Just ri2 -> do
+          when (raffleId2 /= raffleId) $ logTestError "not same id"
+          let prevStakeValue = rStake (rConfig (riRsd ri))
+          let currentStakeValue = rStake (rConfig (riRsd ri2))
+          let updatedVal = riValue ri #- prevStakeValue #+ currentStakeValue
+          when (riValue ri2 #/= updatedVal) $ logTestError "locked value does not match the config "
 
     updateRaffleTC2 :: TestInfo -> GYTxMonadClb ()
     updateRaffleTC2 TestInfo {..} = do
@@ -616,7 +616,7 @@ successStateTests =
       mti2 <- queryTicketRun (w1 testWallets) (ticketRefs !! 2)
       unless (isNothing mti2) $ logTestError "Ticket must not exist !"
 
-      (_txId, _raffleId) <- raffleizeTransactionRun (w2 testWallets)  roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
+      (_txId, _raffleId) <- raffleizeTransactionRun (w2 testWallets) roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
       ri5 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logTestError "not in status SUCCESS_FINAL"
       unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logTestError "Remained value lower tha raffle collateral"

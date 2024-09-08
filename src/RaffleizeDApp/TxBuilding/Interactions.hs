@@ -15,7 +15,7 @@ import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Operations
 
 interactionToTxSkeleton ::
-  (HasCallStack, GYTxUserQueryMonad  m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
+  (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
   RaffleizeInteraction ->
   r (m (GYTxSkeleton 'PlutusV2, AssetClass))
 interactionToTxSkeleton

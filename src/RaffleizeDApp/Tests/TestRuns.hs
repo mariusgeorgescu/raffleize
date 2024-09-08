@@ -16,41 +16,12 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (evaluateRaffleState, showRaffleStateLabel)
-import RaffleizeDApp.OnChain.Utils (showValue)
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions (interactionToTxSkeleton)
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils (pPOSIXTimeFromSlotInteger)
 import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
 import RaffleizeDApp.Utils
-
--- -- import Cardano.Simple.Ledger.Slot
--- -- import Cardano.Simple.Ledger.TimeSlot
--- -- import Plutus.Model hiding (User)
--- import Control.Monad.Reader
--- import Control.Monad.State
--- import Data.Maybe qualified
--- import Data.Tuple.Extra (uncurry3)
--- import GHC.Stack
--- import GeniusYield.Test.Utils
--- import GeniusYield.TxBuilder
--- import GeniusYield.Types
--- import PlutusLedgerApi.V1.Interval
--- import PlutusLedgerApi.V1.Value
--- import PlutusLedgerApi.V3 (POSIXTimeRange)
--- import PlutusTx.Builtins (blake2b_256)
--- import RaffleizeDApp.CustomTypes.ActionTypes
--- import RaffleizeDApp.CustomTypes.RaffleTypes
--- import RaffleizeDApp.CustomTypes.TicketTypes
--- import RaffleizeDApp.CustomTypes.TransferTypes
--- import RaffleizeDApp.OnChain.RaffleizeLogic
--- import RaffleizeDApp.OnChain.Utils
--- import RaffleizeDApp.TxBuilding.Context
--- import RaffleizeDApp.TxBuilding.Interactions
--- import RaffleizeDApp.TxBuilding.Lookups
--- import RaffleizeDApp.TxBuilding.Validators
--- import RaffleizeDApp.Utils
 
 -- ----------------------
 -- -- Run TEST ACTIONS
@@ -83,16 +54,16 @@ queryRaffleRun :: (GYTxGameMonad m, HasCallStack) => User -> AssetClass -> m (Ma
 queryRaffleRun w rid =
   withWalletBalancesCheck [] $ asUser w $ lookupRaffleInfoRefAC rid
 
-queryRaffleRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Bool -> User -> AssetClass -> m RaffleStateId
-queryRaffleRUN log w rid = do
-  (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
-    getRaffleStateDataAndValue rid `catchError` (error . show)
-  tr <- getTimeRangeForNextNSlots 1
-  let rStateId = evaluateRaffleState (tr, r, v)
-  when log $ do
-    logInfo (yellowColorString $ "The raffle is in state : " ++ showRaffleStateLabel rStateId)
-    logInfo $ yellowColorString $ show r ++ showValue "Raffle State Value" v
-  return rStateId
+-- queryRaffleRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Bool -> User -> AssetClass -> m RaffleStateId
+-- queryRaffleRUN log w rid = do
+--   (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
+--     getRaffleStateDataAndValue rid `catchError` (error . show)
+--   tr <- getTimeRangeForNextNSlots 1
+--   let rStateId = evaluateRaffleState (tr, r, v)
+--   when log $ do
+--     logInfo (yellowColorString $ "The raffle is in state : " ++ showRaffleStateLabel rStateId)
+--     logInfo $ yellowColorString $ show r ++ showValue "Raffle State Value" v
+--   return rStateId
 
 deployValidatorsAndCreateNewRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Wallets -> RaffleConfig -> m (RaffleInfo, RaffleizeTxBuildingContext)
 deployValidatorsAndCreateNewRaffleRun Wallets {..} config = do
@@ -129,11 +100,11 @@ queryTicketRun :: (GYTxGameMonad m) => User -> AssetClass -> m (Maybe TicketInfo
 queryTicketRun w tid =
   withWalletBalancesCheck [] $ asUser w $ lookupTicketInfoByRefAC tid
 
-queryTicketRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => User -> AssetClass -> m ()
-queryTicketRUN w tid = do
-  (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
-    getTicketStateDataAndValue tid `catchError` (error . show)
-  logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
+-- queryTicketRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => User -> AssetClass -> m ()
+-- queryTicketRUN w tid = do
+--   (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
+--     getTicketStateDataAndValue tid `catchError` (error . show)
+--   logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
 
 buyTicketToRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => RaffleInfo -> RaffleizeTxBuildingContext -> User -> BuiltinByteString -> m TicketInfo
 buyTicketToRaffleRun ri roc w secret = do
