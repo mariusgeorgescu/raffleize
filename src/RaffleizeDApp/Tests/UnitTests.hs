@@ -64,7 +64,7 @@ createRaffleTests =
               , rRevealDDL = rddl
               , rTicketPrice = 5_000_000
               , rMinTickets = 3
-              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              , rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
 
@@ -81,7 +81,7 @@ createRaffleTests =
               , rRevealDDL = rddl
               , rTicketPrice = 5_000_000
               , rMinTickets = 3
-              , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+              , rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
 
@@ -115,7 +115,7 @@ createRaffleTests =
               , rRevealDDL = rddl
               , rTicketPrice = 5_000_000
               , rMinTickets = 3
-              , rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeIron 9876) -- Raffle stake contains Ada;
+              , rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeValue fakeIron 9876) -- Raffle stake contains Ada;
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
 
@@ -162,7 +162,7 @@ updateRaffleTests =
               , rRevealDDL = rRevealDDL raffleConfig + 10
               , rTicketPrice = 15_000_000
               , rMinTickets = 20
-              , rStake = valueToPlutus (fakeIron 100) <> valueToPlutus (fakeGold 100)
+              , rStake = valueToPlutus (fakeValue fakeIron 100) <> valueToPlutus (fakeValue fakeGold 100)
               }
       (_txId, raffleId2) <- raffleizeTransactionRun (w1 testWallets) roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
       mri2 <- queryRaffleRun (w1 testWallets) raffleId2
@@ -219,7 +219,7 @@ updateRaffleTests =
       -- . Update the raffle
       let newRaffleConfig =
             raffleConfig
-              { rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeIron 9876) -- Raffle stake contains Ada;
+              { rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeValue fakeIron 9876) -- Raffle stake contains Ada;
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
 

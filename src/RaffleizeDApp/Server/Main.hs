@@ -32,6 +32,7 @@ import System.Environment (lookupEnv)
 import Text.Read (read)
 import           Data.Aeson.Encode.Pretty    (encodePretty)
 import qualified Data.ByteString.Lazy.Char8  as BL8
+import qualified Data.Maybe
 getPortFromEnv :: IO Int
 getPortFromEnv = do
   eport <- lookupEnv "PORT"
@@ -43,7 +44,7 @@ main :: IO ()
 main = do
   putStrLn "Writing Swagger file ..."
   BL8.writeFile  "swagger-api.json" (encodePretty apiSwagger)
-  atlasConfig <- fromJust <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
+  atlasConfig <- Data.Maybe.fromMaybe (error "Mandatory configuration file not found") <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
   tbCtx <- fromJust <$> decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   let host = "0.0.0.0"
   port <- getPortFromEnv

@@ -92,7 +92,7 @@ deployValidatorsAndCreateNewValidRaffleRun testWallets = do
           , rRevealDDL = rddl
           , rTicketPrice = 5_000_000
           , rMinTickets = 4
-          , rStake = valueToPlutus (fakeIron 9876) <> valueToPlutus (fakeGold 9876)
+          , rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
           }
   deployValidatorsAndCreateNewRaffleRun testWallets config
 

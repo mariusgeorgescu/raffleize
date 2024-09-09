@@ -8,6 +8,8 @@ import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue,
 import PlutusLedgerApi.V2
 import PlutusTx
 import PlutusTx.Show qualified (show)
+import GeniusYield.Types (unsafeTokenNameFromHex)
+import GeniusYield.Types.Value (tokenNameToPlutus)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -64,7 +66,7 @@ instance ToJSON TokenName where
 
 instance FromJSON TokenName where
   parseJSON :: Data.Aeson.Value -> Parser TokenName
-  parseJSON v = fromString @TokenName <$> parseJSON @String v
+  parseJSON v = tokenNameToPlutus . unsafeTokenNameFromHex <$> parseJSON @Text v
 
 
 

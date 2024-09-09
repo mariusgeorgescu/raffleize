@@ -42,7 +42,9 @@ apiSwagger =
     & host ?~ "http://raffleize.art"
 
 handleInteraction :: RaffleizeOffchainContext -> RaffleizeInteraction -> IO String
-handleInteraction roc i = runReaderT (interactionToHexEncodedCBOR i) roc
+handleInteraction roc i = do 
+  print i
+  runReaderT (interactionToHexEncodedCBOR i) roc
 
 raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
 raffleizeServer roc@RaffleizeOffchainContext {..} = handleInteraction roc :<|> handleLookup :<|> handleGetRaffles providerCtx :<|> handleGetRafflesByAddresses providerCtx :<|> handleGetRafflesByAddress providerCtx :<|> handleGetMyTickets providerCtx
