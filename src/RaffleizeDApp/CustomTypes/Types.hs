@@ -60,11 +60,13 @@ instance FromJSON Value where
 
 instance ToJSON TokenName where
   toJSON :: TokenName -> Data.Aeson.Value
-  toJSON tn = toJSON $ toString tn
+  toJSON tn = toJSON $ drop 2 . toString $ tn
 
 instance FromJSON TokenName where
   parseJSON :: Data.Aeson.Value -> Parser TokenName
   parseJSON v = fromString @TokenName <$> parseJSON @String v
+
+
 
 instance ToJSON CurrencySymbol where
   toJSON :: CurrencySymbol -> Data.Aeson.Value

@@ -7,6 +7,7 @@ import Language.PureScript.Bridge (
   (^==),
  )
 import Language.PureScript.Bridge.PSTypes (
+  psArray,
   psInt,
   psNumber,
   psString,
@@ -67,6 +68,12 @@ plutusGYTxOutRefCborBridge = do
   typeName ^== "GYTxOutRefCbor"
   return psString
 
+-- | Mapping haskell '[]' to purescript 'Array'
+plutusArrayBridge :: BridgePart
+plutusArrayBridge = do
+  typeName ^== "List"
+  psArray
+
 -- | Raffleize Purescript
 raffleizeBridge :: BridgePart
 raffleizeBridge =
@@ -79,3 +86,4 @@ raffleizeBridge =
     <|> plutusAssetClassBridge
     <|> plutusGYAddressBridge
     <|> plutusGYTxOutRefCborBridge
+    <|> plutusArrayBridge
