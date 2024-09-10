@@ -74,6 +74,20 @@ plutusArrayBridge = do
   typeName ^== "List"
   psArray
 
+
+-- | Mapping haskell 'GYTxWitness' to purescript 'String'
+plutusGYTxWitnessBridge :: BridgePart
+plutusGYTxWitnessBridge = do
+  typeName ^== "GYTxWitness"
+  return psString
+
+-- | Mapping haskell 'GYTx' to purescript 'String'
+plutusGYTxBridge :: BridgePart
+plutusGYTxBridge = do
+  typeName ^== "GYTx"
+  return psString
+
+
 -- | Raffleize Purescript
 raffleizeBridge :: BridgePart
 raffleizeBridge =
@@ -87,3 +101,5 @@ raffleizeBridge =
     <|> plutusGYAddressBridge
     <|> plutusGYTxOutRefCborBridge
     <|> plutusArrayBridge
+    <|> plutusGYTxBridge
+    <|> plutusGYTxWitnessBridge

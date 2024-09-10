@@ -13,6 +13,13 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import Prelude
 
+-- | Input parameters to add for reference script.
+data AddWitAndSubmitParams = AddWitAndSubmitParams
+  { awasTxUnsigned :: !GYTx
+  , awasTxWit      :: !GYTxWitness
+  } deriving (Generic, FromJSON, ToSchema)
+
+
 -- | Ticket information DTO
 data TicketInfo = TicketInfo
   { tiTsd :: TicketStateData

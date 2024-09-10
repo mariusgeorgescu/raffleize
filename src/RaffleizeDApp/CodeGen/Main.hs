@@ -10,11 +10,6 @@ import Language.PureScript.Bridge (
   writePSTypes,
  )
 import RaffleizeDApp.Constants (purescriptProjectSrcPath)
-import RaffleizeDApp.CustomTypes.RaffleTypes (
-  RaffleConfig,
-  RaffleParam,
-  RaffleStateData,
- )
 import RaffleizeDApp.CustomTypes.ActionTypes (
   AdminAction,
   RaffleOwnerAction,
@@ -22,8 +17,14 @@ import RaffleizeDApp.CustomTypes.ActionTypes (
   TicketOwnerAction,
   UserAction,
  )
+import RaffleizeDApp.CustomTypes.RaffleTypes (
+  RaffleConfig,
+  RaffleParam,
+  RaffleStateData,
+ )
 import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
 import RaffleizeDApp.CustomTypes.TransferTypes (
+  AddWitAndSubmitParams,
   RaffleInfo,
   RaffleizeInteraction,
   UserAddresses,
@@ -44,6 +45,7 @@ myTypes =
   , mkSumType (Proxy :: Proxy UserAddresses)
   , mkSumType (Proxy :: Proxy RaffleizeInteraction)
   , mkSumType (Proxy :: Proxy RaffleInfo)
+  , mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
   ]
 
 main :: IO ()

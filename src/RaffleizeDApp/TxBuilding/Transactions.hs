@@ -64,7 +64,7 @@ interactionToUnsignedTx :: (MonadReader RaffleizeOffchainContext m, MonadIO m) =
 interactionToUnsignedTx = (unsignedTx <$>) . interactionToTxBody
 
 interactionToHexEncodedCBOR :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m String
-interactionToHexEncodedCBOR = (txToHex <$>) . x
+interactionToHexEncodedCBOR = (txToHex <$>) . interactionToUnsignedTx
 
 ------------------------------------------------------------------------------------------------
 

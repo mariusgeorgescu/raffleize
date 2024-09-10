@@ -5,6 +5,9 @@ import Control.Monad.Reader
 import Control.Lens
 import Data.Swagger
 import GeniusYield.Types (GYAddress)
+import GeniusYield.Types.Providers
+
+import GeniusYield.Types.TxBody
 import Queries
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
@@ -13,13 +16,13 @@ import Servant
 import Servant.Swagger
 
 type RaffleizeAPI =
-  "build-tx" :> InteractionInterface
+  InteractionInterface
     :<|> LookupsInterface
 
 -- | Type for our Raffleize Servant API.
 type InteractionInterface =
-  ReqBody '[JSON] RaffleizeInteraction
-    :> Post '[JSON] String
+  "build-tx" :> ReqBody '[JSON] RaffleizeInteraction :> Post '[JSON] String
+    :<|> "submit-tx" :> ReqBody '[JSON] AddWitAndSubmitParams :> Post '[JSON] ()
 
 -- | Type for our Raffleize Servant API.
 type LookupsInterface =
@@ -42,9 +45,22 @@ apiSwagger =
     & host ?~ "http://raffleize.art"
 
 handleInteraction :: RaffleizeOffchainContext -> RaffleizeInteraction -> IO String
-handleInteraction roc i = do 
+handleInteraction roc i = do
   print i
   runReaderT (interactionToHexEncodedCBOR i) roc
 
+handleSubmit :: ProviderCtx -> AddWitAndSubmitParams -> IO ()
+handleSubmit providerCtx AddWitAndSubmitParams{..}  = do
+  let txBody = getTxBody awasTxUnsigned
+  void $ gySubmitTx (ctxProviders providerCtx) $ makeSignedTransaction awasTxWit txBody
+
 raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
-raffleizeServer roc@RaffleizeOffchainContext {..} = handleInteraction roc :<|> handleLookup :<|> handleGetRaffles providerCtx :<|> handleGetRafflesByAddresses providerCtx :<|> handleGetRafflesByAddress providerCtx :<|> handleGetMyTickets providerCtx
+raffleizeServer roc@RaffleizeOffchainContext {..} =
+  ( handleInteraction roc
+      :<|> handleSubmit providerCtx
+  )
+    :<|> handleLookup
+    :<|> handleGetRaffles providerCtx
+    :<|> handleGetRafflesByAddresses providerCtx
+    :<|> handleGetRafflesByAddress providerCtx
+    :<|> handleGetMyTickets providerCtx
