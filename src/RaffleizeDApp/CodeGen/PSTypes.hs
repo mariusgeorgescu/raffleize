@@ -27,7 +27,7 @@ import Prelude
 ------------------------------------------------------------------------------------------------
 
 -- | Use type definition in Raffleize.Types
-psClientType :: MonadReader BridgeData m => m PSType
+psClientType :: (MonadReader BridgeData m) => m PSType
 psClientType = do
   inType <- view haskType
   params <- psTypeParameters

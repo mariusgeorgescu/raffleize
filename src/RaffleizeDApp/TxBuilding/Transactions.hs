@@ -6,8 +6,8 @@ import GeniusYield.Imports (IsString (..))
 import GeniusYield.Types
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
-import RaffleizeDApp.TxBuilding.Skeletons (addRefScriptSkeleton)
 import RaffleizeDApp.TxBuilding.Interactions
+import RaffleizeDApp.TxBuilding.Skeletons (addRefScriptSkeleton)
 import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
 

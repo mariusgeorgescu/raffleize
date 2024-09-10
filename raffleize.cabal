@@ -34,9 +34,12 @@ common common
     ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
 
   default-extensions:
+    BangPatterns
+    BlockArguments
     DataKinds
     DeriveAnyClass
     DeriveGeneric
+    FlexibleContexts
     FlexibleInstances
     ImportQualifiedPost
     InstanceSigs
@@ -48,14 +51,11 @@ common common
     RecordWildCards
     ScopedTypeVariables
     TemplateHaskell
+    TupleSections
     TypeApplications
     TypeFamilies
     TypeOperators
     ViewPatterns
-    BangPatterns
-    TupleSections
-    FlexibleContexts
-    BlockArguments
 
 common plutus-ghc-options
   -- so unfoldings are present even when compiled without optmizations
@@ -101,7 +101,6 @@ library
     RaffleizeDApp.TxBuilding.Validators
     RaffleizeDApp.Utils
 
-  ghc-options:    -Werror -threaded 
   other-modules:
   hs-source-dirs:  src
 
@@ -127,7 +126,7 @@ executable server
   import:         common
   main-is:        Main.hs
   hs-source-dirs: src/RaffleizeDApp/Server
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
   other-modules:
     API
     Queries
@@ -154,7 +153,7 @@ executable tui
   import:         common
   main-is:        Main.hs
   hs-source-dirs: src/RaffleizeDApp/TUI
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
   other-modules:
     Actions
     RaffleizeWidgets
@@ -165,7 +164,7 @@ executable tui
   build-depends:
     , aeson
     , ansi-terminal
-    , brick 
+    , brick
     , bytestring
     , extra
     , lens
@@ -186,7 +185,7 @@ executable psgen
   import:         common
   main-is:        Main.hs
   hs-source-dirs: src/RaffleizeDApp/CodeGen
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
   other-modules:
     PSTypes
     TypeBridges
@@ -202,7 +201,7 @@ test-suite tests
   main-is:        Main.hs
   hs-source-dirs: src/RaffleizeDApp/Tests
   type:           exitcode-stdio-1.0
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
   other-modules:
     PropertyTests
     TestRuns

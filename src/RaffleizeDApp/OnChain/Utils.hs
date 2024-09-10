@@ -30,9 +30,8 @@ import PlutusLedgerApi.V2 (
   adaToken,
   singleton,
  )
-import PlutusTx (unstableMakeIsData, fromBuiltinData)
-import PlutusTx.Builtins (blake2b_256, serialiseData)
-import qualified PlutusTx.Prelude
+import PlutusTx (fromBuiltinData, unstableMakeIsData)
+import PlutusTx.Builtins (serialiseData)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -58,13 +57,12 @@ mkUntypedValidator ::
   (a -> b -> ScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> BuiltinData -> ())
 mkUntypedValidator f a b ctx =
-  if 
-    f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData b)
-      (unsafeFromBuiltinData ctx)
-  then ()
-  else traceError "validator: Validation Failed"
+  if f
+    (unsafeFromBuiltinData a)
+    (unsafeFromBuiltinData b)
+    (unsafeFromBuiltinData ctx)
+    then ()
+    else traceError "validator: Validation Failed"
 {-# INLINEABLE mkUntypedValidator #-}
 
 -- | A more efficient implementation of the `mkUntypedMintingPolicy` method of the `IsScriptContext` typeclass.
@@ -73,12 +71,11 @@ mkUntypedMintingPolicy ::
   (a -> ScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> ())
 mkUntypedMintingPolicy f a ctx =
-  if 
-    f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData ctx)
-  then ()
-  else traceError "validator: Validation Failed"
+  if f
+    (unsafeFromBuiltinData a)
+    (unsafeFromBuiltinData ctx)
+    then ()
+    else traceError "validator: Validation Failed"
 {-# INLINEABLE mkUntypedMintingPolicy #-}
 
 data ATxInfo = ATxInfo
@@ -107,18 +104,17 @@ mkUntypedValidatorCustom ::
   ) =>
   (a -> b -> AScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> BuiltinData -> ())
-mkUntypedValidatorCustom f  d r c =
-  if
-    f
-      (parseData d "Invalid data") 
-      (parseData r "Invalid redeemer") 
-      (parseData c "Invalid context")
-  then ()
-  else traceError "validator: Validation Failed"
+mkUntypedValidatorCustom f d r c =
+  if f
+    (parseData d "Invalid data")
+    (parseData r "Invalid redeemer")
+    (parseData c "Invalid context")
+    then ()
+    else traceError "validator: Validation Failed"
   where
-    parseData md s = case fromBuiltinData  md of 
+    parseData md s = case fromBuiltinData md of
       Just datum -> datum
-      _      -> traceError s
+      _ -> traceError s
 {-# INLINEABLE mkUntypedValidatorCustom #-}
 
 -- | A more efficient implementation of the `mkUntypedMintingPolicy` method of the `IsScriptContext` typeclass.
@@ -126,17 +122,16 @@ mkUntypedMintingPolicyCustom ::
   (FromData a) =>
   (a -> AScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> ())
-mkUntypedMintingPolicyCustom f  r c =
-  if
-    f
-      (parseData r "Invalid redeemer") 
-      (parseData c "Invalid context")
-  then ()
-  else traceError "validator: Validation Failed"
+mkUntypedMintingPolicyCustom f r c =
+  if f
+    (parseData r "Invalid redeemer")
+    (parseData c "Invalid context")
+    then ()
+    else traceError "validator: Validation Failed"
   where
-    parseData md s = case fromBuiltinData  md of 
+    parseData md s = case fromBuiltinData md of
       Just datum -> datum
-      _      -> traceError s
+      _ -> traceError s
 {-# INLINEABLE mkUntypedMintingPolicyCustom #-}
 
 ------------------------
@@ -267,19 +262,19 @@ outHas1of (TxOut _ value _ _) ac = assetClassValueOf value ac #== 1
 {-# INLINEABLE outHas1of #-}
 
 -- | Helper function to check if a 'TxOut' contains a given datum and is inlined.
-hasGivenInlineDatum :: ToData a => a -> TxOut -> Bool
+hasGivenInlineDatum :: (ToData a) => a -> TxOut -> Bool
 hasGivenInlineDatum datum out = case txOutDatum out of
   OutputDatum da -> toBuiltinData datum #== getDatum da
   _ -> trace "Datum must exsist and must be inlined" False
 {-# INLINEABLE hasGivenInlineDatum #-}
 
-isGivenInlineDatum :: ToData a => a -> OutputDatum -> Bool
+isGivenInlineDatum :: (ToData a) => a -> OutputDatum -> Bool
 isGivenInlineDatum datum outdat = case outdat of
   OutputDatum da -> toBuiltinData datum #== getDatum da
   _ -> trace "Datum must exsist and must be inlined" False
 {-# INLINEABLE isGivenInlineDatum #-}
 
-isGivenInlineDatumWith :: ToData a => (a, a -> a) -> OutputDatum -> Bool
+isGivenInlineDatumWith :: (ToData a) => (a, a -> a) -> OutputDatum -> Bool
 isGivenInlineDatumWith (datum, f) outdat = case outdat of
   OutputDatum da -> toBuiltinData (f datum) #== getDatum da
   _ -> trace "Datum must exsist and must be inlined" False

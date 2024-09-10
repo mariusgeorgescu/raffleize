@@ -1,4 +1,3 @@
-
 module RaffleizeWidgets where
 
 import Brick
@@ -24,7 +23,6 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators

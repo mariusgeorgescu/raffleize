@@ -167,6 +167,7 @@ import PlutusTx.Prelude hiding (
   for,
   for_,
   fromInteger,
+  last,
   length,
   liftA2,
   mapM,
@@ -193,10 +194,9 @@ import PlutusTx.Prelude hiding (
   (/=),
   (<$),
   (<$>),
+  (<&>),
   (<*),
   (<*>),
-  (<&>),
-  last ,
  )
 import PlutusTx.Prelude qualified as P
 import PlutusTx.Ratio qualified as P.Ratio
@@ -391,7 +391,7 @@ pconcatMap = P.concatMap
 
 -- | Plutus Tx version of 'Prelude.and'.
 {-# INLINEABLE pand #-}
-pand ::  [Bool] -> Bool
+pand :: [Bool] -> Bool
 pand = P.and
 
 -- | Plutus Tx version of 'Prelude.or'.
@@ -401,7 +401,7 @@ por = P.or
 
 -- | Plutus Tx version of 'Prelude.any'.
 {-# INLINEABLE pany #-}
-pany ::  (a -> Bool) ->  [a] -> Bool
+pany :: (a -> Bool) -> [a] -> Bool
 pany = P.any
 
 -- | Plutus Tx version of 'Data.Foldable.all'.
@@ -411,7 +411,7 @@ pall = P.all
 
 -- | Plutus Tx version of 'Prelude.find'.
 {-# INLINEABLE pfind #-}
-pfind ::  (a -> Bool) -> [a] -> Maybe a
+pfind :: (a -> Bool) -> [a] -> Maybe a
 pfind = P.find
 
 -- | Plutus Tx version of Semigroup

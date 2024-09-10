@@ -30,7 +30,7 @@ runQuery :: ProviderCtx -> GYTxQueryMonadIO a -> IO a
 runQuery ctx q = do
   let nid = cfgNetworkId $ ctxCoreCfg ctx
       providers = ctxProviders ctx
-  liftIO $ runGYTxQueryMonadIO  nid providers q
+  liftIO $ runGYTxQueryMonadIO nid providers q
 
 -- | Wraps our skeleton under `Identity` and calls `runTxF`.
 runTxI ::
@@ -42,7 +42,7 @@ runTxI = coerce (runTxF @Identity)
 
 -- | Tries to build for given skeletons wrapped under traversable structure.
 runTxF ::
-  Traversable t =>
+  (Traversable t) =>
   ProviderCtx ->
   UserAddresses ->
   GYTxBuilderMonadIO (t (GYTxSkeleton v)) ->
@@ -67,6 +67,5 @@ runTxF providerCtx UserAddresses {usedAddresses, changeAddress, reservedCollater
       )
       skeleton
 
-
-runGYTxMonadNodeF :: forall t v. Traversable t => GYCoinSelectionStrategy -> GYNetworkId -> GYProviders -> [GYAddress] -> GYAddress -> Maybe (GYTxOutRef, Bool) -> GYTxBuilderMonadIO (t (GYTxSkeleton v)) -> IO (t GYTxBody)
+runGYTxMonadNodeF :: forall t v. (Traversable t) => GYCoinSelectionStrategy -> GYNetworkId -> GYProviders -> [GYAddress] -> GYAddress -> Maybe (GYTxOutRef, Bool) -> GYTxBuilderMonadIO (t (GYTxSkeleton v)) -> IO (t GYTxBody)
 runGYTxMonadNodeF strat nid providers addrs change collateral act = runGYTxBuilderMonadIO nid providers addrs change collateral $ act >>= traverse (buildTxBodyWithStrategy strat)

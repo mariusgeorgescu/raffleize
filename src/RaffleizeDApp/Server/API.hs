@@ -1,13 +1,9 @@
 module API where
 
-import Control.Monad.Reader
-
 import Control.Lens
+import Control.Monad.Reader
 import Data.Swagger
-import GeniusYield.Types (GYAddress)
-import GeniusYield.Types.Providers
-
-import GeniusYield.Types.TxBody
+import GeniusYield.Types
 import Queries
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
@@ -50,7 +46,7 @@ handleInteraction roc i = do
   runReaderT (interactionToHexEncodedCBOR i) roc
 
 handleSubmit :: ProviderCtx -> AddWitAndSubmitParams -> IO ()
-handleSubmit providerCtx AddWitAndSubmitParams{..}  = do
+handleSubmit providerCtx AddWitAndSubmitParams {..} = do
   let txBody = getTxBody awasTxUnsigned
   void $ gySubmitTx (ctxProviders providerCtx) $ makeSignedTransaction awasTxWit txBody
 

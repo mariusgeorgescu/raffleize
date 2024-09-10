@@ -41,13 +41,13 @@ addressFromPaymentSigningKey nid extendedSkey =
    in
     address
 
-pPOSIXTimeFromSlotInteger :: GYTxQueryMonad m => Integer -> m POSIXTime
+pPOSIXTimeFromSlotInteger :: (GYTxQueryMonad m) => Integer -> m POSIXTime
 pPOSIXTimeFromSlotInteger = (timeToPlutus <$>) . slotToBeginTime . unsafeSlotFromInteger
 
-pPOSIXTimeFromGYSlot :: GYTxQueryMonad m => GYSlot -> m POSIXTime
+pPOSIXTimeFromGYSlot :: (GYTxQueryMonad m) => GYSlot -> m POSIXTime
 pPOSIXTimeFromGYSlot = (timeToPlutus <$>) . slotToBeginTime
 
-gySlotFromPOSIXTime :: GYTxQueryMonad m => POSIXTime -> m GYSlot
+gySlotFromPOSIXTime :: (GYTxQueryMonad m) => POSIXTime -> m GYSlot
 gySlotFromPOSIXTime ptime = do
   enclosingSlotFromTime' (timeFromPlutus ptime)
 
@@ -228,7 +228,7 @@ isValidMnemonic = Data.Either.Extra.isRight . walletKeysFromMnemonic . Data.Text
 readMnemonic :: Text -> Maybe GYExtendedPaymentSigningKey
 readMnemonic content = eitherToMaybe $ walletKeysToExtendedPaymentSigningKey <$> walletKeysFromMnemonic (Data.Text.words content)
 
-decodeConfigFile :: FromJSON a => FilePath -> IO (Maybe a)
+decodeConfigFile :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeConfigFile path = do
   putStrLn $ yellowColorString $ "Parsing config file at " <> show path
   fileExist <- doesFileExist path

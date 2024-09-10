@@ -54,17 +54,6 @@ queryRaffleRun :: (GYTxGameMonad m, HasCallStack) => User -> AssetClass -> m (Ma
 queryRaffleRun w rid =
   withWalletBalancesCheck [] $ asUser w $ lookupRaffleInfoRefAC rid
 
--- queryRaffleRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Bool -> User -> AssetClass -> m RaffleStateId
--- queryRaffleRUN log w rid = do
---   (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
---     getRaffleStateDataAndValue rid `catchError` (error . show)
---   tr <- getTimeRangeForNextNSlots 1
---   let rStateId = evaluateRaffleState (tr, r, v)
---   when log $ do
---     logInfo (yellowColorString $ "The raffle is in state : " ++ showRaffleStateLabel rStateId)
---     logInfo $ yellowColorString $ show r ++ showValue "Raffle State Value" v
---   return rStateId
-
 deployValidatorsAndCreateNewRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Wallets -> RaffleConfig -> m (RaffleInfo, RaffleizeTxBuildingContext)
 deployValidatorsAndCreateNewRaffleRun Wallets {..} config = do
   -- . Deploy validators
@@ -99,12 +88,6 @@ deployValidatorsAndCreateNewValidRaffleRun testWallets = do
 queryTicketRun :: (GYTxGameMonad m) => User -> AssetClass -> m (Maybe TicketInfo)
 queryTicketRun w tid =
   withWalletBalancesCheck [] $ asUser w $ lookupTicketInfoByRefAC tid
-
--- queryTicketRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => User -> AssetClass -> m ()
--- queryTicketRUN w tid = do
---   (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
---     getTicketStateDataAndValue tid `catchError` (error . show)
---   logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
 
 buyTicketToRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => RaffleInfo -> RaffleizeTxBuildingContext -> User -> BuiltinByteString -> m TicketInfo
 buyTicketToRaffleRun ri roc w secret = do
@@ -176,3 +159,20 @@ logInfo = logMsg "Info" GYInfo
 --   lower <- timeToPlutus <$> slotToBeginTime now
 --   upper <- timeToPlutus <$> slotToEndTime upperSlot
 --   return $ intersection (from lower) (to upper)
+
+-- queryTicketRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => User -> AssetClass -> m ()
+-- queryTicketRUN w tid = do
+--   (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
+--     getTicketStateDataAndValue tid `catchError` (error . show)
+--   logInfo $ blueColorString $ show r ++ showValue "Ticket State Value" v
+
+-- queryRaffleRUN :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Bool -> User -> AssetClass -> m RaffleStateId
+-- queryRaffleRUN log w rid = do
+--   (r, v) <- withWalletBalancesCheck [] $ asUser w $ do
+--     getRaffleStateDataAndValue rid `catchError` (error . show)
+--   tr <- getTimeRangeForNextNSlots 1
+--   let rStateId = evaluateRaffleState (tr, r, v)
+--   when log $ do
+--     logInfo (yellowColorString $ "The raffle is in state : " ++ showRaffleStateLabel rStateId)
+--     logInfo $ yellowColorString $ show r ++ showValue "Raffle State Value" v
+--   return rStateId

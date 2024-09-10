@@ -1,7 +1,11 @@
 module Main where
 
+import API (apiSwagger, raffleizeApi, raffleizeServer)
 import Control.Exception (try)
 import Control.Monad.Trans.Except (ExceptT (ExceptT))
+import Data.Aeson.Encode.Pretty (encodePretty)
+import Data.ByteString.Lazy.Char8 qualified as BL8
+import Data.Maybe qualified
 import GeniusYield.GYConfig (GYCoreConfig, withCfgProviders)
 import GeniusYield.Types (GYLogNamespace)
 import Network.HTTP.Types qualified as HttpTypes
@@ -15,13 +19,12 @@ import RaffleizeDApp.Constants (
   atlasCoreConfig,
   raffleizeValidatorsConfig,
  )
-import API (raffleizeApi, raffleizeServer, apiSwagger)
-import RaffleizeDApp.TxBuilding.Utils (decodeConfigFile)
 import RaffleizeDApp.TxBuilding.Context (
   ProviderCtx (ProviderCtx),
   RaffleizeOffchainContext (RaffleizeOffchainContext),
   RaffleizeTxBuildingContext,
  )
+import RaffleizeDApp.TxBuilding.Utils (decodeConfigFile)
 import Servant (
   Application,
   Handler (Handler),
@@ -30,9 +33,7 @@ import Servant (
  )
 import System.Environment (lookupEnv)
 import Text.Read (read)
-import           Data.Aeson.Encode.Pretty    (encodePretty)
-import qualified Data.ByteString.Lazy.Char8  as BL8
-import qualified Data.Maybe
+
 getPortFromEnv :: IO Int
 getPortFromEnv = do
   eport <- lookupEnv "PORT"
@@ -43,7 +44,7 @@ getPortFromEnv = do
 main :: IO ()
 main = do
   putStrLn "Writing Swagger file ..."
-  BL8.writeFile  "swagger-api.json" (encodePretty apiSwagger)
+  BL8.writeFile "swagger-api.json" (encodePretty apiSwagger)
   atlasConfig <- Data.Maybe.fromMaybe (error "Mandatory configuration file not found") <$> decodeConfigFile @GYCoreConfig atlasCoreConfig
   tbCtx <- fromJust <$> decodeConfigFile @RaffleizeTxBuildingContext raffleizeValidatorsConfig
   let host = "0.0.0.0"

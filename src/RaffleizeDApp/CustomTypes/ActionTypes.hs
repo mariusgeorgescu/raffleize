@@ -1,6 +1,7 @@
 {-# LANGUAGE DerivingVia #-}
 
 module RaffleizeDApp.CustomTypes.ActionTypes where
+
 import PlutusLedgerApi.V1.Value (AssetClass)
 import PlutusTx (unstableMakeIsData)
 import PlutusTx.Builtins.HasOpaque (stringToBuiltinByteString)
