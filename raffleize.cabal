@@ -128,8 +128,9 @@ executable server
   hs-source-dirs: src/RaffleizeDApp/Server
   ghc-options:    -threaded -rtsopts -with-rtsopts=-T
   other-modules:
-    API
-    Queries
+    RestAPI
+    WebsocketsAPI
+
 
   build-depends:  raffleize
   build-depends:
@@ -144,7 +145,10 @@ executable server
     , transformers     ^>=0.6.1
     , wai
     , wai-cors
+    , wai-websockets
     , warp
+    , websockets
+    , text
 
   --- Cardano specific dependencies
   build-depends:  atlas-cardano

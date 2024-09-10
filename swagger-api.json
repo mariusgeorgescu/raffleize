@@ -42,21 +42,6 @@
         "version": "1.0"
     },
     "paths": {
-        "/": {
-            "get": {
-                "produces": [
-                    "application/json;charset=utf-8"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/build-tx": {
             "post": {
                 "consumes": [

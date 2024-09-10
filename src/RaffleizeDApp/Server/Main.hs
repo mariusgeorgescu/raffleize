@@ -1,38 +1,23 @@
 module Main where
 
-import API (apiSwagger, raffleizeApi, raffleizeServer)
-import Control.Exception (try)
-import Control.Monad.Trans.Except (ExceptT (ExceptT))
-import Data.Aeson.Encode.Pretty (encodePretty)
+import RestAPI
+
+import Data.Aeson.Encode.Pretty
 import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Maybe qualified
-import GeniusYield.GYConfig (GYCoreConfig, withCfgProviders)
-import GeniusYield.Types (GYLogNamespace)
-import Network.HTTP.Types qualified as HttpTypes
-import Network.Wai.Handler.Warp (defaultSettings, runSettings, setHost, setPort)
-import Network.Wai.Middleware.Cors (
-  CorsResourcePolicy (corsRequestHeaders),
-  cors,
-  simpleCorsResourcePolicy,
- )
-import RaffleizeDApp.Constants (
-  atlasCoreConfig,
-  raffleizeValidatorsConfig,
- )
-import RaffleizeDApp.TxBuilding.Context (
-  ProviderCtx (ProviderCtx),
-  RaffleizeOffchainContext (RaffleizeOffchainContext),
-  RaffleizeTxBuildingContext,
- )
-import RaffleizeDApp.TxBuilding.Utils (decodeConfigFile)
-import Servant (
-  Application,
-  Handler (Handler),
-  hoistServer,
-  serve,
- )
-import System.Environment (lookupEnv)
-import Text.Read (read)
+import GeniusYield.GYConfig
+import GeniusYield.Types
+import Network.Wai (Application)
+import Network.Wai.Handler.Warp
+import Network.Wai.Handler.WebSockets
+import Network.WebSockets.Connection
+import RaffleizeDApp.Constants
+import RaffleizeDApp.TxBuilding.Context
+import RaffleizeDApp.TxBuilding.Utils
+import Servant
+import System.Environment
+import Text.Read
+import WebsocketsAPI
 
 getPortFromEnv :: IO Int
 getPortFromEnv = do
@@ -55,11 +40,8 @@ main = do
     let raffleizeContext = RaffleizeOffchainContext tbCtx pCtx
     putStrLn $ "Starting server at " <> show host <> " " <> show port
     let settings = setHost host $ setPort port defaultSettings -- host and port customized for heroku
-    runSettings settings $ app raffleizeContext
+    runSettings settings $ combinedApp raffleizeContext
 
-app :: RaffleizeOffchainContext -> Application
-app raffleizeContext =
-  cors (const $ Just simpleCorsResourcePolicy {corsRequestHeaders = [HttpTypes.hContentType]}) $
-    serve raffleizeApi $
-      hoistServer raffleizeApi (Handler . ExceptT . try) $
-        raffleizeServer raffleizeContext
+-- WAI application, combining WebSocket handling with other HTTP handlers
+combinedApp :: RaffleizeOffchainContext -> Application
+combinedApp raffleizeContext = websocketsOr defaultConnectionOptions websocketsServerApp (restAPIapp raffleizeContext)
