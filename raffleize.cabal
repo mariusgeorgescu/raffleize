@@ -149,6 +149,10 @@ executable server
     , warp
     , websockets
     , text
+    , servant-conduit
+    , conduit
+
+
 
   --- Cardano specific dependencies
   build-depends:  atlas-cardano
@@ -178,7 +182,7 @@ executable tui
     , vector         ^>=0.13.1
     , vty
 
-  --- Cardano specific dependenciesƒ
+  --- Cardano specific dependencies
   build-depends:
     , atlas-cardano
     , plutus-core
