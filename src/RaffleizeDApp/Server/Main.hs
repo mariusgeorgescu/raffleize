@@ -1,5 +1,5 @@
 module Main where
-  
+
 import RestAPI
 
 import Data.Aeson.Encode.Pretty
@@ -7,7 +7,6 @@ import Data.ByteString.Lazy.Char8 qualified as BL8
 import Data.Maybe qualified
 import GeniusYield.GYConfig
 import GeniusYield.Types
-import Network.Wai (Application)
 import Network.Wai.Handler.Warp
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets.Connection

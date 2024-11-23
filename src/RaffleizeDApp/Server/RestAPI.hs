@@ -1,15 +1,15 @@
-{-# LANGUAGE  StandaloneDeriving #-}
 module RestAPI where
 
-import Conduit
-import Control.Concurrent (threadDelay)
+import Conduit (ConduitT, mapMC, printC, yield, yieldM, (.|))
 import Control.Exception (try)
 import Control.Lens
-import Control.Monad.Reader
-import Control.Monad.Trans.Except (ExceptT (ExceptT), handleE)
-import Data.Conduit.Combinators (concatMapM)
+import Control.Monad.Reader (ReaderT (runReaderT))
+import Control.Monad.Trans.Except (ExceptT (ExceptT))
+import Data.ByteString.Lazy.UTF8 as LBSUTF8
+import Data.Conduit.Combinators ()
 import Data.Swagger
 import Data.Swagger.Internal.Schema (plain)
+import GeniusYield.Imports qualified as GeniusYield.Types.Tx
 import GeniusYield.Types
 import Network.HTTP.Types qualified as HttpTypes
 import Network.Wai.Middleware.Cors
@@ -18,36 +18,33 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import Servant
-import Servant.Conduit
+import Servant.API.EventStream
+import Servant.Conduit ()
 import Servant.Swagger
-import Servant.API.EventStream 
-import Data.ByteString.Lazy.UTF8 as LBSUTF8
-
+import Control.Monad.IO.Class (MonadIO(liftIO))
 
 type RaffleizeAPI = RaffleizeREST :<|> RaffleizeSSE
 
 type RaffleizeREST =
   "build-tx" :> ReqBody '[JSON] RaffleizeInteraction :> Post '[JSON] String
-    :<|> "submit-tx" :> ReqBody '[JSON] AddWitAndSubmitParams :> Post '[JSON] GYTxId
-    :<|> "submit-tx2" :> ReqBody '[JSON] AddWitAndSubmitParams :> StreamPost NewlineFraming JSON (ConduitT () () IO ())
+    :<|> "submit-tx" :> ReqBody '[JSON] AddWitAndSubmitParams :> Post '[JSON] String
     :<|> "raffles" :> Get '[JSON] [RaffleInfo]
     :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
     :<|> "user-raffles2" :> Capture "address" GYAddress :> Get '[JSON] [RaffleInfo]
     :<|> "user-tickets" :> Capture "address" GYAddress :> Get '[JSON] [TicketInfo]
 
-
-type RaffleizeSSE =  "sse" :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
+type RaffleizeSSE = "submit-tx-sse" :> Capture "txid" String :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 
 raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
 raffleizeServer roc@RaffleizeOffchainContext {..} =
-  (handleInteraction roc
-    :<|> handleSubmit providerCtx
-    :<|> handleSubmitAndAwait providerCtx
-    :<|> handleGetRaffles providerCtx
-    :<|> handleGetRafflesByAddresses providerCtx
-    :<|> handleGetRafflesByAddress providerCtx
-    :<|> handleGetMyTickets providerCtx)
-    :<|> handdleSSE
+  ( handleInteraction roc
+      :<|> handleSubmit providerCtx
+      :<|> handleGetRaffles providerCtx
+      :<|> handleGetRafflesByAddresses providerCtx
+      :<|> handleGetRafflesByAddress providerCtx
+      :<|> handleGetMyTickets providerCtx
+  )
+    :<|> handleSubmitSSE providerCtx
 
 raffleizeRest :: Proxy RaffleizeREST
 raffleizeRest = Proxy
@@ -93,29 +90,24 @@ handleInteraction roc i = do
   print i
   runReaderT (interactionToHexEncodedCBOR i) roc
 
-handleSubmit :: ProviderCtx -> AddWitAndSubmitParams -> IO GYTxId
+handleSubmit :: ProviderCtx -> AddWitAndSubmitParams -> IO String
 handleSubmit providerCtx AddWitAndSubmitParams {..} = do
   let txBody = getTxBody awasTxUnsigned
-  gySubmitTx (ctxProviders providerCtx) $ makeSignedTransaction awasTxWit txBody
+  txId <- gySubmitTx (ctxProviders providerCtx) $ makeSignedTransaction awasTxWit txBody
+  liftIO $ putStrLn $ "Submitted tx: " <> show txId
+  return $ show txId
 
-handleSubmitAndAwait :: ProviderCtx -> AddWitAndSubmitParams -> IO (ConduitT () () IO ())
-handleSubmitAndAwait providerCtx params = do
+handleSubmitSSE :: ProviderCtx -> String -> IO (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
+handleSubmitSSE providerCtx txIdStr = do
+  let txId = GeniusYield.Types.Tx.fromString txIdStr :: GYTxId
   let ctxProv = ctxProviders providerCtx
-  return $
-    yieldM (handleSubmit providerCtx params)
-      .| printC
-      .| mapMC (gyAwaitTxConfirmed ctxProv (GYAwaitTxParameters 30 10000000 1))
-      .| printC
-
-handdleSSE :: IO (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
-handdleSSE = return $ recommendedEventSourceHeaders $ yieldMany [1 :: Int .. 10000] .| mapMC (\i -> threadDelay 10000000 >> return i)
+  liftIO $ putStrLn $ "Await tx: " <> show txId
+  return $ recommendedEventSourceHeaders (yieldM (gyAwaitTxConfirmed ctxProv (GYAwaitTxParameters 30 10000000 1) txId  >> putStrLn "Confirmed" >> return 1))
 
 -- TODO - FIX THIS
 
-
 instance ToServerEvent Int where
-  toServerEvent i = ServerEvent Nothing Nothing (LBSUTF8.fromString  $ show i)
-
+  toServerEvent i = ServerEvent Nothing Nothing (LBSUTF8.fromString $ show i)
 
 instance ToSchema (ConduitT () () IO ()) where
   declareNamedSchema _ = plain $ sketchSchema @() ()
