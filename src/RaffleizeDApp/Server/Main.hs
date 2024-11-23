@@ -1,5 +1,5 @@
 module Main where
-
+  
 import RestAPI
 
 import Data.Aeson.Encode.Pretty

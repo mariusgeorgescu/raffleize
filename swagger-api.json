@@ -350,24 +350,6 @@
                 }
             }
         },
-        "/sse": {
-            "get": {
-                "produces": [
-                    "application/json;charset=utf-8"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "schema": {
-                            "example": [],
-                            "items": {},
-                            "maxItems": 0,
-                            "type": "array"
-                        }
-                    }
-                }
-            }
-        },
         "/submit-tx": {
             "post": {
                 "consumes": [

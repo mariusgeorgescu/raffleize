@@ -1,3 +1,4 @@
+{-# LANGUAGE  StandaloneDeriving #-}
 module RestAPI where
 
 import Conduit
@@ -20,9 +21,12 @@ import Servant
 import Servant.Conduit
 import Servant.Swagger
 import Servant.API.EventStream 
+import Data.ByteString.Lazy.UTF8 as LBSUTF8
 
 
-type RaffleizeAPI =
+type RaffleizeAPI = RaffleizeREST :<|> RaffleizeSSE
+
+type RaffleizeREST =
   "build-tx" :> ReqBody '[JSON] RaffleizeInteraction :> Post '[JSON] String
     :<|> "submit-tx" :> ReqBody '[JSON] AddWitAndSubmitParams :> Post '[JSON] GYTxId
     :<|> "submit-tx2" :> ReqBody '[JSON] AddWitAndSubmitParams :> StreamPost NewlineFraming JSON (ConduitT () () IO ())
@@ -30,25 +34,30 @@ type RaffleizeAPI =
     :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
     :<|> "user-raffles2" :> Capture "address" GYAddress :> Get '[JSON] [RaffleInfo]
     :<|> "user-tickets" :> Capture "address" GYAddress :> Get '[JSON] [TicketInfo]
-    :<|> "sse" :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
+
+
+type RaffleizeSSE =  "sse" :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 
 raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
 raffleizeServer roc@RaffleizeOffchainContext {..} =
-  handleInteraction roc
+  (handleInteraction roc
     :<|> handleSubmit providerCtx
     :<|> handleSubmitAndAwait providerCtx
     :<|> handleGetRaffles providerCtx
     :<|> handleGetRafflesByAddresses providerCtx
     :<|> handleGetRafflesByAddress providerCtx
-    :<|> handleGetMyTickets providerCtx
+    :<|> handleGetMyTickets providerCtx)
     :<|> handdleSSE
+
+raffleizeRest :: Proxy RaffleizeREST
+raffleizeRest = Proxy
 
 raffleizeApi :: Proxy RaffleizeAPI
 raffleizeApi = Proxy
 
 apiSwagger :: Swagger
 apiSwagger =
-  toSwagger raffleizeApi
+  toSwagger raffleizeRest
     & info . title .~ "Raffleize API"
     & info . version .~ "1.0"
     & info . description ?~ "This is an API for the Raffleize Cardano DApp"
@@ -102,7 +111,11 @@ handdleSSE :: IO (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 handdleSSE = return $ recommendedEventSourceHeaders $ yieldMany [1 :: Int .. 10000] .| mapMC (\i -> threadDelay 10000000 >> return i)
 
 -- TODO - FIX THIS
-instance ToSchema (ConduitT () Int IO ()) where
-  declareNamedSchema _ = plain $ sketchSchema @() ()
+
+
+instance ToServerEvent Int where
+  toServerEvent i = ServerEvent Nothing Nothing (LBSUTF8.fromString  $ show i)
+
+
 instance ToSchema (ConduitT () () IO ()) where
   declareNamedSchema _ = plain $ sketchSchema @() ()
