@@ -17,8 +17,10 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import Servant
-import Servant.Conduit ()
+import Servant.Conduit
 import Servant.Swagger
+import Servant.API.EventStream 
+
 
 type RaffleizeAPI =
   "build-tx" :> ReqBody '[JSON] RaffleizeInteraction :> Post '[JSON] String
@@ -28,7 +30,7 @@ type RaffleizeAPI =
     :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
     :<|> "user-raffles2" :> Capture "address" GYAddress :> Get '[JSON] [RaffleInfo]
     :<|> "user-tickets" :> Capture "address" GYAddress :> Get '[JSON] [TicketInfo]
-    :<|> "sse" :> StreamGet NewlineFraming JSON (ConduitT () Int IO ())
+    :<|> "sse" :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 
 raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
 raffleizeServer roc@RaffleizeOffchainContext {..} =
@@ -96,8 +98,8 @@ handleSubmitAndAwait providerCtx params = do
       .| mapMC (gyAwaitTxConfirmed ctxProv (GYAwaitTxParameters 30 10000000 1))
       .| printC
 
-handdleSSE :: IO (ConduitT () Int IO ())
-handdleSSE = return $ yieldMany [1 :: Int .. 10000] .| mapMC (\i -> threadDelay 10000000 >> return i)
+handdleSSE :: IO (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
+handdleSSE = return $ recommendedEventSourceHeaders $ yieldMany [1 :: Int .. 10000] .| mapMC (\i -> threadDelay 10000000 >> return i)
 
 -- TODO - FIX THIS
 instance ToSchema (ConduitT () Int IO ()) where

@@ -151,6 +151,7 @@ executable server
     , text
     , servant-conduit
     , conduit
+    , servant-event-stream
 
 
 
