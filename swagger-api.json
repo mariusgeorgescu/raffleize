@@ -155,6 +155,204 @@
                 }
             }
         },
+        "/raffle/{raffleId}": {
+            "get": {
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "raffleId",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "produces": [
+                    "application/json;charset=utf-8"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "schema": {
+                            "example": {
+                                "riAvailableActions": [
+                                    [
+                                        "User",
+                                        "BuyTicket"
+                                    ],
+                                    [
+                                        "RaffleOwner",
+                                        "Cancel"
+                                    ],
+                                    [
+                                        "RaffleOwner",
+                                        "Update"
+                                    ]
+                                ],
+                                "riImage": "ipfs://notarealurl",
+                                "riRsd": {
+                                    "rConfig": {
+                                        "rCommitDDL": 1718887778871,
+                                        "rMinTickets": 2,
+                                        "rRevealDDL": 1718889578871,
+                                        "rStake": [],
+                                        "rTicketPrice": 7000000
+                                    },
+                                    "rParam": {
+                                        "rMaxNoOfTickets": 20,
+                                        "rMinRevealingWindow": 6000,
+                                        "rMinTicketPrice": 3000000,
+                                        "rRaffleCollateral": 30000000,
+                                        "rRaffleValidatorHash": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                        "rTicketCollateral": 3500000,
+                                        "rTicketValidatorHash": "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
+                                    },
+                                    "rRaffleID": [
+                                        "526166666c65697a6543757272656e637953796d626f6c",
+                                        "RaffleizeTokenName"
+                                    ],
+                                    "rRandomSeed": 0,
+                                    "rRefundedTickets": 0,
+                                    "rRevealedTickets": 0,
+                                    "rSoldTickets": 0
+                                },
+                                "riStateLabel": "NEW",
+                                "riValue": []
+                            },
+                            "properties": {
+                                "riAvailableActions": {
+                                    "items": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "type": "array"
+                                },
+                                "riImage": {
+                                    "type": "string"
+                                },
+                                "riRsd": {
+                                    "properties": {
+                                        "rConfig": {
+                                            "properties": {
+                                                "rCommitDDL": {
+                                                    "type": "number"
+                                                },
+                                                "rMinTickets": {
+                                                    "type": "number"
+                                                },
+                                                "rRevealDDL": {
+                                                    "type": "number"
+                                                },
+                                                "rStake": {
+                                                    "example": [],
+                                                    "items": {},
+                                                    "maxItems": 0,
+                                                    "type": "array"
+                                                },
+                                                "rTicketPrice": {
+                                                    "type": "number"
+                                                }
+                                            },
+                                            "required": [
+                                                "rStake",
+                                                "rTicketPrice",
+                                                "rRevealDDL",
+                                                "rMinTickets",
+                                                "rCommitDDL"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "rParam": {
+                                            "properties": {
+                                                "rMaxNoOfTickets": {
+                                                    "type": "number"
+                                                },
+                                                "rMinRevealingWindow": {
+                                                    "type": "number"
+                                                },
+                                                "rMinTicketPrice": {
+                                                    "type": "number"
+                                                },
+                                                "rRaffleCollateral": {
+                                                    "type": "number"
+                                                },
+                                                "rRaffleValidatorHash": {
+                                                    "type": "string"
+                                                },
+                                                "rTicketCollateral": {
+                                                    "type": "number"
+                                                },
+                                                "rTicketValidatorHash": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "rTicketValidatorHash",
+                                                "rMaxNoOfTickets",
+                                                "rMinTicketPrice",
+                                                "rRaffleCollateral",
+                                                "rTicketCollateral",
+                                                "rMinRevealingWindow",
+                                                "rRaffleValidatorHash"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "rRaffleID": {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        "rRandomSeed": {
+                                            "type": "number"
+                                        },
+                                        "rRefundedTickets": {
+                                            "type": "number"
+                                        },
+                                        "rRevealedTickets": {
+                                            "type": "number"
+                                        },
+                                        "rSoldTickets": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "required": [
+                                        "rRandomSeed",
+                                        "rRevealedTickets",
+                                        "rRefundedTickets",
+                                        "rSoldTickets",
+                                        "rParam",
+                                        "rConfig",
+                                        "rRaffleID"
+                                    ],
+                                    "type": "object"
+                                },
+                                "riStateLabel": {
+                                    "type": "string"
+                                },
+                                "riValue": {
+                                    "example": [],
+                                    "items": {},
+                                    "maxItems": 0,
+                                    "type": "array"
+                                }
+                            },
+                            "required": [
+                                "riRsd",
+                                "riStateLabel",
+                                "riImage",
+                                "riAvailableActions",
+                                "riValue"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid `raffleId`"
+                    }
+                }
+            }
+        },
         "/raffles": {
             "get": {
                 "produces": [

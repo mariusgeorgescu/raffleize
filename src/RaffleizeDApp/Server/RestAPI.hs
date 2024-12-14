@@ -1,6 +1,6 @@
 module RestAPI where
 
-import Conduit (ConduitT, mapMC, printC, yield, yieldM, (.|))
+import Conduit (ConduitT, yieldM)
 import Control.Exception (try)
 import Control.Lens
 import Control.Monad.Reader (ReaderT (runReaderT))
@@ -29,6 +29,7 @@ type RaffleizeREST =
   "build-tx" :> ReqBody '[JSON] RaffleizeInteraction :> Post '[JSON] String
     :<|> "submit-tx" :> ReqBody '[JSON] AddWitAndSubmitParams :> Post '[JSON] String
     :<|> "raffles" :> Get '[JSON] [RaffleInfo]
+    :<|> "raffle" :> Capture "raffleId" GYAssetClass :> Get '[JSON] (Maybe RaffleInfo)
     :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
     :<|> "user-raffles2" :> Capture "address" GYAddress :> Get '[JSON] [RaffleInfo]
     :<|> "user-tickets" :> Capture "address" GYAddress :> Get '[JSON] [TicketInfo]
@@ -40,6 +41,7 @@ raffleizeServer roc@RaffleizeOffchainContext {..} =
   ( handleInteraction roc
       :<|> handleSubmit providerCtx
       :<|> handleGetRaffles providerCtx
+      :<|> handleGetRaffleById providerCtx
       :<|> handleGetRafflesByAddresses providerCtx
       :<|> handleGetRafflesByAddress providerCtx
       :<|> handleGetMyTickets providerCtx
@@ -72,6 +74,10 @@ restAPIapp raffleizeContext =
 
 handleGetRaffles :: ProviderCtx -> IO [RaffleInfo]
 handleGetRaffles pCtx = runQuery pCtx lookupActiveRaffles
+
+handleGetRaffleById :: ProviderCtx -> GYAssetClass -> IO  (Maybe RaffleInfo)
+handleGetRaffleById pCtx gyRaffleId = 
+  runQuery pCtx $ lookupRaffleInfoByRefAC (assetClassToPlutus gyRaffleId)
 
 handleGetRafflesByAddress :: ProviderCtx -> GYAddress -> IO [RaffleInfo]
 handleGetRafflesByAddress pCtx addrs = runQuery pCtx (lookupRafflesOfAddress addrs)

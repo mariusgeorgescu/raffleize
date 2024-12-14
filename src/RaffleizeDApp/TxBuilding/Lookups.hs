@@ -127,8 +127,8 @@ lookupTickeStateValueAndImage ticketId =
     utxo <- lookupUTxOWithStateToken ticketId ticketValidatorAddr
     return $ utxo >>= tsdValueAndImageFromUTxO
 
-lookupRaffleInfoRefAC :: (GYTxQueryMonad m, HasCallStack) => AssetClass -> m (Maybe RaffleInfo)
-lookupRaffleInfoRefAC raffleRefAC = do
+lookupRaffleInfoByRefAC :: (GYTxQueryMonad m, HasCallStack) => AssetClass -> m (Maybe RaffleInfo)
+lookupRaffleInfoByRefAC raffleRefAC = do
   tr <- getTimeRangeForNextNSlots 1
   stateValImg <- lookupRaffleStateValueAndImage raffleRefAC
   return $ mkRaffleInfo tr <$> stateValImg
