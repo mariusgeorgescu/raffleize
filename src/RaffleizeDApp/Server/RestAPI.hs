@@ -76,9 +76,12 @@ handleGetRaffles :: ProviderCtx -> IO [RaffleInfo]
 handleGetRaffles pCtx = runQuery pCtx lookupActiveRaffles
 
 handleGetRaffleById :: ProviderCtx -> GYAssetClass -> IO  (Maybe RaffleInfo)
-handleGetRaffleById pCtx gyRaffleId = 
-  runQuery pCtx $ lookupRaffleInfoByRefAC (assetClassToPlutus gyRaffleId)
-
+handleGetRaffleById pCtx gyRaffleId =  do
+  liftIO $ putStrLn $ "Lookup for raffle: " <> show gyRaffleId
+  mri <- runQuery pCtx $ lookupRaffleInfoByRefAC (assetClassToPlutus gyRaffleId)
+  liftIO $ print mri
+  return mri
+  
 handleGetRafflesByAddress :: ProviderCtx -> GYAddress -> IO [RaffleInfo]
 handleGetRafflesByAddress pCtx addrs = runQuery pCtx (lookupRafflesOfAddress addrs)
 
