@@ -25,10 +25,6 @@ import RaffleizeDApp.CustomTypes.TicketTypes (
   TicketStateData (..),
   mkTicketDatum,
  )
-import RaffleizeDApp.CustomTypes.Types (
-  AScriptContext (AScriptContext),
-  ATxInfo (..),
- )
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   deriveUserFromRefAC,
   evalTicketState,
@@ -39,6 +35,8 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
   revealTicketToRaffleT,
  )
 import RaffleizeDApp.OnChain.Utils (
+  AScriptContext (AScriptContext),
+  ATxInfo (..),
   findTxInWith,
   getOwnInput,
   hasTxInWithToken,

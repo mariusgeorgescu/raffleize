@@ -2,37 +2,40 @@ module RaffleizeDApp.OnChain.Utils where
 
 import Data.List.Extra (intercalate)
 import PlutusLedgerApi.V1.Value (
-  AssetClass (unAssetClass),
-  TokenName (..),
-  Value,
-  adaSymbol,
-  adaToken,
+  AssetClass (..),
   assetClass,
   assetClassValue,
   assetClassValueOf,
   flattenValue,
   geq,
-  singleton,
  )
 import PlutusLedgerApi.V2 (
   Address,
+  CurrencySymbol,
   Datum (getDatum),
   FromData,
   OutputDatum (OutputDatum),
+  POSIXTimeRange,
   ScriptContext,
   ScriptPurpose (Spending),
   ToData (..),
+  TokenName (..),
   TxId (TxId),
   TxInInfo (..),
   TxOut (TxOut, txOutAddress, txOutDatum, txOutValue),
   TxOutRef (TxOutRef),
   UnsafeFromData (..),
+  Value,
+  adaSymbol,
+  adaToken,
+  singleton,
  )
-import PlutusTx.Builtins (blake2b_256, serialiseData)
-import RaffleizeDApp.CustomTypes.Types (
-  AScriptContext (..),
-  ATxInfo (..),
- )
+import PlutusTx (fromBuiltinData, unstableMakeIsData)
+import PlutusTx.Builtins (serialiseData)
+
+unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
+unFlattenValue [] = mempty
+unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
 
 wrapTitle :: String -> String
 wrapTitle s =
@@ -54,11 +57,12 @@ mkUntypedValidator ::
   (a -> b -> ScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> BuiltinData -> ())
 mkUntypedValidator f a b ctx =
-  check $
-    f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData b)
-      (unsafeFromBuiltinData ctx)
+  if f
+    (unsafeFromBuiltinData a)
+    (unsafeFromBuiltinData b)
+    (unsafeFromBuiltinData ctx)
+    then ()
+    else traceError "validator: Validation Failed"
 {-# INLINEABLE mkUntypedValidator #-}
 
 -- | A more efficient implementation of the `mkUntypedMintingPolicy` method of the `IsScriptContext` typeclass.
@@ -67,37 +71,67 @@ mkUntypedMintingPolicy ::
   (a -> ScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> ())
 mkUntypedMintingPolicy f a ctx =
-  check $
-    f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData ctx)
+  if f
+    (unsafeFromBuiltinData a)
+    (unsafeFromBuiltinData ctx)
+    then ()
+    else traceError "validator: Validation Failed"
 {-# INLINEABLE mkUntypedMintingPolicy #-}
+
+data ATxInfo = ATxInfo
+  { txInfoInputs :: [TxInInfo]
+  , txInfoReferenceInputs :: [TxInInfo]
+  , txInfoOutputs :: [TxOut]
+  , txInfoFee :: BuiltinData
+  , txInfoMint :: Value
+  , txInfoDCert :: BuiltinData
+  , txInfoWdrl :: BuiltinData
+  , txInfoValidRange :: POSIXTimeRange
+  , txInfoSignatories :: BuiltinData
+  , txInfoData :: BuiltinData
+  , txInfoId :: BuiltinData
+  }
+
+unstableMakeIsData ''ATxInfo
+
+data AScriptContext = AScriptContext {scriptContextTxInfo :: ATxInfo, scriptContextPurpose :: ScriptPurpose}
+unstableMakeIsData ''AScriptContext
 
 -- | A more efficient implementation of the `mkUntypedValidator` method of the `IsScriptContext` typeclass.
 mkUntypedValidatorCustom ::
-  ( UnsafeFromData a
-  , UnsafeFromData b
+  ( FromData a
+  , FromData b
   ) =>
   (a -> b -> AScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> BuiltinData -> ())
-mkUntypedValidatorCustom f a b ctx =
-  check $
-    f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData b)
-      (unsafeFromBuiltinData ctx)
+mkUntypedValidatorCustom f d r c =
+  if f
+    (parseData d "Invalid data")
+    (parseData r "Invalid redeemer")
+    (parseData c "Invalid context")
+    then ()
+    else traceError "validator: Validation Failed"
+  where
+    parseData md s = case fromBuiltinData md of
+      Just datum -> datum
+      _ -> traceError s
 {-# INLINEABLE mkUntypedValidatorCustom #-}
 
 -- | A more efficient implementation of the `mkUntypedMintingPolicy` method of the `IsScriptContext` typeclass.
 mkUntypedMintingPolicyCustom ::
-  (UnsafeFromData a) =>
+  (FromData a) =>
   (a -> AScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> ())
-mkUntypedMintingPolicyCustom f a ctx =
-  check $
-    f
-      (unsafeFromBuiltinData a)
-      (unsafeFromBuiltinData ctx)
+mkUntypedMintingPolicyCustom f r c =
+  if f
+    (parseData r "Invalid redeemer")
+    (parseData c "Invalid context")
+    then ()
+    else traceError "validator: Validation Failed"
+  where
+    parseData md s = case fromBuiltinData md of
+      Just datum -> datum
+      _ -> traceError s
 {-# INLINEABLE mkUntypedMintingPolicyCustom #-}
 
 ------------------------
@@ -228,19 +262,19 @@ outHas1of (TxOut _ value _ _) ac = assetClassValueOf value ac #== 1
 {-# INLINEABLE outHas1of #-}
 
 -- | Helper function to check if a 'TxOut' contains a given datum and is inlined.
-hasGivenInlineDatum :: ToData a => a -> TxOut -> Bool
+hasGivenInlineDatum :: (ToData a) => a -> TxOut -> Bool
 hasGivenInlineDatum datum out = case txOutDatum out of
   OutputDatum da -> toBuiltinData datum #== getDatum da
   _ -> trace "Datum must exsist and must be inlined" False
 {-# INLINEABLE hasGivenInlineDatum #-}
 
-isGivenInlineDatum :: ToData a => a -> OutputDatum -> Bool
+isGivenInlineDatum :: (ToData a) => a -> OutputDatum -> Bool
 isGivenInlineDatum datum outdat = case outdat of
   OutputDatum da -> toBuiltinData datum #== getDatum da
   _ -> trace "Datum must exsist and must be inlined" False
 {-# INLINEABLE isGivenInlineDatum #-}
 
-isGivenInlineDatumWith :: ToData a => (a, a -> a) -> OutputDatum -> Bool
+isGivenInlineDatumWith :: (ToData a) => (a, a -> a) -> OutputDatum -> Bool
 isGivenInlineDatumWith (datum, f) outdat = case outdat of
   OutputDatum da -> toBuiltinData (f datum) #== getDatum da
   _ -> trace "Datum must exsist and must be inlined" False
@@ -264,7 +298,7 @@ spendsToken proofToken sc =
   "The transaction must spend the state token"
     `traceIfFalse` case (`inputHas1of` proofToken) #<$> findOwnInputA sc of
       Nothing -> trace "Own input not found" False
-      Just result -> traceIfFalse ("Token not spent: " #<> (decodeUtf8 . unTokenName . snd . unAssetClass $ proofToken)) result
+      Just result -> traceIfFalse "Proof Token Not Spent" result
 {-# INLINEABLE spendsToken #-}
 
 tokenNameFromTxOutRef :: TxOutRef -> TokenName

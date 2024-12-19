@@ -1,8 +1,5 @@
-{-# LANGUAGE DataKinds #-}
-
 module Main where
 
-import CodeGen.TypeBridges (raffleizeBridge)
 import Data.Proxy (Proxy (..))
 import Language.PureScript.Bridge (
   Language (Haskell),
@@ -27,10 +24,12 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
  )
 import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
 import RaffleizeDApp.CustomTypes.TransferTypes (
+  AddWitAndSubmitParams,
   RaffleInfo,
   RaffleizeInteraction,
   UserAddresses,
  )
+import TypeBridges (raffleizeBridge)
 
 myTypes :: [SumType 'Haskell]
 myTypes =
@@ -46,6 +45,7 @@ myTypes =
   , mkSumType (Proxy :: Proxy UserAddresses)
   , mkSumType (Proxy :: Proxy RaffleizeInteraction)
   , mkSumType (Proxy :: Proxy RaffleInfo)
+  , mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
   ]
 
 main :: IO ()

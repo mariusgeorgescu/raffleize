@@ -29,10 +29,6 @@
 
 hls-bin := `which haskell-language-server`
 
-# generate .env file from template
-@mk-env:
-  mk-env.sh
-
 # create HLS symlink
 @link-hls:
   if [ -n "{{ hls-bin }}" ]; then \

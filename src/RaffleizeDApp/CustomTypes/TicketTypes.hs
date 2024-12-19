@@ -1,9 +1,9 @@
 module RaffleizeDApp.CustomTypes.TicketTypes where
 
 import PlutusLedgerApi.V1.Value (AssetClass)
-import PlutusLedgerApi.V2 (ScriptHash, fromList)
+import PlutusLedgerApi.V2 (ScriptHash)
 import PlutusTx (unstableMakeIsData)
-import PlutusTx.AssocMap (lookup)
+import PlutusTx.AssocMap (lookup, safeFromList)
 import RaffleizeDApp.Constants (
   metadataVersion,
   ticketDescription,
@@ -56,7 +56,7 @@ mkTicketDatum :: TicketStateData -> TicketDatum
 mkTicketDatum tsd =
   TicketDatum
     { metadata =
-        fromList $
+        safeFromList  $
           encodeUtf8KV
             #<$> [ ("description", ticketDescription)
                  , ("image", ticketImageURI)

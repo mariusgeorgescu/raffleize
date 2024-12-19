@@ -1,5 +1,6 @@
-module RaffleizeDApp.TUI.UI where
+module UI where
 
+import Actions
 import Brick.AttrMap
 import Brick.Focus (focusGetCurrent, focusNext)
 import Brick.Forms
@@ -40,21 +41,19 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   actionToLabel,
   generateTicketACFromTicket,
  )
-import RaffleizeDApp.TUI.Actions
-import RaffleizeDApp.TUI.RaffleizeWidgets
-import RaffleizeDApp.TUI.Types
-import RaffleizeDApp.TUI.Utils
+import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Utils
 import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
+import RaffleizeWidgets
 import System.Console.ANSI (clearScreen)
 import System.IO.Extra (readFile)
+import Types
 
 ----------------------------------------------------------------------
 
@@ -95,7 +94,7 @@ app =
     { appDraw = drawUI
     , appChooseCursor = showFirstCursor
     , appHandleEvent = handleEvent
-    , appStartEvent = return
+    , appStartEvent = return ()
     , appAttrMap = const theMap
     }
 
@@ -166,11 +165,12 @@ refreshState RaffleizeUI {..} = do
 
 ------------------------------------------------------------------------------------------------
 
-handleEvent :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
-handleEvent s e =
+handleEvent :: BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
+handleEvent e = do
+  s <- get
   case e of
     VtyEvent vtye -> case vtye of
-      EvKey KEsc [] -> continue s {message = "", currentScreen = MainScreen}
+      EvKey KEsc [] -> put $ s {message = "", currentScreen = MainScreen}
       EvKey key _modifiers ->
         case currentScreen s of
           ImportWalletFromMnemonic -> handleMnemonicEvents s e
@@ -185,41 +185,41 @@ handleEvent s e =
           MyRafflesScreen -> handleMyRafflesEvents s e
           MainScreen ->
             if not . Data.Text.null $ message s
-              then continue s
+              then put s
               else case key of
                 (KChar c) -> case c of
-                  'q' -> halt s
-                  'v' -> continue s {currentScreen = ActiveRafflesScreen}
-                  'i' -> continue s {currentScreen = ImportWalletFromMnemonic}
+                  'q' -> halt
+                  'v' -> put $ s {currentScreen = ActiveRafflesScreen}
+                  'i' -> put $ s {currentScreen = ImportWalletFromMnemonic}
                   'e' -> do
                     liftIO $ sequence_ [exportRaffleScript, exportTicketScript, exportMintingPolicy]
-                    continue s {message = "VALIDATORS SUCCESSFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
+                    put $ s {message = "VALIDATORS SUCCESSFULLY EXPORTED !\n" <> Data.Text.pack (Data.List.intercalate "\n" [raffleizeValidatorFile, ticketValidatorFile, mintingPolicyFile])}
                   _ ->
                     if isJust (maybeSecretKey s)
                       then do
                         case c of
-                          'm' -> continue s {currentScreen = MintTokenScreen}
-                          'c' -> continue s {currentScreen = CreateRaffleScreen}
-                          'r' -> continue s {currentScreen = MyRafflesScreen}
-                          't' -> continue s {currentScreen = MyTicketsScreen}
+                          'm' -> put $ s {currentScreen = MintTokenScreen}
+                          'c' -> put $ s {currentScreen = CreateRaffleScreen}
+                          'r' -> put $ s {currentScreen = MyRafflesScreen}
+                          't' -> put $ s {currentScreen = MyTicketsScreen}
                           'l' -> do
                             liftIO clearScreen
                             initialState <- liftIO $ refreshState s
-                            continue initialState {message = "Updated"}
+                            put $ initialState {message = "Updated"}
                           'd' -> do
                             liftIO clearScreen
                             liftIO $ deployValidators (providersCtx s) (fromJust (maybeSecretKey s))
                             initialState <- liftIO $ refreshState s
-                            continue initialState {message = "VALIDATORS SUCCESSFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
-                          _ -> continue s
-                      else continue s
+                            put $ initialState {message = "VALIDATORS SUCCESSFULLY DEPLOYED !\nTxOuts references are saved to " <> showText raffleizeValidatorsConfig}
+                          _ -> put s
+                      else put s
                 _ -> do
-                  newBalanceList <- handleListEvent vtye (balanceList s)
-                  continue s {balanceList = newBalanceList}
-      _ -> continue s
-    _ -> continue s
+                  (newBalanceList, ()) <- nestEventM (balanceList s) $ handleListEvent vtye
+                  put s {balanceList = newBalanceList}
+      _ -> put s
+    _ -> put s
 
-handleConstrutValueEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleConstrutValueEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValueScreen =
   case e of
     VtyEvent vtye@(EvKey key _modifiers) ->
@@ -232,8 +232,8 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
         let myAvailableValueList = availableValueList myConstrctValueState
         let myConstructedValueList = constructedValueList myConstrctValueState
         case key of
-          KEnter -> if isValidAmountField then if isNothing updatingRaffle then continue s {currentScreen = CreateRaffleScreen} else continue s {currentScreen = UpdateRaffleScreen} else continue s
-          KChar '\t' -> continue s {myConstrctValueState = myConstrctValueState {elementFocus = focusNext currentFocus}}
+          KEnter -> if isValidAmountField then if isNothing updatingRaffle then put $ s {currentScreen = CreateRaffleScreen} else put $ s {currentScreen = UpdateRaffleScreen} else put s
+          KChar '\t' -> put $ s {myConstrctValueState = myConstrctValueState {elementFocus = focusNext currentFocus}}
           k | k == KChar '+' || k == KIns -> do
             let selectedElement = snd <$> listSelectedElement myAvailableValueList
             case (selectedElement, isValidAmountField, (`elem` [1, 2]) <$> currentFocusValue) of
@@ -247,16 +247,16 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
                 let newStakeBalance = stakeBalance #+ elementOfConstructedValue
                 let newConstructedList = listReplace (Data.List.reverse $ flattenValue newStakeBalance) (Just 0) myConstructedValueList
                 let newAtvFormState = updateFormState atvFormState {_amount = 1} atvForm
-                continue s {myConstrctValueState = myConstrctValueState {constructedValueList = newConstructedList, availableValueList = newAvailableList, addToValueForm = newAtvFormState}}
-              _ -> continue s
+                put $ s {myConstrctValueState = myConstrctValueState {constructedValueList = newConstructedList, availableValueList = newAvailableList, addToValueForm = newAtvFormState}}
+              _ -> put s
           _ -> do
             case currentFocusValue of
               Just 1 -> do
-                newAvailableList <- handleListEvent vtye myAvailableValueList
+                (newAvailableList, ()) <- nestEventM myAvailableValueList $ handleListEvent vtye
                 let newSelectedElement = snd <$> listSelectedElement newAvailableList
                 let mselectedElementAmount = (\(_, _, i) -> fromIntegral i) <$> newSelectedElement
                 case mselectedElementAmount of
-                  Nothing -> continue s
+                  Nothing -> put s
                   Just selectedElementAmount -> do
                     let newAtvFormState =
                           if key `elem` [KUp, KDown]
@@ -268,9 +268,9 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
                           [ setFieldValid (null newAvailableList || liftA2 (&&) (> 0) (<= selectedElementAmount) (formState newAtvFormState ^. amount)) AddToValueAmountField
                           ]
                     let validatedForm = foldr' ($) newAtvFormState fieldValidations
-                    continue s {myConstrctValueState = myConstrctValueState {availableValueList = newAvailableList, addToValueForm = validatedForm}}
+                    put $ s {myConstrctValueState = myConstrctValueState {availableValueList = newAvailableList, addToValueForm = validatedForm}}
               Just 2 -> do
-                newAtvForm <- handleFormEvent e (addToValueForm myConstrctValueState)
+                (newAtvForm, ()) <- nestEventM (addToValueForm myConstrctValueState) $ handleFormEvent e
                 let newAtvFormState = formState newAtvForm
                 let avl = availableValueList myConstrctValueState
                 let newSelectedElement = snd <$> listSelectedElement avl
@@ -279,12 +279,12 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
                       [ setFieldValid (null avl || liftA2 (&&) (> 0) (<= selectedElementAmount) (newAtvFormState ^. amount)) AddToValueAmountField
                       ]
                 let validatedForm = foldr' ($) newAtvForm fieldValidations
-                continue s {myConstrctValueState = myConstrctValueState {addToValueForm = validatedForm}}
+                put $ s {myConstrctValueState = myConstrctValueState {addToValueForm = validatedForm}}
               Just 3 -> case key of
                 k | k == KChar '-' || k == KDel -> do
                   let selectedElement = listSelectedElement myConstructedValueList
                   case selectedElement of
-                    Nothing -> continue s
+                    Nothing -> put s
                     Just (idx, el) -> do
                       let newConstructedList = listRemove idx myConstructedValueList
                       let elementValue = unFlattenValue [el]
@@ -292,16 +292,16 @@ handleConstrutValueEvents s@RaffleizeUI {..} e | currentScreen == ConstructValue
                       let newAvailableBalance = availableBalance #+ elementValue
                       let newAvailableList = listReplace (Data.List.reverse $ flattenValue newAvailableBalance) (Just 0) myAvailableValueList
                       let newcvs = myConstrctValueState {constructedValueList = newConstructedList, availableValueList = newAvailableList}
-                      continue s {myConstrctValueState = newcvs}
+                      put $ s {myConstrctValueState = newcvs}
                 _ -> do
-                  newConstructedList <- handleListEvent vtye myConstructedValueList
-                  continue s {myConstrctValueState = myConstrctValueState {constructedValueList = newConstructedList}}
+                  (newConstructedList, ()) <- nestEventM myConstructedValueList $ handleListEvent vtye
+                  put $ s {myConstrctValueState = myConstrctValueState {constructedValueList = newConstructedList}}
               _ -> error "invalid focus"
-    _ -> continue s
+    _ -> put s
 handleConstrutValueEvents _state _event = error "Invalid use of handleConstrutValueEvents"
 
 -- Refactor helper functions
-raffleizeTransactionHandler :: RaffleizeOffchainContext -> GYExtendedPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources (Next RaffleizeUI)
+raffleizeTransactionHandler :: RaffleizeOffchainContext -> GYExtendedPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> RaffleizeUI -> Bool -> EventM NameResources RaffleizeUI ()
 raffleizeTransactionHandler roc@(RaffleizeOffchainContext _ providersCtx) secretKey raffleizeAction contextNFT mAddr s validateAction =
   let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
    in if validateAction
@@ -312,8 +312,8 @@ raffleizeTransactionHandler roc@(RaffleizeOffchainContext _ providersCtx) secret
           initialState <- liftIO $ refreshState s
           liftIO clearScreen
           let successMessage = "Transaction confirmed ! \n You transaction is now onchain: \n\t"
-          continue initialState {message = successMessage <> showLink nid "tx" txOutRef <> "\n"}
-        else continue s
+          put $ initialState {message = successMessage <> showLink nid "tx" txOutRef <> "\n"}
+        else put s
 
 raffleFormToConfig :: RaffleConfigFormState -> Value -> Maybe RaffleConfig
 raffleFormToConfig RaffleConfigFormState {..} stake = do
@@ -329,7 +329,7 @@ raffleFormToConfig RaffleConfigFormState {..} stake = do
       }
 
 -- | Handle events Create Raffle Screen
-handleCreateUpdateRaffleEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleCreateUpdateRaffleEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleCreateUpdateRaffleEvents s@RaffleizeUI {..} event | currentScreen == CreateRaffleScreen || currentScreen == UpdateRaffleScreen = do
   let crForm = raffleConfigForm
       myConstructedValueList = constructedValueList myConstrctValueState
@@ -346,10 +346,10 @@ handleCreateUpdateRaffleEvents s@RaffleizeUI {..} event | currentScreen == Creat
                   Just rConfig -> do
                     let (raffleizeAction, contextNFT) = if currentScreen == CreateRaffleScreen then (User (CreateRaffle rConfig), Nothing) else (RaffleOwner (Update rConfig), rRaffleID . riRsd <$> updatingRaffle)
                     raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey raffleizeAction contextNFT recpient s True
-                  Nothing -> continue s
-            (k, _) | k == KChar '+' || k == KIns -> continue s {currentScreen = ConstructValueScreen}
+                  Nothing -> put s
+            (k, _) | k == KChar '+' || k == KIns -> put $ s {currentScreen = ConstructValueScreen}
             _ -> do
-              newFormState <- handleFormEvent event crForm
+              (newFormState, ()) <- nestEventM crForm $ handleFormEvent event
               let crFormState = formState newFormState
               let fieldValidations =
                     [ setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState ^. commitDdl))) CommitDdlField
@@ -358,27 +358,27 @@ handleCreateUpdateRaffleEvents s@RaffleizeUI {..} event | currentScreen == Creat
                     , setFieldValid (liftA2 (&&) (> 0) (< fromIntegral (rMaxNoOfTickets mockRaffleParam)) $ crFormState ^. minNoTickets) MinNoTokensField
                     ]
               let validatedForm = foldr' ($) newFormState fieldValidations
-              continue s {raffleConfigForm = validatedForm}
+              put $ s {raffleConfigForm = validatedForm}
         _ -> do
-          newFormState <- handleFormEvent event crForm
-          continue s {raffleConfigForm = newFormState}
+          (newFormState, ()) <- nestEventM crForm $ handleFormEvent event
+          put $ s {raffleConfigForm = newFormState}
 handleCreateUpdateRaffleEvents _state _event = error "Invalid use of handleCreateUpdateRaffleEvents"
 
 -- | Handle events in View Active Raffles Screen
-handleActiveRafflesEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleActiveRafflesEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleActiveRafflesEvents s@RaffleizeUI {..} event | currentScreen == ActiveRafflesScreen = do
   let maybeSelectedRaffle = formState activeRafflesForm ^. selectedRaffle
   case (event, maybeSelectedRaffle) of
     (VtyEvent (EvKey (KChar 'b') _modifiers), Just selectedActiveRaffle) -> do
       let isValidBuy = any ((== "BuyTicket") . snd) $ riAvailableActions selectedActiveRaffle
-      if isValidBuy then continue s {currentScreen = BuyTicketScreen} else continue s
+      if isValidBuy then put s {currentScreen = BuyTicketScreen} else put s
     _ -> do
-      arForm <- handleFormEvent event activeRafflesForm
-      continue s {activeRafflesForm = arForm}
+      (arForm, ()) <- nestEventM activeRafflesForm $ handleFormEvent event
+      put s {activeRafflesForm = arForm}
 handleActiveRafflesEvents _state _event = error "Invalid use of handleActiveRafflesEvents"
 
 -- | Handle events in Buy Ticket Secret Screen
-handleBuyTicketScreenEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleBuyTicketScreenEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleBuyTicketScreenEvents s@RaffleizeUI {..} event | currentScreen == BuyTicketScreen = do
   let btForm = buyTicketForm
       btFormState = formState btForm
@@ -395,12 +395,12 @@ handleBuyTicketScreenEvents s@RaffleizeUI {..} event | currentScreen == BuyTicke
             let isAllowedToBuy = ("User", "BuyTicket") `elem` riAvailableActions selectedActiveRaffle
             raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (User (BuyTicket secretHash)) (Just contextNFT) mRecipient s isAllowedToBuy
         _ -> do
-          updated_form <- handleFormEvent event btForm
-          continue s {buyTicketForm = updated_form}
+          (updated_form, ()) <- nestEventM btForm $ handleFormEvent event
+          put $ s {buyTicketForm = updated_form}
 handleBuyTicketScreenEvents _state _event = error "Invalid use of handleBuyTicketScreenEvents"
 
 -- | Handle events in Reveal Ticket Secret Screen
-handleRevealSecretEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleRevealSecretEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleRevealSecretEvents s@RaffleizeUI {..} event
   | currentScreen == RevealTicketSecretScreen =
       let mtForm = myTicketsForm
@@ -416,9 +416,9 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
                   let isAllowedToReveal = ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo
                   if PlutusTx.Builtins.blake2b_256 revealedSecretBS #== tSecretHash (tiTsd selectedTicketInfo)
                     then raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just contextNFT) Nothing s isAllowedToReveal
-                    else continue s
+                    else put s
                 _ -> do
-                  newRevealSecretForm <- handleFormEvent event revealSecretForm
+                  (newRevealSecretForm, ()) <- nestEventM revealSecretForm $ handleFormEvent event
                   let newRevealedTicketSecret = Data.Text.unpack $ formState newRevealSecretForm ^. revealedSecret
                   let newRevealedSecretBS = fromString @BuiltinByteString newRevealedTicketSecret
                   let fieldValidations =
@@ -427,12 +427,12 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
                             RevealedSecretField
                         ]
                   let validatedForm = foldr' ($) newRevealSecretForm fieldValidations
-                  continue s {revealSecretForm = validatedForm}
-            _ -> continue s
+                  put $ s {revealSecretForm = validatedForm}
+            _ -> put s
 handleRevealSecretEvents _state _event = error "Invalid use of handleRevealSecretEvents"
 
 -- | Handle events in My Tickets Screen
-handleMyTicketsEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleMyTicketsEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleMyTicketsEvents s@RaffleizeUI {..} event
   | currentScreen == MyTicketsScreen = do
       let mtForm = myTicketsForm
@@ -446,20 +446,20 @@ handleMyTicketsEvents s@RaffleizeUI {..} event
                   contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
                   actionHandler action = raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` tiAvailableActions selectedTicketInfo)
               case key of
-                (KChar 's') -> if ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo then continue s {currentScreen = RevealTicketSecretScreen} else continue s
+                (KChar 's') -> if ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo then put $ s {currentScreen = RevealTicketSecretScreen} else put s
                 (KChar 'w') -> actionHandler (TicketOwner CollectStake)
                 (KChar 'r') -> actionHandler (TicketOwner RefundTicket)
                 (KChar 'e') -> actionHandler (TicketOwner RefundTicketExtra)
                 (KChar 'l') -> actionHandler (TicketOwner RefundCollateralLosing)
                 _ -> do
-                  newMtForm <- handleFormEvent event myTicketsForm
-                  continue s {myTicketsForm = newMtForm}
+                  (newMtForm, ()) <- nestEventM myTicketsForm $ handleFormEvent event
+                  put $ s {myTicketsForm = newMtForm}
             Nothing -> do
-              newMtForm <- handleFormEvent event myTicketsForm
-              continue s {myTicketsForm = newMtForm}
+              (newMtForm, ()) <- nestEventM myTicketsForm $ handleFormEvent event
+              put $ s {myTicketsForm = newMtForm}
         _ -> do
-          newMtForm <- handleFormEvent event myTicketsForm
-          continue s {myTicketsForm = newMtForm}
+          (newMtForm, ()) <- nestEventM myTicketsForm $ handleFormEvent event
+          put $ s {myTicketsForm = newMtForm}
 handleMyTicketsEvents _ _ = error "Invalid use of handleMyTicketsEvents"
 
 formStateFromRaffleConfig :: RaffleConfig -> RaffleConfigFormState
@@ -469,7 +469,7 @@ formStateFromRaffleConfig RaffleConfig {..} = do
   RaffleConfigFormState commitSuggestion revealSuggestion (fromIntegral rTicketPrice `div` 1000000) (fromIntegral rMinTickets) mempty
 
 -- | Handle events in My Tickets Screen
-handleMyRafflesEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleMyRafflesEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleMyRafflesEvents s@RaffleizeUI {..} event
   | currentScreen == MyRafflesScreen = do
       let mrFormState = formState myRafflesForm
@@ -488,25 +488,25 @@ handleMyRafflesEvents s@RaffleizeUI {..} event
                           let selectedRaffleConfig = rConfig $ riRsd selectedRaffleInfo
                           let newConstructedValueState = mkConstructValueState balance (rStake selectedRaffleConfig)
                           let newRaffleConfigForm = updateFormState (formStateFromRaffleConfig selectedRaffleConfig) raffleConfigForm
-                          continue s {currentScreen = UpdateRaffleScreen, raffleConfigForm = newRaffleConfigForm, myConstrctValueState = newConstructedValueState, updatingRaffle = Just selectedRaffleInfo}
-                        else continue s
+                          put $ s {currentScreen = UpdateRaffleScreen, raffleConfigForm = newRaffleConfigForm, myConstrctValueState = newConstructedValueState, updatingRaffle = Just selectedRaffleInfo}
+                        else put s
                     (KChar 'c') -> actionHandler (RaffleOwner Cancel)
                     (KChar 'r') -> actionHandler (RaffleOwner RecoverStake)
                     (KChar 'e') -> actionHandler (RaffleOwner RecoverStakeAndAmount)
                     (KChar 'a') -> actionHandler (RaffleOwner CollectAmount)
                     _ -> do
-                      newFormState <- handleFormEvent event myRafflesForm
-                      continue s {myRafflesForm = newFormState}
+                      (newFormState, ()) <- nestEventM myRafflesForm $ handleFormEvent event
+                      put $ s {myRafflesForm = newFormState}
                 Nothing -> do
-                  newFormState <- handleFormEvent event myRafflesForm
-                  continue s {myRafflesForm = newFormState}
+                  (newFormState, ()) <- nestEventM myRafflesForm $ handleFormEvent event
+                  put $ s {myRafflesForm = newFormState}
             _ -> do
-              newFormState <- handleFormEvent event myRafflesForm
-              continue s {myRafflesForm = newFormState}
+              (newFormState, ()) <- nestEventM myRafflesForm $ handleFormEvent event
+              put $ s {myRafflesForm = newFormState}
 handleMyRafflesEvents _ _ = error "Invalid use of handleMyRafflesEvents"
 
 -- | Handle events in Mint Tokens Screen
-handleMintTokensEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleMintTokensEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleMintTokensEvents s@RaffleizeUI {currentScreen, maybeSecretKey, mintTokenForm, providersCtx} event
   | currentScreen == MintTokenScreen =
       case (event, maybeSecretKey) of
@@ -525,24 +525,24 @@ handleMintTokensEvents s@RaffleizeUI {currentScreen, maybeSecretKey, mintTokenFo
                       (fromIntegral (mtFormState ^. mintAmount))
                 let nid = (cfgNetworkId . ctxCoreCfg) providersCtx
                 initialState <- liftIO $ buildInitialState providersCtx (logo s)
-                continue
+                put $
                   initialState
                     { message = "TEST TOKENS SUCCESSFULLY MINTED !\n" <> showLink nid "tx" txOutRef
                     }
             _ -> do
-              newMtForm <- handleFormEvent event mintTokenForm
+              (newMtForm, ()) <- nestEventM mintTokenForm $ handleFormEvent event
               let newMtFormState = formState newMtForm
               let fieldValidations =
                     [ setFieldValid (Data.Text.length (newMtFormState ^. tokenNameField) <= tokenNameMaxLength) TokenNameField
                     , setFieldValid (newMtFormState ^. mintAmount > 0) MintAmountField
                     ]
               let validatedForm = foldr' ($) newMtForm fieldValidations
-              continue s {mintTokenForm = validatedForm}
-        _ -> continue s
+              put $ s {mintTokenForm = validatedForm}
+        _ -> put s
 handleMintTokensEvents _state _event = error "Invalid use of handleMintTokensEvents"
 
 -- | Handle events in Mint Tokens Screen
-handleMnemonicEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources (Next RaffleizeUI)
+handleMnemonicEvents :: RaffleizeUI -> BrickEvent NameResources RaffleizeEvent -> EventM NameResources RaffleizeUI ()
 handleMnemonicEvents s@RaffleizeUI {currentScreen, mnemonicForm, providersCtx} event
   | currentScreen == ImportWalletFromMnemonic =
       case event of
@@ -551,18 +551,18 @@ handleMnemonicEvents s@RaffleizeUI {currentScreen, mnemonicForm, providersCtx} e
           let mnFormState = formState mnemonicForm
           liftIO $ Data.Text.IO.writeFile operationPrivFilePath (_mnemonicField mnFormState)
           initialState <- liftIO $ buildInitialState providersCtx (logo s)
-          continue
+          put $
             initialState
               { message = "WALLET IMPORTED SUCCESSFULLY !\n" <> showText operationPrivFilePath
               }
         _ -> do
-          newMnForm <- handleFormEvent event mnemonicForm
+          (newMnForm, ()) <- nestEventM mnemonicForm $ handleFormEvent event
           let newMnFormState = formState newMnForm
           let fieldValidations =
                 [ setFieldValid (isValidMnemonic (newMnFormState ^. mnemonicField)) MnemonicField
                 ]
           let validatedForm = foldr' ($) newMnForm fieldValidations
-          continue s {mnemonicForm = validatedForm}
+          put $ s {mnemonicForm = validatedForm}
 handleMnemonicEvents _state _event = error "Invalid use of handleMintTokensEvents"
 
 ------------------------------------------------------------------------------------------------
@@ -577,7 +577,7 @@ drawUI s =
       maybeUpdatingRaffleId = rRaffleID . riRsd <$> updatingRaffle s
       maybeSelectedTicket = liftA2 (,) tRaffle tNumber . tiTsd <$> formState (myTicketsForm s) ^. selectedTicket
    in joinBorders . withBorderStyle unicode . borderWithLabel (txt " RAFFLEIZE - C.A.R.D.A.N.A ")
-        <$> [ if Data.Text.null (message s) then emptyWidget else center (withAttr "highlight" $ txt (message s)) <=> txt "[ESC] - Close"
+        <$> [ if Data.Text.null (message s) then emptyWidget else center (withAttr (attrName "highlight") $ txt (message s)) <=> txt "[ESC] - Close"
             , if currentScreen s == MintTokenScreen then drawMintTestTokensForm (mintTokenForm s) else emptyWidget
             , if currentScreen s == CreateRaffleScreen then drawCreateRaffleForm (raffleConfigForm s) (myConstrctValueState s) else emptyWidget
             , if currentScreen s == UpdateRaffleScreen then drawCreateUpdateRaffleForm maybeUpdatingRaffleId (raffleConfigForm s) (myConstrctValueState s) else emptyWidget
@@ -600,7 +600,7 @@ drawUI s =
 mainScreen :: RaffleizeUI -> Widget NameResources
 mainScreen s =
   vBox
-    [ hCenter $ withAttr "highlight" $ str (logo s)
+    [ hCenter $ withAttr (attrName "highlight") $ str (logo s)
     , hBorder
     , center bodyWidget
     ]
@@ -652,7 +652,7 @@ mainScreen s =
                     ]
             availableActionsWidget :: Widget n
             availableActionsWidget =
-              withAttr "action" . borderWithLabel (txt "AVAILABLE ACTIONS") $
+              withAttr (attrName "action") . borderWithLabel (txt "AVAILABLE ACTIONS") $
                 vBox
                   ( txt
                       <$> filter
@@ -696,9 +696,9 @@ mainScreen s =
             addressWidget :: Widget n
             addressWidget =
               let addrText = addressToText addr
-               in hyperlink (showLink nid "address" addrText) $ withAttr "good" $ txt addrText
+               in hyperlink (showLink nid "address" addrText) $ withAttr (attrName "good") $ txt addrText
             adaBalanceWidget :: Widget n
-            adaBalanceWidget = withAttr "good" $ txt (showText (fromValue val) <> "\n")
+            adaBalanceWidget = withAttr (attrName "good") $ txt (showText (fromValue val) <> "\n")
     assetsWidget _ _ _ = emptyWidget
     assetsBalanceWidget :: (Traversable t, Splittable t) => GenericList NameResources t (CurrencySymbol, TokenName, Integer) -> Widget NameResources
     assetsBalanceWidget valueItemsList =
@@ -717,11 +717,11 @@ theMap :: AttrMap
 theMap =
   attrMap
     (white `on` black)
-    [ ("highlight", fg magenta)
-    , ("warning", fg red)
-    , ("good", fg green)
-    , ("action", fg yellow)
-    , ("selected", bg blue)
+    [ (attrName "highlight", fg magenta)
+    , (attrName "warning", fg red)
+    , (attrName "good", fg green)
+    , (attrName "action", fg yellow)
+    , (attrName "selected", bg blue)
     , (focusedFormInputAttr, fg brightBlue)
     , (invalidFormInputAttr, white `on` red)
     ]

@@ -1,8 +1,8 @@
 module Main where
 
-import RaffleizeDApp.Tests.PropertyTests (qcProps)
-import RaffleizeDApp.Tests.UnitTests (unitTests)
+import PropertyTests (qcProps)
 import Test.Tasty (defaultMain, testGroup)
+import UnitTests (unitTests)
 
 runTest :: IO ()
 runTest =

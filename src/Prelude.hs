@@ -167,6 +167,7 @@ import PlutusTx.Prelude hiding (
   for,
   for_,
   fromInteger,
+  last,
   length,
   liftA2,
   mapM,
@@ -193,6 +194,7 @@ import PlutusTx.Prelude hiding (
   (/=),
   (<$),
   (<$>),
+  (<&>),
   (<*),
   (<*>),
  )
@@ -339,9 +341,9 @@ ptoList :: (PFoldable t) => t a -> [a]
 {-# INLINE ptoList #-}
 ptoList = P.toList
 
--- | Plutus Tx version of 'Data.Foldable.null'.
+-- | Plutus Tx version of Prelude.null'.
 {-# INLINEABLE pnull #-}
-pnull :: (PFoldable t) => t a -> Bool
+pnull :: [a] -> Bool
 pnull = P.null
 
 -- | Plutus Tx version of 'Data.Foldable.length'.
@@ -387,29 +389,29 @@ pconcat = P.concat
 pconcatMap :: (PFoldable t) => (a -> [b]) -> t a -> [b]
 pconcatMap = P.concatMap
 
--- | Plutus Tx version of 'Data.Foldable.and'.
+-- | Plutus Tx version of 'Prelude.and'.
 {-# INLINEABLE pand #-}
-pand :: (PFoldable t) => t Bool -> Bool
+pand :: [Bool] -> Bool
 pand = P.and
 
--- | Plutus Tx version of 'Data.Foldable.or'.
+-- | Plutus Tx version of 'Prelude.or'.
 {-# INLINEABLE por #-}
-por :: (PFoldable t) => t Bool -> Bool
+por :: [Bool] -> Bool
 por = P.or
 
--- | Plutus Tx version of 'Data.Foldable.any'.
+-- | Plutus Tx version of 'Prelude.any'.
 {-# INLINEABLE pany #-}
-pany :: (PFoldable t) => (a -> Bool) -> t a -> Bool
+pany :: (a -> Bool) -> [a] -> Bool
 pany = P.any
 
 -- | Plutus Tx version of 'Data.Foldable.all'.
 {-# INLINEABLE pall #-}
-pall :: (PFoldable t) => (a -> Bool) -> t a -> Bool
+pall :: (a -> Bool) -> [a] -> Bool
 pall = P.all
 
--- | Plutus Tx version of 'Data.Foldable.find'.
+-- | Plutus Tx version of 'Prelude.find'.
 {-# INLINEABLE pfind #-}
-pfind :: (PFoldable t) => (a -> Bool) -> t a -> Maybe a
+pfind :: (a -> Bool) -> [a] -> Maybe a
 pfind = P.find
 
 -- | Plutus Tx version of Semigroup

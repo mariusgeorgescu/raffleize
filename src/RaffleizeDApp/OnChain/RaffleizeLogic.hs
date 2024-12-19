@@ -1,7 +1,6 @@
 module RaffleizeDApp.OnChain.RaffleizeLogic where
 
 import PlutusTx.Builtins (
-  blake2b_256,
   divideInteger,
   modInteger,
   serialiseData,

@@ -1,4 +1,4 @@
-cabal-version: 3.6
+cabal-version: 3.8
 name:          raffleize
 version:       2.0.0.0
 
@@ -21,9 +21,9 @@ flag defer-plugin-errors
   manual:      True
 
 common common
-  default-language: GHC2021
-  build-depends:    base
-  mixins:           base hiding (Prelude)
+  -- default-language:   GHC2021
+  build-depends:      base >=4.18.2.0 && <5
+  mixins:             base hiding (Prelude)
   ghc-options:
     -Wall -fobject-code -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
@@ -32,6 +32,30 @@ common common
 
   if flag(defer-plugin-errors)
     ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+
+  default-extensions:
+    BangPatterns
+    BlockArguments
+    DataKinds
+    DeriveAnyClass
+    DeriveGeneric
+    FlexibleContexts
+    FlexibleInstances
+    ImportQualifiedPost
+    InstanceSigs
+    LambdaCase
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedStrings
+    RecordWildCards
+    ScopedTypeVariables
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    ViewPatterns
 
 common plutus-ghc-options
   -- so unfoldings are present even when compiled without optmizations
@@ -52,10 +76,8 @@ common plutus-ghc-options
   ghc-options: -fplugin-opt PlutusTx.Plugin:no-optimize
 
 library
-  import:             common, plutus-ghc-options
+  import:          common, plutus-ghc-options
   exposed-modules:
-    CodeGen.PSTypes
-    CodeGen.TypeBridges
     Prelude
     RaffleizeDApp.Constants
     RaffleizeDApp.CustomTypes.ActionTypes
@@ -68,16 +90,6 @@ library
     RaffleizeDApp.OnChain.RaffleizeTicketValidator
     RaffleizeDApp.OnChain.RaffleizeValidator
     RaffleizeDApp.OnChain.Utils
-    RaffleizeDApp.Server.API
-    RaffleizeDApp.Server.Queries
-    RaffleizeDApp.Tests.PropertyTests
-    RaffleizeDApp.Tests.TestRuns
-    RaffleizeDApp.Tests.UnitTests
-    RaffleizeDApp.TUI.Actions
-    RaffleizeDApp.TUI.RaffleizeWidgets
-    RaffleizeDApp.TUI.Types
-    RaffleizeDApp.TUI.UI
-    RaffleizeDApp.TUI.Utils
     RaffleizeDApp.TxBuilding.Context
     RaffleizeDApp.TxBuilding.Exceptions
     RaffleizeDApp.TxBuilding.Interactions
@@ -89,116 +101,132 @@ library
     RaffleizeDApp.TxBuilding.Validators
     RaffleizeDApp.Utils
 
-  -- Add new contracts here, i.e.:
-  -- Contracts.MyContract
   other-modules:
+  hs-source-dirs:  src
 
-  -- Sample contracts:
-  hs-source-dirs:     src
+  --- Cardano specific dependencies
   build-depends:
-    , aeson
-    , ansi-terminal
     , atlas-cardano
-    , base
-    , base16-bytestring
-    , brick
-    , bytestring
     , cardano-api
     , cardano-binary
-    , cardano-simple
-    , cassava
-    , containers
-    , data-default
-    , extra
-    , foldl
-    , freer-simple
-    , generic-arbitrary
-    , lens
-    , megaparsec
-    , mtl
-    , optparse-applicative
     , plutus-core
     , plutus-ledger-api
-    , plutus-simple-model
     , plutus-tx
     , plutus-tx-plugin
-    , purescript-bridge
-    , row-types
-    , serialise
-    , servant-server
-    , servant-swagger
-    , swagger2
-    , tasty
-    , tasty-quickcheck
-    , text
-    , time
-    , turtle
-    , vector
-    , vty
 
-  default-extensions:
-    DataKinds
-    DeriveAnyClass
-    DeriveGeneric
-    FlexibleInstances
-    ImportQualifiedPost
-    InstanceSigs
-    LambdaCase
-    MultiParamTypeClasses
-    NamedFieldPuns
-    NumericUnderscores
-    OverloadedStrings
-    RecordWildCards
-    ScopedTypeVariables
-    TemplateHaskell
-    TypeApplications
-    TypeFamilies
-    TypeOperators
+  build-depends:
+    , aeson              ^>=2.2.3
+    , extra
+    , generic-arbitrary
+    , mtl                ^>=2.3.1
+    , swagger2           ^>=2.8.9
+    , text               ^>=2.0.2
 
 executable server
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: server
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  hs-source-dirs: src/RaffleizeDApp/Server
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    RestAPI
+    WebsocketsAPI
+
+
+  build-depends:  raffleize
   build-depends:
     , aeson-pretty
-    , atlas-cardano
-    , bytestring
-    , http-types
-    , raffleize
+    , bytestring       ^>=0.11.5
+    , utf8-string
+    , http-types       ^>=0.12.4
+    , lens             ^>=5.2.3
+    , mtl
     , servant-server
-    , transformers
+    , servant-swagger
+    , swagger2
+    , transformers     ^>=0.6.1
     , wai
     , wai-cors
+    , wai-websockets
     , warp
+    , websockets
+    , text
+    , servant-conduit
+    , conduit
+    , servant-event-stream
+
+
+
+  --- Cardano specific dependencies
+  build-depends:  atlas-cardano
 
 executable tui
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: tui
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  hs-source-dirs: src/RaffleizeDApp/TUI
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    Actions
+    RaffleizeWidgets
+    Types
+    UI
+
+  build-depends:  raffleize
   build-depends:
     , aeson
-    , atlas-cardano
+    , ansi-terminal
+    , brick
     , bytestring
-    , raffleize
+    , extra
+    , lens
+    , mtl
+    , text           ^>=2.0.2
+    , time           ^>=1.12.2
+    , vector         ^>=0.13.1
+    , vty
+
+  --- Cardano specific dependencies
+  build-depends:
+    , atlas-cardano
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-tx
 
 executable psgen
   import:         common
   main-is:        Main.hs
-  hs-source-dirs: purescript-bridge-generator
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  hs-source-dirs: src/RaffleizeDApp/CodeGen
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    PSTypes
+    TypeBridges
+
+  build-depends:  raffleize
   build-depends:
+    , lens
+    , mtl
     , purescript-bridge
-    , raffleize
 
 test-suite tests
   import:         common
   main-is:        Main.hs
   hs-source-dirs: src/RaffleizeDApp/Tests
   type:           exitcode-stdio-1.0
-  ghc-options:    -Werror -threaded -rtsopts -with-rtsopts=-T
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-T
+  other-modules:
+    PropertyTests
+    TestRuns
+    UnitTests
+
+  build-depends:  raffleize
   build-depends:
-    , raffleize
+    , extra
+    , mtl
     , tasty
     , tasty-quickcheck
+
+  --- Cardano specific dependencies
+  build-depends:
+    , atlas-cardano
+    , clb
+    , plutus-ledger-api
+    , plutus-tx

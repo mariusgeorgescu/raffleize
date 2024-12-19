@@ -4,7 +4,7 @@ module RaffleizeDApp.CustomTypes.ActionTypes where
 
 import PlutusLedgerApi.V1.Value (AssetClass)
 import PlutusTx (unstableMakeIsData)
-import PlutusTx.Builtins.Class (stringToBuiltinByteString)
+import PlutusTx.Builtins.HasOpaque (stringToBuiltinByteString)
 import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleConfig)
 import RaffleizeDApp.CustomTypes.TicketTypes (Secret, SecretHash)
 import Test.QuickCheck.Arbitrary.Generic (

@@ -13,6 +13,13 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import Prelude
 
+-- | Input parameters to add for reference script.
+data AddWitAndSubmitParams = AddWitAndSubmitParams
+  { awasTxUnsigned :: !GYTx
+  , awasTxWit      :: !GYTxWitness
+  } deriving (Generic, FromJSON, ToSchema)
+
+
 -- | Ticket information DTO
 data TicketInfo = TicketInfo
   { tiTsd :: TicketStateData
@@ -101,7 +108,7 @@ sampleAddr :: GYAddress
 sampleAddr = unsafeAddressFromText "addr_test1qrsuhwqdhz0zjgnf46unas27h93amfghddnff8lpc2n28rgmjv8f77ka0zshfgssqr5cnl64zdnde5f8q2xt923e7ctqu49mg5"
 
 sampleAssetClass :: AssetClass
-sampleAssetClass = AssetClass (CurrencySymbol "RaffleizeCurrencySymbol", TokenName "RaffleizeTokenName")
+sampleAssetClass = AssetClass (CurrencySymbol "RaffleizeCurrencySymbol", TokenName "00RaffleizeTokenName")
 
 sampleRaffleConfig :: RaffleConfig
 sampleRaffleConfig =

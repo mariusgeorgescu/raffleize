@@ -1,3 +1,7 @@
+-- Required for `makeLift`:
+{-# LANGUAGE MultiParamTypeClasses #-}
+-- Required for `makeLift`:
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 #-}
@@ -24,10 +28,6 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
   mkNewRaffle,
   mkRaffleDatum,
  )
-import RaffleizeDApp.CustomTypes.Types (
-  AScriptContext (AScriptContext),
-  ATxInfo (..),
- )
 import RaffleizeDApp.OnChain.RaffleizeLogic (
   checkRaffle,
   evaluateRaffleState,
@@ -35,6 +35,8 @@ import RaffleizeDApp.OnChain.RaffleizeLogic (
   getRaffleStateDatumAndValue,
  )
 import RaffleizeDApp.OnChain.Utils (
+  AScriptContext (AScriptContext),
+  ATxInfo (..),
   adaValueFromLovelaces,
   hasTxInWithRef,
   hasTxOutWithInlineDatumAnd,

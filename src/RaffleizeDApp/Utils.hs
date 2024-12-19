@@ -1,7 +1,5 @@
 module RaffleizeDApp.Utils where
 
-import Data.List.Extra (replicate)
-
 greenColorString :: String -> String
 greenColorString s =
   "\n"

@@ -1,6 +1,5 @@
-module CodeGen.TypeBridges where
+module TypeBridges where
 
-import CodeGen.PSTypes (psClientType)
 import Language.PureScript.Bridge (
   BridgePart,
   defaultBridge,
@@ -8,10 +7,12 @@ import Language.PureScript.Bridge (
   (^==),
  )
 import Language.PureScript.Bridge.PSTypes (
+  psArray,
   psInt,
   psNumber,
   psString,
  )
+import PSTypes (psClientType)
 
 ------------------------------------------------------------------------------------------------
 
@@ -67,6 +68,24 @@ plutusGYTxOutRefCborBridge = do
   typeName ^== "GYTxOutRefCbor"
   return psString
 
+-- | Mapping haskell '[]' to purescript 'Array'
+plutusArrayBridge :: BridgePart
+plutusArrayBridge = do
+  typeName ^== "List"
+  psArray
+
+-- | Mapping haskell 'GYTxWitness' to purescript 'String'
+plutusGYTxWitnessBridge :: BridgePart
+plutusGYTxWitnessBridge = do
+  typeName ^== "GYTxWitness"
+  return psString
+
+-- | Mapping haskell 'GYTx' to purescript 'String'
+plutusGYTxBridge :: BridgePart
+plutusGYTxBridge = do
+  typeName ^== "GYTx"
+  return psString
+
 -- | Raffleize Purescript
 raffleizeBridge :: BridgePart
 raffleizeBridge =
@@ -79,3 +98,6 @@ raffleizeBridge =
     <|> plutusAssetClassBridge
     <|> plutusGYAddressBridge
     <|> plutusGYTxOutRefCborBridge
+    <|> plutusArrayBridge
+    <|> plutusGYTxBridge
+    <|> plutusGYTxWitnessBridge

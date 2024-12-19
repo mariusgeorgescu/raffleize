@@ -4,11 +4,12 @@ import Data.Aeson hiding (Value)
 import Data.Aeson qualified (Value)
 import Data.Aeson.Types (Parser)
 import Data.String
-
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
 import PlutusLedgerApi.V2
 import PlutusTx
 import PlutusTx.Show qualified (show)
+import GeniusYield.Types (unsafeTokenNameFromHex)
+import GeniusYield.Types.Value (tokenNameToPlutus)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -61,11 +62,13 @@ instance FromJSON Value where
 
 instance ToJSON TokenName where
   toJSON :: TokenName -> Data.Aeson.Value
-  toJSON tn = toJSON $ toString tn
+  toJSON tn = toJSON $ drop 2 . toString $ tn
 
 instance FromJSON TokenName where
   parseJSON :: Data.Aeson.Value -> Parser TokenName
-  parseJSON v = fromString @TokenName <$> parseJSON @String v
+  parseJSON v = tokenNameToPlutus . unsafeTokenNameFromHex <$> parseJSON @Text v
+
+
 
 instance ToJSON CurrencySymbol where
   toJSON :: CurrencySymbol -> Data.Aeson.Value
@@ -87,7 +90,7 @@ instance FromJSON AssetClass where
 
 instance ToJSON BuiltinByteString where
   toJSON :: BuiltinByteString -> Data.Aeson.Value
-  toJSON bs = toJSON $ fromBuiltin @BuiltinString @Text $ PlutusTx.Show.show bs
+  toJSON bs = toJSON $ fromBuiltin @BuiltinString $ PlutusTx.Show.show bs
 
 instance FromJSON BuiltinByteString where
   parseJSON :: Data.Aeson.Value -> Parser BuiltinByteString

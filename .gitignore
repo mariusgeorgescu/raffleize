@@ -3,6 +3,7 @@ dist
 dist-*
 cabal-dev
 .cabal
+.cabal-fmt*
 *.o
 *.hi
 *.hie
@@ -50,7 +51,7 @@ result
 
 #Raffleize
 
-atlas_config.json
+atlas_config.*
 
 *.skey
 *.prv
