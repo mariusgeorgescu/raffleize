@@ -31,8 +31,8 @@ package strict-containers
 source-repository-package
   type: git
   location: https://github.com/geniusyield/atlas
-  tag: 13eb0e001282acbf38f06d88e77a5fe7e0aca2b6
-  --sha256: sha256-oDaqZOHtPjUC00vQW7H1/mVKd2KNSfplrb096mqNAig=
+  tag: dc2884e67d199952a808a7c22149485b9f1cdc54
+  --sha256: sha256-kxDjtN9qWVKR0Gy5vXOWaRuc7O6Ick2I/gnFRREjLEA=
 
 
 --------------------------------------------------------------------------------
@@ -42,8 +42,17 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/maestro-org/haskell-sdk
-  tag: v1.7.2
-  --sha256: sha256-nXnelHH4a+V0nguP8oUDlyEz/fLQ/i1fs/flyZTmvAc=
+  tag: v1.7.3
+  --sha256: sha256-FYZMbh9Uz+RIjjXIf3PBK94mhd1XMX/wxHDA9LukvQg=
+
+-- TODO: Temporary, until proposed changes are in upstream (track https://github.com/blockfrost/blockfrost-haskell/pull/59).
+source-repository-package
+  type: git
+  location: https://github.com/sourabhxyz/blockfrost-haskell
+  tag: a0247472e3932a5cad523d8566a4404130ca6747
+  --sha256: sha256-QOjapkF+fxMTc5LwXk89IPkgjL8LwzpztfwvvAGRzDk=
+  subdir:
+    blockfrost-api
 
 -- TODO: Temporary, until proposed changes are in upstream (track https://github.com/mlabs-haskell/clb/pull/44)
 source-repository-package

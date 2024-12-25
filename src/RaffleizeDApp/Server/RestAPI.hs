@@ -2,26 +2,45 @@ module RestAPI where
 
 import Conduit (ConduitT, yieldM)
 import Control.Exception (try)
-import Control.Lens
+import Control.Lens ((&), (.~), (?~))
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Control.Monad.Trans.Except (ExceptT (ExceptT))
-import Data.ByteString.Lazy.UTF8 as LBSUTF8
+import Data.ByteString.Lazy.UTF8 as LBSUTF8 (fromString)
 import Data.Conduit.Combinators ()
-import Data.Swagger
-import Data.Swagger.Internal.Schema (plain)
+import Data.Swagger (HasHost (host), HasInfo (info), HasLicense (license), Swagger (..), ToSchema, description, sketchSchema, title, version)
+import Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), plain)
 import GeniusYield.Imports qualified as GeniusYield.Types.Tx
-import GeniusYield.Types
+import GeniusYield.Types (
+  GYAddress,
+  GYAssetClass,
+  GYAwaitTxParameters (GYAwaitTxParameters),
+  GYProviders (gyAwaitTxConfirmed, gySubmitTx),
+  GYTxId,
+  assetClassToPlutus,
+  getTxBody,
+  makeSignedTransaction,
+ )
 import Network.HTTP.Types qualified as HttpTypes
-import Network.Wai.Middleware.Cors
+import Network.Wai.Middleware.Cors (
+  CorsResourcePolicy (corsRequestHeaders),
+  cors,
+  simpleCorsResourcePolicy,
+ )
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import Servant
-import Servant.API.EventStream
+import Servant.API.EventStream (
+  RecommendedEventSourceHeaders,
+  ServerEvent (ServerEvent),
+  ServerSentEvents,
+  ToServerEvent (..),
+  recommendedEventSourceHeaders,
+ )
 import Servant.Conduit ()
 import Servant.Swagger
-import Control.Monad.IO.Class (MonadIO(liftIO))
 
 type RaffleizeAPI = RaffleizeREST :<|> RaffleizeSSE
 
@@ -75,13 +94,13 @@ restAPIapp raffleizeContext =
 handleGetRaffles :: ProviderCtx -> IO [RaffleInfo]
 handleGetRaffles pCtx = runQuery pCtx lookupActiveRaffles
 
-handleGetRaffleById :: ProviderCtx -> GYAssetClass -> IO  (Maybe RaffleInfo)
-handleGetRaffleById pCtx gyRaffleId =  do
+handleGetRaffleById :: ProviderCtx -> GYAssetClass -> IO (Maybe RaffleInfo)
+handleGetRaffleById pCtx gyRaffleId = do
   liftIO $ putStrLn $ "Lookup for raffle: " <> show gyRaffleId
   mri <- runQuery pCtx $ lookupRaffleInfoByRefAC (assetClassToPlutus gyRaffleId)
   liftIO $ print mri
   return mri
-  
+
 handleGetRafflesByAddress :: ProviderCtx -> GYAddress -> IO [RaffleInfo]
 handleGetRafflesByAddress pCtx addrs = runQuery pCtx (lookupRafflesOfAddress addrs)
 
@@ -111,7 +130,7 @@ handleSubmitSSE providerCtx txIdStr = do
   let txId = GeniusYield.Types.Tx.fromString txIdStr :: GYTxId
   let ctxProv = ctxProviders providerCtx
   liftIO $ putStrLn $ "Await tx: " <> show txId
-  return $ recommendedEventSourceHeaders (yieldM (gyAwaitTxConfirmed ctxProv (GYAwaitTxParameters 30 10000000 1) txId  >> putStrLn "Confirmed" >> return 1))
+  return $ recommendedEventSourceHeaders (yieldM (gyAwaitTxConfirmed ctxProv (GYAwaitTxParameters 30 10000000 1) txId >> putStrLn "Confirmed" >> return 1))
 
 -- TODO - FIX THIS
 
