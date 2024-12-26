@@ -52,7 +52,7 @@ deployValidatorsRun w = do
 
 queryRaffleRun :: (GYTxGameMonad m, HasCallStack) => User -> AssetClass -> m (Maybe RaffleInfo)
 queryRaffleRun w rid =
-  withWalletBalancesCheck [] $ asUser w $ lookupRaffleInfoRefAC rid
+  withWalletBalancesCheck [] $ asUser w $ lookupRaffleInfoByRefAC rid
 
 deployValidatorsAndCreateNewRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m) => Wallets -> RaffleConfig -> m (RaffleInfo, RaffleizeTxBuildingContext)
 deployValidatorsAndCreateNewRaffleRun Wallets {..} config = do
