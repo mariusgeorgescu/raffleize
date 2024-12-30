@@ -46,7 +46,7 @@ txIsValidByDDL ddl = do
   validUntil <- gySlotFromPOSIXTime (min ddl after36hTime)
   return $ isValidBetween now validUntil
 
-txMustSpendStateFromRefScriptWithRedeemer :: (HasCallStack, GYTxUserQueryMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYValidator 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
+txMustSpendStateFromRefScriptWithRedeemer :: (HasCallStack, GYTxUserQueryMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYScript 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
 txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyValidator =
   do
     let gyRedeemer = redeemerFromPlutusData redeemer
@@ -63,7 +63,7 @@ txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyVali
     gyGetInlineDatumAndValue' :: (MonadError GYTxMonadException m) => GYUTxO -> m (GYDatum, GYValue)
     gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getInlineDatumAndValue utxo
 
-txMustHaveStateAsRefInput :: (HasCallStack, GYTxUserQueryMonad m) => AssetClass -> GYValidator 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
+txMustHaveStateAsRefInput :: (HasCallStack, GYTxUserQueryMonad m) => AssetClass -> GYScript 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
 txMustHaveStateAsRefInput stateTokenId gyValidator = do
   validatorAddr <- scriptAddress gyValidator
   stateUTxO <- getUTxOWithStateToken stateTokenId validatorAddr
@@ -80,7 +80,7 @@ txMustSpendFromAddress tokenId addrs = do
           , gyTxInWitness = GYTxInWitnessKey
           }
 
-txMustLockStateWithInlineDatumAndValue :: (HasCallStack, GYTxUserQueryMonad m, ToData a) => GYValidator 'PlutusV2 -> a -> Value -> m (GYTxSkeleton 'PlutusV2)
+txMustLockStateWithInlineDatumAndValue :: (HasCallStack, GYTxUserQueryMonad m, ToData a) => GYScript 'PlutusV2 -> a -> Value -> m (GYTxSkeleton 'PlutusV2)
 txMustLockStateWithInlineDatumAndValue validator todata pValue = do
   raffleizeValidatorAddressGY <- scriptAddress validator
   gyValue <- valueFromPlutus' pValue

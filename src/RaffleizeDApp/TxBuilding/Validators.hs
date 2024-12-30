@@ -21,10 +21,10 @@ adminAddress = "a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2"
 raffleizeValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
 raffleizeValidatorPlutus = compileRaffleizeValidator adminAddress
 
-raffleizeValidatorGY :: GYValidator 'PlutusV2
+raffleizeValidatorGY :: GYScript 'PlutusV2
 raffleizeValidatorGY = validatorFromPlutus raffleizeValidatorPlutus
 
-raffleizeValidatorHashGY :: GYValidatorHash
+raffleizeValidatorHashGY :: GYScriptHash
 raffleizeValidatorHashGY = validatorHash raffleizeValidatorGY
 
 raffleizeValidatorHashPlutus :: ScriptHash
@@ -39,10 +39,10 @@ raffleizeValidatorHashPlutus = validatorHashToPlutus raffleizeValidatorHashGY
 ticketValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
 ticketValidatorPlutus = compileTicketValidator adminAddress
 
-ticketValidatorGY :: GYValidator 'PlutusV2
+ticketValidatorGY :: GYScript 'PlutusV2
 ticketValidatorGY = validatorFromPlutus ticketValidatorPlutus
 
-ticketValidatorHashGY :: GYValidatorHash
+ticketValidatorHashGY :: GYScriptHash
 ticketValidatorHashGY = validatorHash ticketValidatorGY
 
 ticketValidatorHashPlutus :: ScriptHash
@@ -69,7 +69,7 @@ mockRaffleParam =
 raffleizeMintingPolicyPlutus :: CompiledCode (BuiltinData -> BuiltinData -> ())
 raffleizeMintingPolicyPlutus = compileRaffleizeMP mockRaffleParam
 
-raffleizeMintingPolicyGY :: GYMintingPolicy 'PlutusV2
+raffleizeMintingPolicyGY :: GYScript 'PlutusV2
 raffleizeMintingPolicyGY = mintingPolicyFromPlutus raffleizeMintingPolicyPlutus
 
 exportRaffleScript :: IO ()

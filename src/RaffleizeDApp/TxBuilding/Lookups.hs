@@ -29,7 +29,7 @@ import RaffleizeDApp.TxBuilding.Validators
 lookupUTxOsAtAddress :: (GYTxQueryMonad m) => GYAddress -> m GYUTxOs
 lookupUTxOsAtAddress addr = utxosAtAddress addr Nothing
 
-lookupUTxOsAtValidator :: (GYTxQueryMonad m) => GYValidator v -> m GYUTxOs
+lookupUTxOsAtValidator :: (GYTxQueryMonad m) => GYScript v -> m GYUTxOs
 lookupUTxOsAtValidator validator = do
   addr <- scriptAddress validator
   utxosAtAddress addr Nothing

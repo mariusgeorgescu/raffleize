@@ -48,7 +48,7 @@ data RaffleConfig = RaffleConfig
   deriving (Generic, Eq, ToJSON, FromJSON)
 
 instance Arbitrary RaffleConfig where
-  arbitrary = RaffleConfig <$> (POSIXTime <$> arbitrary) <*> (POSIXTime <$> arbitrary) <*> arbitrary <*> arbitrary <*> (adaValueFromLovelaces <$> arbitrary)
+  arbitrary = (RaffleConfig . POSIXTime <$> arbitrary) <*> (POSIXTime <$> arbitrary) <*> arbitrary <*> arbitrary <*> (adaValueFromLovelaces <$> arbitrary)
 
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 

@@ -40,7 +40,7 @@ raffleizeTransactionThatMustFailRun :: (HasCallStack) => User -> RaffleizeTxBuil
 raffleizeTransactionThatMustFailRun w roc raffleizeActon interactionContextNFT optionalRecipient =
   mustFail $ raffleizeTransactionRun w roc raffleizeActon interactionContextNFT optionalRecipient
 
-deployReferenceScriptRun :: (GYTxGameMonad m) => GYValidator PlutusV2 -> User -> User -> m GYTxOutRef
+deployReferenceScriptRun :: (GYTxGameMonad m) => GYScript PlutusV2 -> User -> User -> m GYTxOutRef
 deployReferenceScriptRun validator fromWallet toWallet = do
   withWalletBalancesCheck [] $ asUser fromWallet $ addRefScript (userChangeAddress toWallet) (validatorToScript validator)
 
