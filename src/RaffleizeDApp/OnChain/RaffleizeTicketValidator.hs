@@ -112,11 +112,12 @@ ticketValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer bre
                                   , currentTicketState #== 92 -- REVEALABLE -- Current state is valid for revealing ticket.
                                   , hasTxOutWithInlineDatumAnd (mkTicketDatum new_tsd) (#== ownValue) (#== ticketValidatorAddr) txInfoOutputs ---Transaction locks new ticket state at validator address (with updated datum).
                                   ]
-                          _otherClosingAction -> burnsTicketUserAndRef -- Not checking the state to save memory; If you are stupid I let you be
-                          -- pand
-                          --   [ currentTicketState `pelem` [91, 96, 94] -- BURNABLE_BY_TICKET_OWNER (FULLY_REFUNDABLE, EXTRA_REFUNDABLE, WINNING)
-                          --   , burnsTicketUserAndRef
-                          --   ]
+                          _otherClosingAction ->
+                            -- burnsTicketUserAndRef -- Not checking the state to save memory; If you are stupid I let you be
+                            pand
+                              [ currentTicketState `pelem` [91, 96, 94] -- BURNABLE_BY_TICKET_OWNER (FULLY_REFUNDABLE, EXTRA_REFUNDABLE, WINNING)
+                              , burnsTicketUserAndRef
+                              ]
                 _ -> traceIfFalse "Invalid redeemer for ticket ref" False
           else --- Transaction does not spend the ticket ref NFT in the currently validating input.
             isOneOutputTo txInfoOutputs adminPKH --- Must have exactly one outoput to admin
