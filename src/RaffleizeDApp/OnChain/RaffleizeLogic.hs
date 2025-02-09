@@ -9,7 +9,7 @@ import PlutusTx.Builtins (
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
-import PlutusLedgerApi.V2 (
+import PlutusLedgerApi.V3 (
   Address,
   Datum (Datum),
   OutputDatum (OutputDatum),
@@ -34,7 +34,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes (
   raffleStateData,
  )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateId, ticketStateData)
-import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger, getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
+import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger', getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude
 
 raffleTicketPriceValue :: RaffleStateData -> Value
@@ -248,19 +248,19 @@ evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets,
           else
             if minNoOfTicketsSold
               then -- UNDERFUNDED
-              case (isStakeLocked, outstandingFullRefunds) of
-                (True, True) -> 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-                (False, True) -> 21 -- UNDERFUNDED_LOCKED_REFUNDS
-                (True, False) -> 22 -- UNDERFUNDED_LOCKED_STAKE
-                (False, False) -> 23 -- UNDERFUNDED_FINAL
+                case (isStakeLocked, outstandingFullRefunds) of
+                  (True, True) -> 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+                  (False, True) -> 21 -- UNDERFUNDED_LOCKED_REFUNDS
+                  (True, False) -> 22 -- UNDERFUNDED_LOCKED_STAKE
+                  (False, False) -> 23 -- UNDERFUNDED_FINAL
               else
                 if allTicketsRevealed
                   then -- SUCCESS
-                  case (isStakeLocked, isCollectedAmmoutLocked) of
-                    (True, True) -> 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-                    (False, True) -> 41 -- SUCCESS_LOCKED_AMOUNT
-                    (True, False) -> 42 -- SUCCESS_LOCKED_STAKE
-                    (False, False) -> 43 -- SUCCESS_FINAL
+                    case (isStakeLocked, isCollectedAmmoutLocked) of
+                      (True, True) -> 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
+                      (False, True) -> 41 -- SUCCESS_LOCKED_AMOUNT
+                      (True, False) -> 42 -- SUCCESS_LOCKED_STAKE
+                      (False, False) -> 43 -- SUCCESS_FINAL
                   else
                     if isBetweenCommitAndRevealDDL
                       then 3 -- REVEALING
@@ -371,7 +371,7 @@ buyTicketToRaffle sh raffle@RaffleStateData {..} raffleValidator =
 revealTicketToRaffleR :: BuiltinByteString -> TicketStateData -> RaffleStateData -> RaffleStateData
 revealTicketToRaffleR secret TicketStateData {tSecretHash} raffle@RaffleStateData {rRevealedTickets, rRandomSeed, rSoldTickets} =
   if blake2b_256 secret #== tSecretHash --  secret matches the secret hash
-    then raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger secret) `modInteger` rSoldTickets}
+    then raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger' secret) `modInteger` rSoldTickets}
     else traceError "secret does not match the secret hash"
 {-# INLINEABLE revealTicketToRaffleR #-}
 
@@ -387,7 +387,7 @@ revealTicketToRaffleRT secret ticket@TicketStateData {tSecretHash, tRaffle} raff
   if tRaffle #== rRaffleID && blake2b_256 secret #== tSecretHash -- is correct ticket for the raffle and the secret matches the secret hash
     then
       let updated_ticket = ticket {tSecret = Just secret}
-          updated_raffle = raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger secret) `modInteger` rSoldTickets}
+          updated_raffle = raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger' secret) `modInteger` rSoldTickets}
        in (updated_raffle, updated_ticket)
     else traceError "secret does not match the secret hash"
 
@@ -399,7 +399,8 @@ refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefunded
 {-# INLINEABLE refundTicketToRaffle #-}
 
 generateTicketTN :: Integer -> TokenName -> TokenName
-generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData) i)) -- TODO integerTOBS
+generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData) i))
+-- TokenName (blake2b_224 (bs #<> (serialiseData . toBuiltinData) i)) --  cheaper than bsToInt
 {-# INLINEABLE generateTicketTN #-}
 
 generateTicketAC :: Integer -> AssetClass -> AssetClass
@@ -448,11 +449,11 @@ isOneOutputTo _ _ = traceIfFalse "More than one output found" False
 {-# INLINEABLE isOneOutputTo #-}
 
 refTokenPrefixBS :: BuiltinByteString
-refTokenPrefixBS = integerToBs24 (0x000643b0 :: Integer)
+refTokenPrefixBS = integerToBs24 (0x000643b0 :: Integer) -- cheaper
 {-# INLINEABLE refTokenPrefixBS #-}
 
 userTokenPrefixBS :: BuiltinByteString
-userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer)
+userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer) -- cheaper
 {-# INLINEABLE userTokenPrefixBS #-}
 
 hasRaffleDatumWithValue :: RaffleDatum -> Value -> Address -> [TxOut] -> Bool

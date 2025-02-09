@@ -3,6 +3,7 @@ module UnitTests where
 import Control.Monad (unless)
 import Control.Monad.Extra (when)
 import Data.Maybe qualified
+import GHC.Stack (HasCallStack)
 import GeniusYield.Test.Clb (GYTxMonadClb, mkTestFor)
 import GeniusYield.Test.Utils
 import GeniusYield.TxBuilder
@@ -17,7 +18,7 @@ import RaffleizeDApp.TxBuilding.Utils
 import Test.Tasty
 import TestRuns
 
-unitTests :: TestTree
+unitTests :: (HasCallStack) => TestTree
 unitTests =
   testGroup
     "Raffleize Unit Tests"
@@ -34,7 +35,7 @@ unitTests =
 -- -- * Create new raffle scenarios
 
 -- ------------------------------------------------------------------------------------------------
-createRaffleTests :: TestTree
+createRaffleTests :: (HasCallStack) => TestTree
 createRaffleTests =
   testGroup
     "CREATE RAFFLE TEST CASES"
@@ -45,7 +46,7 @@ createRaffleTests =
     , mkTestFor " Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada" createNewRaffleTC5
     ]
   where
-    createNewRaffleTC1 :: TestInfo -> GYTxMonadClb ()
+    createNewRaffleTC1 :: (HasCallStack) => TestInfo -> GYTxMonadClb ()
     createNewRaffleTC1 TestInfo {..} = void $ deployValidatorsAndCreateNewValidRaffleRun testWallets
 
     createNewRaffleTC2 :: TestInfo -> GYTxMonadClb ()

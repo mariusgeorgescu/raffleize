@@ -17,7 +17,7 @@ import RaffleizeDApp.TxBuilding.Operations
 interactionToTxSkeleton ::
   (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
   RaffleizeInteraction ->
-  r (m (GYTxSkeleton 'PlutusV2, AssetClass))
+  r (m (GYTxSkeleton 'PlutusV3, AssetClass))
 interactionToTxSkeleton
   RaffleizeInteraction {..} = do
     raffleValidatorRef <- asks raffleValidatorRef

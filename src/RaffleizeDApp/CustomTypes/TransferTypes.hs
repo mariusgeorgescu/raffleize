@@ -16,9 +16,9 @@ import Prelude
 -- | Input parameters to add for reference script.
 data AddWitAndSubmitParams = AddWitAndSubmitParams
   { awasTxUnsigned :: !GYTx
-  , awasTxWit      :: !GYTxWitness
-  } deriving (Generic, FromJSON, ToSchema)
-
+  , awasTxWit :: !GYTxWitness
+  }
+  deriving (Generic, FromJSON, ToSchema)
 
 -- | Ticket information DTO
 data TicketInfo = TicketInfo
@@ -66,8 +66,8 @@ data RaffleizeInteraction = RaffleizeInteraction
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
-instance ToJSON GYTxOutRefCbor where
-  toJSON = toJSON . getTxOutRefHex
+-- instance ToJSON GYTxOutRefCbor where
+--   toJSON = toJSON . getTxOutRefHex
 
 data UserAddresses = UserAddresses
   { usedAddresses :: [GYAddress]

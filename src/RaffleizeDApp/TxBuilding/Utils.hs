@@ -9,7 +9,7 @@ import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Interval qualified
 import PlutusLedgerApi.V1.Value
-import PlutusLedgerApi.V2
+import PlutusLedgerApi.V3
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
@@ -34,7 +34,7 @@ getValueBalance = valueToPlutus . foldMapUTxOs utxoValue
 addressFromPaymentSigningKey :: GYNetworkId -> GYExtendedPaymentSigningKey -> GYAddress
 addressFromPaymentSigningKey nid extendedSkey =
   let
-    vkey = getVerificationKey $ extendedPaymentSigningKeyToApi extendedSkey
+    vkey = Cardano.Api.getVerificationKey $ extendedPaymentSigningKeyToApi extendedSkey
     pub_key = paymentVerificationKeyFromApi (castVerificationKey vkey)
     payment_key_hash = paymentKeyHash pub_key
     address = addressFromPaymentKeyHash nid payment_key_hash

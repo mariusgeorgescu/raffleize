@@ -37,7 +37,7 @@ mintTestTokensTxBody userAddresses tn amount = do
 
 ------------------------------------------------------------------------------------------------
 
-deployReferenceScriptTxBody :: (MonadIO m, MonadReader ProviderCtx m) => GYScript 'PlutusV2 -> UserAddresses -> m GYTxBody
+deployReferenceScriptTxBody :: (MonadIO m, MonadReader ProviderCtx m) => GYScript 'PlutusV3 -> UserAddresses -> m GYTxBody
 deployReferenceScriptTxBody script userAddresses = do
   providerCtx <- ask
   liftIO $ runTxI providerCtx userAddresses (addRefScriptSkeleton script)

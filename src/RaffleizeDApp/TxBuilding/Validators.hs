@@ -1,7 +1,7 @@
 module RaffleizeDApp.TxBuilding.Validators where
 
 import GeniusYield.Types
-import PlutusLedgerApi.V2
+import PlutusLedgerApi.V3
 import PlutusTx
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.RaffleTypes
@@ -18,10 +18,11 @@ import RaffleizeDApp.OnChain.RaffleizeValidator
 adminAddress :: PubKeyHash
 adminAddress = "a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2"
 
-raffleizeValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
+
+raffleizeValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinUnit)
 raffleizeValidatorPlutus = compileRaffleizeValidator adminAddress
 
-raffleizeValidatorGY :: GYScript 'PlutusV2
+raffleizeValidatorGY :: GYScript 'PlutusV3
 raffleizeValidatorGY = validatorFromPlutus raffleizeValidatorPlutus
 
 raffleizeValidatorHashGY :: GYScriptHash
@@ -36,10 +37,11 @@ raffleizeValidatorHashPlutus = validatorHashToPlutus raffleizeValidatorHashGY
 
 ------------------------------------------------------------------------------------------------
 
-ticketValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
+
+ticketValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinUnit)
 ticketValidatorPlutus = compileTicketValidator adminAddress
 
-ticketValidatorGY :: GYScript 'PlutusV2
+ticketValidatorGY :: GYScript 'PlutusV3
 ticketValidatorGY = validatorFromPlutus ticketValidatorPlutus
 
 ticketValidatorHashGY :: GYScriptHash
@@ -66,17 +68,18 @@ mockRaffleParam =
     , rRaffleCollateral = 30_000_000 --- ^ Lovelaces
     }
 
-raffleizeMintingPolicyPlutus :: CompiledCode (BuiltinData -> BuiltinData -> ())
+
+raffleizeMintingPolicyPlutus :: CompiledCode (BuiltinData -> BuiltinUnit)
 raffleizeMintingPolicyPlutus = compileRaffleizeMP mockRaffleParam
 
-raffleizeMintingPolicyGY :: GYScript 'PlutusV2
+raffleizeMintingPolicyGY :: GYScript 'PlutusV3
 raffleizeMintingPolicyGY = mintingPolicyFromPlutus raffleizeMintingPolicyPlutus
 
 exportRaffleScript :: IO ()
-exportRaffleScript = writeScript @'PlutusV2 raffleizeValidatorFile $ validatorToScript raffleizeValidatorGY
+exportRaffleScript = writeScript @'PlutusV3 raffleizeValidatorFile $ validatorToScript raffleizeValidatorGY
 
 exportTicketScript :: IO ()
-exportTicketScript = writeScript @'PlutusV2 ticketValidatorFile $ validatorToScript ticketValidatorGY
+exportTicketScript = writeScript @'PlutusV3 ticketValidatorFile $ validatorToScript ticketValidatorGY
 
 exportMintingPolicy :: IO ()
-exportMintingPolicy = writeScript @'PlutusV2 mintingPolicyFile $ mintingPolicyToScript raffleizeMintingPolicyGY
+exportMintingPolicy = writeScript @'PlutusV3 mintingPolicyFile $ mintingPolicyToScript raffleizeMintingPolicyGY

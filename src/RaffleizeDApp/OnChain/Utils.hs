@@ -9,15 +9,15 @@ import PlutusLedgerApi.V1.Value (
   flattenValue,
   geq,
  )
-import PlutusLedgerApi.V2 (
+import PlutusLedgerApi.V2 qualified as V2
+import PlutusLedgerApi.V3 (
   Address,
   CurrencySymbol,
   Datum (getDatum),
   FromData,
   OutputDatum (OutputDatum),
-  POSIXTimeRange,
   ScriptContext,
-  ScriptPurpose (Spending),
+  ScriptInfo (SpendingScript),
   ToData (..),
   TokenName (..),
   TxId (TxId),
@@ -30,8 +30,9 @@ import PlutusLedgerApi.V2 (
   adaToken,
   singleton,
  )
+
 import PlutusTx (fromBuiltinData, unstableMakeIsData)
-import PlutusTx.Builtins (serialiseData)
+import PlutusTx.Builtins (ByteOrder (BigEndian), serialiseData)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -81,20 +82,29 @@ mkUntypedMintingPolicy f a ctx =
 data ATxInfo = ATxInfo
   { txInfoInputs :: [TxInInfo]
   , txInfoReferenceInputs :: [TxInInfo]
-  , txInfoOutputs :: [TxOut]
+  , txInfoOutputs :: [V2.TxOut]
   , txInfoFee :: BuiltinData
-  , txInfoMint :: Value
-  , txInfoDCert :: BuiltinData
+  , txInfoMint :: V2.Value
+  , txInfoTxCerts :: BuiltinData
   , txInfoWdrl :: BuiltinData
-  , txInfoValidRange :: POSIXTimeRange
+  , txInfoValidRange :: V2.POSIXTimeRange
   , txInfoSignatories :: BuiltinData
+  , txInfoRedeemers :: BuiltinData
   , txInfoData :: BuiltinData
   , txInfoId :: BuiltinData
+  , txInfoVotes :: BuiltinData
+  , txInfoProposalProcedures :: BuiltinData
+  , txInfoCurrentTreasuryAmount :: BuiltinData
+  , txInfoTreasuryDonation :: BuiltinData
   }
 
 unstableMakeIsData ''ATxInfo
 
-data AScriptContext = AScriptContext {scriptContextTxInfo :: ATxInfo, scriptContextPurpose :: ScriptPurpose}
+data AScriptContext = AScriptContext
+  { scriptContextTxInfo :: ATxInfo
+  , scriptContextRedeemer :: V2.Redeemer
+  , scriptContextScriptInfo :: ScriptInfo
+  }
 unstableMakeIsData ''AScriptContext
 
 -- | A more efficient implementation of the `mkUntypedValidator` method of the `IsScriptContext` typeclass.
@@ -117,26 +127,20 @@ mkUntypedValidatorCustom f d r c =
       _ -> traceError s
 {-# INLINEABLE mkUntypedValidatorCustom #-}
 
--- | A more efficient implementation of the `mkUntypedMintingPolicy` method of the `IsScriptContext` typeclass.
-mkUntypedMintingPolicyCustom ::
-  (FromData a) =>
-  (a -> AScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> ())
-mkUntypedMintingPolicyCustom f r c =
-  if f
-    (parseData r "Invalid redeemer")
-    (parseData c "Invalid context")
-    then ()
-    else traceError "validator: Validation Failed"
-  where
-    parseData md s = case fromBuiltinData md of
-      Just datum -> datum
-      _ -> traceError s
-{-# INLINEABLE mkUntypedMintingPolicyCustom #-}
-
 ------------------------
 
 -- **  Helper Functions
+
+-- | Converst a typed lambda to untyped
+mkUntypedLambda ::
+  (AScriptContext -> Bool) ->
+  (BuiltinData -> BuiltinUnit)
+mkUntypedLambda f c = check $ f (parseData c "Invalid context")
+  where
+    parseData mdata message = case fromBuiltinData mdata of
+      Just d -> d
+      _ -> traceError message
+{-# INLINEABLE mkUntypedLambda #-}
 
 ------------------------
 hasTxInWithToken :: AssetClass -> [TxInInfo] -> Bool
@@ -226,7 +230,11 @@ isBurningNFT :: AssetClass -> Value -> Bool
 isBurningNFT ac txInfoMint = traceIfFalse "NFT not burned" $ assetClassValueOf txInfoMint ac #== pnegate 1
 {-# INLINEABLE isBurningNFT #-}
 
-integerToBs24 :: Integer -> BuiltinByteString
+bsToInteger' :: BuiltinByteString -> Integer
+bsToInteger' = bsToInteger --byteStringToInteger BigEndian
+{-# INLINEABLE bsToInteger' #-}
+
+integerToBs24 :: Integer -> BuiltinByteString --- cheaper than integerToByteString
 integerToBs24 = dropByteString 1 . serialiseData . toBuiltinData -- Removing First Byte  (works for value > 24)
 {-# INLINEABLE integerToBs24 #-}
 
@@ -253,10 +261,11 @@ bsToIntegerDirect bs !acc !index =
        in bsToIntegerDirect bs newAcc (index #+ 1)
 {-# INLINEABLE bsToIntegerDirect #-}
 
---- >>> bsToInteger "marius"
--- 120265298769267
+--- >>> integerToBs24 $ bsToInteger "marius"
+--- >>> bsToInteger' $ integerToBs24  3213312311
+-- "\NUL\NULmarius"
+-- 3213312311
 
--- | Helper function to check if a 'TxOut' contains exactly 1 quantity of an AssetClass
 outHas1of :: TxOut -> AssetClass -> Bool
 outHas1of (TxOut _ value _ _) ac = assetClassValueOf value ac #== 1
 {-# INLINEABLE outHas1of #-}
@@ -313,7 +322,7 @@ getOwnInput context = case findOwnInputA context of
 
 -- | Find the input currently being validated.
 findOwnInputA :: AScriptContext -> Maybe TxInInfo
-findOwnInputA AScriptContext {scriptContextTxInfo = ATxInfo {txInfoInputs}, scriptContextPurpose = Spending txOutRef} =
+findOwnInputA AScriptContext {scriptContextTxInfo = ATxInfo {txInfoInputs}, scriptContextScriptInfo = SpendingScript txOutRef _} =
   find (\TxInInfo {txInInfoOutRef} -> txInInfoOutRef #== txOutRef) txInfoInputs
 findOwnInputA _ = Nothing
 {-# INLINEABLE findOwnInputA #-}
