@@ -399,7 +399,7 @@ refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefunded
 {-# INLINEABLE refundTicketToRaffle #-}
 
 generateTicketTN :: Integer -> TokenName -> TokenName
-generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData) i))
+generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_224 (bs #<> (serialiseData . toBuiltinData) i))
 -- TokenName (blake2b_224 (bs #<> (serialiseData . toBuiltinData) i)) --  cheaper than bsToInt
 {-# INLINEABLE generateTicketTN #-}
 

@@ -632,16 +632,20 @@ sucessScenarioTC2 TestInfo {..} = do
   (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun testWallets
   let raffleId = rRaffleID $ riRsd ri
   waitNSlots_ 1
-  let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+  -- Using different secrets (so that winner is ticket 0)
+  let secret1 = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a220"
+  let secret2 = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a223"
+  let secret3 = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
+  let secret4 = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a223"
   -- Buy 4 tickets
   tickets <-
     buyNTicketsToRaffleRun
       ri
       roc
-      [ (w2 testWallets, secret)
-      , (w3 testWallets, secret)
-      , (w4 testWallets, secret)
-      , (w5 testWallets, secret)
+      [ (w2 testWallets, secret1)
+      , (w3 testWallets, secret2)
+      , (w4 testWallets, secret3)
+      , (w5 testWallets, secret4)
       ]
   waitNSlots_ 101 --- Commit DDL pass
   ri2 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -650,15 +654,15 @@ sucessScenarioTC2 TestInfo {..} = do
     reavealNTicketsRun
       ri2
       roc
-      [ (w2 testWallets, head ticketRefs, secret)
-      , (w3 testWallets, ticketRefs !! 1, secret)
-      , (w4 testWallets, ticketRefs !! 2, secret)
-      , (w5 testWallets, ticketRefs !! 3, secret)
+      [ (w2 testWallets, head ticketRefs, secret1)
+      , (w3 testWallets, ticketRefs !! 1, secret2)
+      , (w4 testWallets, ticketRefs !! 2, secret3)
+      , (w5 testWallets, ticketRefs !! 3, secret4)
       ]
   ri3 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
   unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logTestError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
 
-  -- WINNER is ticket 0
+  -- WINNER is ticket 1
 
   ti0 <- Data.Maybe.fromMaybe (error "Ticket not fund") <$> queryTicketRun (w1 testWallets) (head ticketRefs)
   unless (tiStateLabel ti0 == "WINNING") $ logTestError "NOT WINNING"
