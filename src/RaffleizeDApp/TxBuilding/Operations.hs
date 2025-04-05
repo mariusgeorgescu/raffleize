@@ -23,7 +23,7 @@ import RaffleizeDApp.TxBuilding.Validators
 ------------------------------------------------------------------------------------------------
 
 -- |  Create Raffle Transaction
-createRaffleTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYAddress -> RaffleConfig -> m (GYTxSkeleton 'PlutusV3, AssetClass)
+createRaffleTX :: (HasCallStack, GYTxUserQueryMonad m) => GYAddress -> RaffleConfig -> m (GYTxSkeleton 'PlutusV3, AssetClass)
 createRaffleTX recipient config@RaffleConfig {rCommitDDL, rStake} = do
   isValidByCommitDDL <- txIsValidByDDL rCommitDDL
   seedTxOutRef <- someUTxOWithoutRefScript
@@ -45,17 +45,17 @@ createRaffleTX recipient config@RaffleConfig {rCommitDDL, rStake} = do
   isGettingRaffleUserNFT <- txIsPayingValueToAddress recipient raffleUserNFT
   return
     ( mconcat
-        [ isValidByCommitDDL
-        , isMintingRaffleNFTs
-        , isLockingRaffleState
-        , isGettingRaffleUserNFT
-        , isSpendingSeedUTxO
-        ]
-    , raffleRefAC
+        [ isValidByCommitDDL,
+          isMintingRaffleNFTs,
+          isLockingRaffleState,
+          isGettingRaffleUserNFT,
+          isSpendingSeedUTxO
+        ],
+      raffleRefAC
     )
 
 -- |  Buy Ticket Transaction
-buyTicketTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => SecretHash -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3, AssetClass)
+buyTicketTX :: (HasCallStack, GYTxUserQueryMonad m) => SecretHash -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3, AssetClass)
 buyTicketTX secretHash raffleScriptRef recipient raffleRefAC = do
   (rsd, rValue) <- getRaffleStateDataAndValue raffleRefAC
   isValidByCommitDDL <- txIsValidByDDL (rCommitDDL . rConfig $ rsd)
@@ -72,14 +72,14 @@ buyTicketTX secretHash raffleScriptRef recipient raffleRefAC = do
   isGettingTicketUserNFT <- txIsPayingValueToAddress recipient ticketUserNFT
   return
     ( mconcat
-        [ isValidByCommitDDL
-        , spendsRaffleRefNFT
-        , isRaffleStateUpdated
-        , isMintingTicketRefAnUserNFTs
-        , isTicketStateLocked
-        , isGettingTicketUserNFT
-        ]
-    , ticketRefAC
+        [ isValidByCommitDDL,
+          spendsRaffleRefNFT,
+          isRaffleStateUpdated,
+          isMintingTicketRefAnUserNFTs,
+          isTicketStateLocked,
+          isGettingTicketUserNFT
+        ],
+      ticketRefAC
     )
 
 ------------------------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ buyTicketTX secretHash raffleScriptRef recipient raffleRefAC = do
 ------------------------------------------------------------------------------------------------
 
 -- |  Update Raffle Transaction
-updateRaffleTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYAddress -> RaffleConfig -> GYTxOutRef -> [GYAddress] -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+updateRaffleTX :: (HasCallStack, GYTxUserQueryMonad m) => GYAddress -> RaffleConfig -> GYTxOutRef -> [GYAddress] -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 updateRaffleTX recipient newConfig raffleScriptRef ownAddrs raffleRefAC = do
   (rsd, rValue) <- getRaffleStateDataAndValue raffleRefAC
   let ddl = min (rCommitDDL . rConfig $ rsd) (rCommitDDL newConfig) -- minimum between initial and new commit deadline
@@ -106,15 +106,15 @@ updateRaffleTX recipient newConfig raffleScriptRef ownAddrs raffleRefAC = do
   isGettingRaffleUserNFT <- txIsPayingValueToAddress recipient raffleUserNFT
   return $
     mconcat
-      [ isValidByCommitDDL
-      , spendsRaffleRefNFT
-      , spendsRaffleUserNFT
-      , isRaffleStateUpdated
-      , isGettingRaffleUserNFT
+      [ isValidByCommitDDL,
+        spendsRaffleRefNFT,
+        spendsRaffleUserNFT,
+        isRaffleStateUpdated,
+        isGettingRaffleUserNFT
       ]
 
 -- |  Cancel Transaction
-cancelRaffleTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> [GYAddress] -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+cancelRaffleTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> [GYAddress] -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 cancelRaffleTX raffleScriptRef ownAddrs recipient raffleRefAC = do
   (rsd, _rValue) <- getRaffleStateDataAndValue raffleRefAC
   isValidByCommitDDL <- txIsValidByDDL (rCommitDDL . rConfig $ rsd)
@@ -129,28 +129,28 @@ cancelRaffleTX raffleScriptRef ownAddrs recipient raffleRefAC = do
 
   return $
     mconcat
-      [ isValidByCommitDDL
-      , spendsRaffleRefNFT
-      , spendsRaffleUserNFT
-      , isBurningRaffleRefNFT
-      , isBurningRaffleUserNFT
-      , isGettingStakeValue
+      [ isValidByCommitDDL,
+        spendsRaffleRefNFT,
+        spendsRaffleUserNFT,
+        isBurningRaffleRefNFT,
+        isBurningRaffleUserNFT,
+        isGettingStakeValue
       ]
 
 -- | Collect Accumulated Amount Transaction
-collectAmountTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+collectAmountTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 collectAmountTX = raffleOwnerClosingTX CollectAmount
 
 -- | Recover Stake Transaction
-recoverStakeTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+recoverStakeTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 recoverStakeTX = raffleOwnerClosingTX RecoverStake
 
 -- | Recover Stake And Accumulated Amount Transaction
-recoverStakeAndAmountTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+recoverStakeAndAmountTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 recoverStakeAndAmountTX = raffleOwnerClosingTX RecoverStakeAndAmount
 
 -- | Helper function to construct the raffle owner closing transaction based on the raffle owner action
-raffleOwnerClosingTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => RaffleOwnerAction -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+raffleOwnerClosingTX :: (HasCallStack, GYTxUserQueryMonad m) => RaffleOwnerAction -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 raffleOwnerClosingTX roa raffleScriptRef ownAddr raffleRefAC
   | roa `elem` [CollectAmount, RecoverStake, RecoverStakeAndAmount] = do
       let redeemerAction = RaffleOwner roa
@@ -164,15 +164,15 @@ raffleOwnerClosingTX roa raffleScriptRef ownAddr raffleRefAC
       isGettingTheDifference <- txIsPayingValueToAddress ownAddr diffValue
       return $
         mconcat
-          [ spendsRaffleRefNFT
-          , isRaffleStateUpdated
-          , isBurningRaffleUserNFT
-          , isGettingTheDifference
+          [ spendsRaffleRefNFT,
+            isRaffleStateUpdated,
+            isBurningRaffleUserNFT,
+            isGettingTheDifference
           ]
 raffleOwnerClosingTX _ _ _ _ = error "Invalid Raffle Owner Action"
 
 -- | Get Collateral of Expired Ticket Transaction
-getCollateralOfExpiredTicketTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> [GYAddress] -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+getCollateralOfExpiredTicketTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> [GYAddress] -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 getCollateralOfExpiredTicketTX ticketScriptRef ownAddrs recipient ticketRefAC = do
   (tsd, tValue) <- getTicketStateDataAndValue ticketRefAC
   let raffleRefAC = tRaffle tsd
@@ -190,11 +190,11 @@ getCollateralOfExpiredTicketTX ticketScriptRef ownAddrs recipient ticketRefAC = 
   isGettingCollateralValue <- txIsPayingValueToAddress recipient ticketCollateralValue
   return $
     mconcat
-      [ spendsRaffleUserNFT
-      , hasRaffleStateAsReferenceInput
-      , spendsTicketRefNFT
-      , isBurningTicketRefNFT
-      , isGettingCollateralValue
+      [ spendsRaffleUserNFT,
+        hasRaffleStateAsReferenceInput,
+        spendsTicketRefNFT,
+        isBurningTicketRefNFT,
+        isGettingCollateralValue
       ]
 
 ------------------------------------------------------------------------------------------------
@@ -204,7 +204,7 @@ getCollateralOfExpiredTicketTX ticketScriptRef ownAddrs recipient ticketRefAC = 
 ------------------------------------------------------------------------------------------------
 
 -- | Reveal Ticket Transaction
-revealTicketTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => Secret -> GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+revealTicketTX :: (HasCallStack, GYTxUserQueryMonad m) => Secret -> GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 revealTicketTX secret raffleScriptRef ticketScriptRef ownAddr ticketRefAC = do
   (tsd, tValue) <- getTicketStateDataAndValue ticketRefAC
   let raffleRefAC = tRaffle tsd
@@ -222,29 +222,29 @@ revealTicketTX secret raffleScriptRef ticketScriptRef ownAddr ticketRefAC = do
   isGettingTicketUserNFT <- txIsPayingValueToAddress ownAddr ticketUserNFT
   return
     ( mconcat
-        [ isValidByRevealDDL
-        , spendsRaffleRefNFT
-        , isRaffleStateUpdated
-        , spendsTicketRefNFT
-        , isTicketStateUpdated
-        , isGettingTicketUserNFT
+        [ isValidByRevealDDL,
+          spendsRaffleRefNFT,
+          isRaffleStateUpdated,
+          spendsTicketRefNFT,
+          isTicketStateUpdated,
+          isGettingTicketUserNFT
         ]
     )
 
 -- | Winner Collect Stake Transaction
-winnerCollectStakeTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+winnerCollectStakeTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 winnerCollectStakeTX = ticketOwnerClosingTX CollectStake
 
 -- | Full Refund Ticket Transaction
-fullRefundTicketTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+fullRefundTicketTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 fullRefundTicketTX = ticketOwnerClosingTX RefundTicket
 
 -- | Extra Refund Ticket Transaction
-extraRefundTicketTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+extraRefundTicketTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 extraRefundTicketTX = ticketOwnerClosingTX RefundTicketExtra
 
 -- | Helper function to construct the ticket owner closing transaction based on the ticket owner action
-ticketOwnerClosingTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => TicketOwnerAction -> GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+ticketOwnerClosingTX :: (HasCallStack, GYTxUserQueryMonad m) => TicketOwnerAction -> GYTxOutRef -> GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 ticketOwnerClosingTX toa raffleScriptRef ticketScriptRef ownAddr ticketRefAC = do
   if toa `elem` [RefundTicket, CollectStake, RefundTicketExtra]
     then do
@@ -264,18 +264,18 @@ ticketOwnerClosingTX toa raffleScriptRef ticketScriptRef ownAddr ticketRefAC = d
       isGettingStakeAndTicketCollateral <- txIsPayingValueToAddress ownAddr diffValue
       return
         ( mconcat
-            [ spendsRaffleRefNFT
-            , spendsTicketRefNFT
-            , isRaffleStateUpdated
-            , isBurningTicketRefNFT
-            , isBurningTicketUserNFT
-            , isGettingStakeAndTicketCollateral
+            [ spendsRaffleRefNFT,
+              spendsTicketRefNFT,
+              isRaffleStateUpdated,
+              isBurningTicketRefNFT,
+              isBurningTicketUserNFT,
+              isGettingStakeAndTicketCollateral
             ]
         )
     else error ("Invalid Ticket Owner Action : " <> show toa)
 
 -- | Refund Collateral of Losing Ticket Transaction
-refundCollateralOfLosingTicketTX :: (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+refundCollateralOfLosingTicketTX :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 refundCollateralOfLosingTicketTX ticketScriptRef ownAddr ticketRefAC = do
   (tsd, tValue) <- getTicketStateDataAndValue ticketRefAC
   let raffleRefAC = tRaffle tsd
@@ -293,11 +293,11 @@ refundCollateralOfLosingTicketTX ticketScriptRef ownAddr ticketRefAC = do
   isGettingCollateralValue <- txIsPayingValueToAddress ownAddr ticketCollateralValue
   return $
     mconcat
-      [ hasRaffleStateAsReferenceInput
-      , spendsTicketRefNFT
-      , isBurningTicketRefNFT
-      , isBurningTicketUserNFT
-      , isGettingCollateralValue
+      [ hasRaffleStateAsReferenceInput,
+        spendsTicketRefNFT,
+        isBurningTicketRefNFT,
+        isBurningTicketUserNFT,
+        isGettingCollateralValue
       ]
 
 ------------------------------------------------------------------------------------------------

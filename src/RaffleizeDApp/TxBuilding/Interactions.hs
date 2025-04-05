@@ -3,7 +3,6 @@ module RaffleizeDApp.TxBuilding.Interactions where
 import Control.Monad.Error.Class
 import Control.Monad.Reader
 import Data.Either.Extra
-
 import GHC.Stack
 import GeniusYield.TxBuilder hiding (User)
 import GeniusYield.Types
@@ -15,7 +14,7 @@ import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Operations
 
 interactionToTxSkeleton ::
-  (HasCallStack, GYTxUserQueryMonad m, GYTxQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
+  (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext r) =>
   RaffleizeInteraction ->
   r (m (GYTxSkeleton 'PlutusV3, AssetClass))
 interactionToTxSkeleton

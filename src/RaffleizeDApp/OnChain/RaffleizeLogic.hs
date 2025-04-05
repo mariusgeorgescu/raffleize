@@ -399,7 +399,7 @@ refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefunded
 {-# INLINEABLE refundTicketToRaffle #-}
 
 generateTicketTN :: Integer -> TokenName -> TokenName
-generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_224 (bs #<> (serialiseData . toBuiltinData) i))
+generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData) i))
 -- TokenName (blake2b_224 (bs #<> (serialiseData . toBuiltinData) i)) --  cheaper than bsToInt
 {-# INLINEABLE generateTicketTN #-}
 
@@ -456,42 +456,42 @@ userTokenPrefixBS :: BuiltinByteString
 userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer) -- cheaper
 {-# INLINEABLE userTokenPrefixBS #-}
 
-hasRaffleDatumWithValue :: RaffleDatum -> Value -> Address -> [TxOut] -> Bool
-hasRaffleDatumWithValue _ _ _ [] = False
-hasRaffleDatumWithValue rDatum rValue rAddr ((TxOut outAddr outValue (OutputDatum (Datum datum)) Nothing) : outs) =
-  traceIfFalse "raffle state not locked" $
-    pand
-      [ toBuiltinData rDatum #== datum
-      , rValue #== outValue
-      , rAddr #== outAddr
-      ]
-      || hasRaffleDatumWithValue rDatum rValue rAddr outs
-hasRaffleDatumWithValue _ _ _ _ = False
-{-# INLINEABLE hasRaffleDatumWithValue #-}
+-- hasRaffleDatumWithValue :: RaffleDatum -> Value -> Address -> [TxOut] -> Bool
+-- hasRaffleDatumWithValue _ _ _ [] = False
+-- hasRaffleDatumWithValue rDatum rValue rAddr ((TxOut outAddr outValue (OutputDatum (Datum datum)) Nothing) : outs) =
+--   traceIfFalse "raffle state not locked" $
+--     pand
+--       [ toBuiltinData rDatum #== datum
+--       , rValue #== outValue
+--       , rAddr #== outAddr
+--       ]
+--       || hasRaffleDatumWithValue rDatum rValue rAddr outs
+-- hasRaffleDatumWithValue _ _ _ _ = False
+-- {-# INLINEABLE hasRaffleDatumWithValue #-}
 
-hasTicketDatumWithValue :: TicketDatum -> Value -> Address -> [TxOut] -> Bool
-hasTicketDatumWithValue _ _ _ [] = False
-hasTicketDatumWithValue ticketDatum tValue tAddr ((TxOut outAddr outValue (OutputDatum (Datum datum)) Nothing) : outs) =
-  traceIfFalse "ticket state not locked" $
-    pand
-      [ toBuiltinData ticketDatum #== datum
-      , tValue #== outValue
-      , tAddr #== outAddr
-      ]
-      || hasTicketDatumWithValue ticketDatum tValue tAddr outs
-hasTicketDatumWithValue _ _ _ _ = False
-{-# INLINEABLE hasTicketDatumWithValue #-}
+-- hasTicketDatumWithValue :: TicketDatum -> Value -> Address -> [TxOut] -> Bool
+-- hasTicketDatumWithValue _ _ _ [] = False
+-- hasTicketDatumWithValue ticketDatum tValue tAddr ((TxOut outAddr outValue (OutputDatum (Datum datum)) Nothing) : outs) =
+--   traceIfFalse "ticket state not locked" $
+--     pand
+--       [ toBuiltinData ticketDatum #== datum
+--       , tValue #== outValue
+--       , tAddr #== outAddr
+--       ]
+--       || hasTicketDatumWithValue ticketDatum tValue tAddr outs
+-- hasTicketDatumWithValue _ _ _ _ = False
+-- {-# INLINEABLE hasTicketDatumWithValue #-}
 
-paysValueToAddr :: Value -> Address -> [TxOut] -> Bool
-paysValueToAddr _ _ [] = False
-paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
-  traceIfFalse "value not paid" $
-    pand
-      [ outValue `geq` pValue
-      , pAddr #== outAddr
-      ]
-      || paysValueToAddr pValue pAddr outs
-{-# INLINEABLE paysValueToAddr #-}
+-- paysValueToAddr :: Value -> Address -> [TxOut] -> Bool
+-- paysValueToAddr _ _ [] = False
+-- paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
+--   traceIfFalse "value not paid" $
+--     pand
+--       [ outValue `geq` pValue
+--       , pAddr #== outAddr
+--       ]
+--       || paysValueToAddr pValue pAddr outs
+-- {-# INLINEABLE paysValueToAddr #-}
 
 -- Used for Offchain to identify valid utxos before parsing datum
 -- This function checks if tokenname has the raffle prefix

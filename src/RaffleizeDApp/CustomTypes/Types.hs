@@ -1,15 +1,17 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module RaffleizeDApp.CustomTypes.Types where
 
 import Data.Aeson hiding (Value)
 import Data.Aeson qualified (Value)
 import Data.Aeson.Types (Parser)
 import Data.String
+import GeniusYield.Types (unsafeTokenNameFromHex)
+import GeniusYield.Types.Value (tokenNameToPlutus)
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
 import PlutusLedgerApi.V2
 import PlutusTx
 import PlutusTx.Show qualified (show)
-import GeniusYield.Types (unsafeTokenNameFromHex)
-import GeniusYield.Types.Value (tokenNameToPlutus)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -24,22 +26,23 @@ unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> 
 type Metadata = Map BuiltinByteString BuiltinByteString
 
 data ATxInfo = ATxInfo
-  { txInfoInputs :: [TxInInfo]
-  , txInfoReferenceInputs :: [TxInInfo]
-  , txInfoOutputs :: [TxOut]
-  , txInfoFee :: BuiltinData
-  , txInfoMint :: Value
-  , txInfoDCert :: BuiltinData
-  , txInfoWdrl :: BuiltinData
-  , txInfoValidRange :: POSIXTimeRange
-  , txInfoSignatories :: BuiltinData
-  , txInfoData :: BuiltinData
-  , txInfoId :: BuiltinData
+  { txInfoInputs :: [TxInInfo],
+    txInfoReferenceInputs :: [TxInInfo],
+    txInfoOutputs :: [TxOut],
+    txInfoFee :: BuiltinData,
+    txInfoMint :: Value,
+    txInfoDCert :: BuiltinData,
+    txInfoWdrl :: BuiltinData,
+    txInfoValidRange :: POSIXTimeRange,
+    txInfoSignatories :: BuiltinData,
+    txInfoData :: BuiltinData,
+    txInfoId :: BuiltinData
   }
 
 unstableMakeIsData ''ATxInfo
 
 data AScriptContext = AScriptContext {scriptContextTxInfo :: ATxInfo, scriptContextPurpose :: ScriptPurpose}
+
 unstableMakeIsData ''AScriptContext
 
 instance ToJSON POSIXTime where
@@ -67,8 +70,6 @@ instance ToJSON TokenName where
 instance FromJSON TokenName where
   parseJSON :: Data.Aeson.Value -> Parser TokenName
   parseJSON v = tokenNameToPlutus . unsafeTokenNameFromHex <$> parseJSON @Text v
-
-
 
 instance ToJSON CurrencySymbol where
   toJSON :: CurrencySymbol -> Data.Aeson.Value

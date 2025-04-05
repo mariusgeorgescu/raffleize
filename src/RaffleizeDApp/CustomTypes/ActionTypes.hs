@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingVia #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module RaffleizeDApp.CustomTypes.ActionTypes where
 
@@ -7,10 +8,10 @@ import PlutusTx (unstableMakeIsData)
 import PlutusTx.Builtins.HasOpaque (stringToBuiltinByteString)
 import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleConfig)
 import RaffleizeDApp.CustomTypes.TicketTypes (Secret, SecretHash)
-import Test.QuickCheck.Arbitrary.Generic (
-  Arbitrary (arbitrary),
-  GenericArbitrary (GenericArbitrary),
- )
+import Test.QuickCheck.Arbitrary.Generic
+  ( Arbitrary (arbitrary),
+    GenericArbitrary (GenericArbitrary),
+  )
 
 -------------------------------------------------------------------------------
 
@@ -67,9 +68,8 @@ data AdminAction = CloseRaffle ---
 
 unstableMakeIsData ''AdminAction --- TODO must be changed with stable version
 
-{- | Datatype representng the actions supported by the Raffleize DApp.
-This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
--}
+-- | Datatype representng the actions supported by the Raffleize DApp.
+-- This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
 data RaffleizeAction
   = User
       UserAction --- ^ Action that can be peformed by any user.
@@ -87,9 +87,8 @@ unstableMakeIsData ''RaffleizeAction --- TODO must be changed with stable versio
 
 type RaffleizeActionLabel = (String, String)
 
-{- | Datatype representng the actions supported by the Raffleize DApp.
-This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
--}
+-- | Datatype representng the actions supported by the Raffleize DApp.
+-- This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
 data RaffleizeRedeemer
   = UserRedeemer
       UserAction --- ^ Action that can be peformed by any user.

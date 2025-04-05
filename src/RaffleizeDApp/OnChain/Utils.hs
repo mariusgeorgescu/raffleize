@@ -1,38 +1,37 @@
 module RaffleizeDApp.OnChain.Utils where
 
 import Data.List.Extra (intercalate)
-import PlutusLedgerApi.V1.Value (
-  AssetClass (..),
-  assetClass,
-  assetClassValue,
-  assetClassValueOf,
-  flattenValue,
-  geq,
- )
+import PlutusLedgerApi.V1.Value
+  ( AssetClass (..),
+    assetClass,
+    assetClassValue,
+    assetClassValueOf,
+    flattenValue,
+    geq,
+  )
 import PlutusLedgerApi.V2 qualified as V2
-import PlutusLedgerApi.V3 (
-  Address,
-  CurrencySymbol,
-  Datum (getDatum),
-  FromData,
-  OutputDatum (OutputDatum),
-  ScriptContext,
-  ScriptInfo (SpendingScript),
-  ToData (..),
-  TokenName (..),
-  TxId (TxId),
-  TxInInfo (..),
-  TxOut (TxOut, txOutAddress, txOutDatum, txOutValue),
-  TxOutRef (TxOutRef),
-  UnsafeFromData (..),
-  Value,
-  adaSymbol,
-  adaToken,
-  singleton,
- )
-
+import PlutusLedgerApi.V3
+  ( Address,
+    CurrencySymbol,
+    Datum (getDatum),
+    FromData,
+    OutputDatum (OutputDatum),
+    ScriptContext,
+    ScriptInfo (SpendingScript),
+    ToData (..),
+    TokenName (..),
+    TxId (TxId),
+    TxInInfo (..),
+    TxOut (TxOut, txOutAddress, txOutDatum, txOutValue),
+    TxOutRef (TxOutRef),
+    UnsafeFromData (..),
+    Value,
+    adaSymbol,
+    adaToken,
+    singleton,
+  )
 import PlutusTx (fromBuiltinData, unstableMakeIsData)
-import PlutusTx.Builtins (ByteOrder (BigEndian), serialiseData)
+import PlutusTx.Builtins (serialiseData)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -52,8 +51,8 @@ encodeUtf8KV (k, v) = (encodeUtf8 k, encodeUtf8 v)
 
 -- | A more efficient implementation of the `mkUntypedValidator` method of the `IsScriptContext` typeclass.
 mkUntypedValidator ::
-  ( UnsafeFromData a
-  , UnsafeFromData b
+  ( UnsafeFromData a,
+    UnsafeFromData b
   ) =>
   (a -> b -> ScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> BuiltinData -> ())
@@ -80,37 +79,38 @@ mkUntypedMintingPolicy f a ctx =
 {-# INLINEABLE mkUntypedMintingPolicy #-}
 
 data ATxInfo = ATxInfo
-  { txInfoInputs :: [TxInInfo]
-  , txInfoReferenceInputs :: [TxInInfo]
-  , txInfoOutputs :: [V2.TxOut]
-  , txInfoFee :: BuiltinData
-  , txInfoMint :: V2.Value
-  , txInfoTxCerts :: BuiltinData
-  , txInfoWdrl :: BuiltinData
-  , txInfoValidRange :: V2.POSIXTimeRange
-  , txInfoSignatories :: BuiltinData
-  , txInfoRedeemers :: BuiltinData
-  , txInfoData :: BuiltinData
-  , txInfoId :: BuiltinData
-  , txInfoVotes :: BuiltinData
-  , txInfoProposalProcedures :: BuiltinData
-  , txInfoCurrentTreasuryAmount :: BuiltinData
-  , txInfoTreasuryDonation :: BuiltinData
+  { txInfoInputs :: [TxInInfo],
+    txInfoReferenceInputs :: [TxInInfo],
+    txInfoOutputs :: [V2.TxOut],
+    txInfoFee :: BuiltinData,
+    txInfoMint :: V2.Value,
+    txInfoTxCerts :: BuiltinData,
+    txInfoWdrl :: BuiltinData,
+    txInfoValidRange :: V2.POSIXTimeRange,
+    txInfoSignatories :: BuiltinData,
+    txInfoRedeemers :: BuiltinData,
+    txInfoData :: BuiltinData,
+    txInfoId :: BuiltinData,
+    txInfoVotes :: BuiltinData,
+    txInfoProposalProcedures :: BuiltinData,
+    txInfoCurrentTreasuryAmount :: BuiltinData,
+    txInfoTreasuryDonation :: BuiltinData
   }
 
 unstableMakeIsData ''ATxInfo
 
 data AScriptContext = AScriptContext
-  { scriptContextTxInfo :: ATxInfo
-  , scriptContextRedeemer :: V2.Redeemer
-  , scriptContextScriptInfo :: ScriptInfo
+  { scriptContextTxInfo :: ATxInfo,
+    scriptContextRedeemer :: V2.Redeemer,
+    scriptContextScriptInfo :: ScriptInfo
   }
+
 unstableMakeIsData ''AScriptContext
 
 -- | A more efficient implementation of the `mkUntypedValidator` method of the `IsScriptContext` typeclass.
 mkUntypedValidatorCustom ::
-  ( FromData a
-  , FromData b
+  ( FromData a,
+    FromData b
   ) =>
   (a -> b -> AScriptContext -> Bool) ->
   (BuiltinData -> BuiltinData -> BuiltinData -> ())
@@ -153,10 +153,9 @@ getTokenHolderAddress tokenId txInfoInputs =
     findTxInWith ((#== 1) . (`assetClassValueOf` tokenId)) noConstraint txInfoInputs
 {-# INLINEABLE getTokenHolderAddress #-}
 
-{- | This function checks if in a list of outputs is at least a specific amount of lovelaces locked to a specific 'PublicKeyHash'.
- It takes one argument @pkh@ of type'PubKeyHash', one argument @n@ of type 'Integer', and a '[TxOut]'.
- It returns a 'True' if the sum of lovelaces locked at @pkh@'s address is at least @n@
--}
+-- | This function checks if in a list of outputs is at least a specific amount of lovelaces locked to a specific 'PublicKeyHash'.
+-- It takes one argument @pkh@ of type'PubKeyHash', one argument @n@ of type 'Integer', and a '[TxOut]'.
+-- It returns a 'True' if the sum of lovelaces locked at @pkh@'s address is at least @n@
 totalValueToAddress :: Address -> Integer -> [TxOut] -> Bool
 {-# INLINEABLE totalValueToAddress #-}
 totalValueToAddress addr lovelaces txOuts =
@@ -165,6 +164,7 @@ totalValueToAddress addr lovelaces txOuts =
    in assetClassValueOf totalVal (assetClass adaSymbol adaToken) #>= lovelaces
 
 type ValueConstraint = Value -> Bool
+
 type AddressConstraint = Address -> Bool
 
 noConstraint :: b -> Bool
@@ -231,7 +231,7 @@ isBurningNFT ac txInfoMint = traceIfFalse "NFT not burned" $ assetClassValueOf t
 {-# INLINEABLE isBurningNFT #-}
 
 bsToInteger' :: BuiltinByteString -> Integer
-bsToInteger' = bsToInteger --byteStringToInteger BigEndian
+bsToInteger' = bsToInteger -- byteStringToInteger BigEndian
 {-# INLINEABLE bsToInteger' #-}
 
 integerToBs24 :: Integer -> BuiltinByteString --- cheaper than integerToByteString
@@ -290,7 +290,7 @@ isGivenInlineDatumWith (datum, f) outdat = case outdat of
 {-# INLINEABLE isGivenInlineDatumWith #-}
 
 -- | Helper function to check if a 'TxOut' contains a given datum and is inlined.
-hasInlinedDatumWith :: (FromData a, UnsafeFromData a) => (a -> Bool) -> OutputDatum -> Bool
+hasInlinedDatumWith :: (UnsafeFromData a) => (a -> Bool) -> OutputDatum -> Bool
 hasInlinedDatumWith toDatum outdat = case outdat of
   OutputDatum da -> toDatum (unsafeFromBuiltinData (getDatum da))
   _ -> trace "Datum must exsist and must be inlined" False
