@@ -10,19 +10,20 @@ import RaffleizeDApp.CustomTypes.TransferTypes
 
 -- | Our Context.
 data ProviderCtx = ProviderCtx
-  { ctxCoreCfg :: !GYCoreConfig
-  , ctxProviders :: !GYProviders
+  { ctxCoreCfg :: !GYCoreConfig,
+    ctxProviders :: !GYProviders
   }
 
 data RaffleizeTxBuildingContext = RaffleizeTxBuildingContext
-  { raffleValidatorRef :: GYTxOutRef
-  , ticketValidatorRef :: GYTxOutRef
+  { raffleValidatorRef :: GYTxOutRef,
+    ticketValidatorRef :: GYTxOutRef,
+    mintingPolicyRef :: GYTxOutRef
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 
 data RaffleizeOffchainContext = RaffleizeOffchainContext
-  { raffleizeTxBuildingCtx :: RaffleizeTxBuildingContext
-  , providerCtx :: ProviderCtx
+  { raffleizeTxBuildingCtx :: RaffleizeTxBuildingContext,
+    providerCtx :: ProviderCtx
   }
 
 -- | To run for simple queries, the one which don't requiring building for transaction skeleton.
@@ -33,7 +34,7 @@ runQuery ctx q = do
   liftIO $ runGYTxQueryMonadIO nid providers q
 
 -- | Wraps our skeleton under `Identity` and calls `runTxF`.
-runTxI ::
+runTxI :: 
   ProviderCtx ->
   UserAddresses ->
   GYTxBuilderMonadIO (GYTxSkeleton v) ->
@@ -60,8 +61,8 @@ runTxF providerCtx UserAddresses {usedAddresses, changeAddress, reservedCollater
       ( reservedCollateral
           >>= ( \c ->
                   Just
-                    ( getTxOutRefHex c
-                    , False -- Make this as `False` to not do 5-ada-only check for value in this given UTxO to be used as collateral.
+                    ( getTxOutRefHex c,
+                      False -- Make this as `False` to not do 5-ada-only check for value in this given UTxO to be used as collateral.
                     )
               )
       )

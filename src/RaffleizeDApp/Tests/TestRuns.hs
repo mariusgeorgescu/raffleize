@@ -20,7 +20,7 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions (interactionToTxSkeleton)
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils (pPOSIXTimeFromSlotInteger)
-import RaffleizeDApp.TxBuilding.Validators (raffleizeValidatorGY, ticketValidatorGY)
+import RaffleizeDApp.TxBuilding.Validators (raffleizeMintingPolicyGY, raffleizeValidatorGY, ticketValidatorGY)
 import RaffleizeDApp.Utils
 
 -- ----------------------
@@ -31,8 +31,7 @@ raffleizeTransactionRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack)
 raffleizeTransactionRun w rtxbc raffleizeActon interactionContextNFT optionalRecipient = do
   let userAddrs = UserAddresses (toList $ GeniusYield.TxBuilder.userAddresses w) (userChangeAddress w) Nothing
   let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
-  result <- runReaderT (interactionToTxSkeleton raffleizeInteraction) rtxbc
-  (skeleton, ac) <- result
+  (skeleton, ac) <- runReaderT (interactionToTxSkeleton raffleizeInteraction) rtxbc
   (_, txId) <- withWalletBalancesCheck [] $ asUser w $ sendSkeleton' skeleton
   return (txId, ac)
 
@@ -48,7 +47,13 @@ deployValidatorsRun :: (GYTxGameMonad m, HasCallStack) => User -> m RaffleizeTxB
 deployValidatorsRun w = do
   refTicketValidator <- deployReferenceScriptRun ticketValidatorGY w w
   refRaffleValidator <- deployReferenceScriptRun raffleizeValidatorGY w w
-  return RaffleizeTxBuildingContext {raffleValidatorRef = refRaffleValidator, ticketValidatorRef = refTicketValidator}
+  refMintingPolicy <- deployReferenceScriptRun raffleizeMintingPolicyGY w w
+  return
+    RaffleizeTxBuildingContext
+      { raffleValidatorRef = refRaffleValidator,
+        ticketValidatorRef = refTicketValidator,
+        mintingPolicyRef = refMintingPolicy
+      }
 
 queryRaffleRun :: (GYTxGameMonad m, HasCallStack) => User -> AssetClass -> m (Maybe RaffleInfo)
 queryRaffleRun w rid =
@@ -77,11 +82,11 @@ deployValidatorsAndCreateNewValidRaffleRun testWallets = do
   rddl <- pPOSIXTimeFromSlotInteger 200
   let config =
         RaffleConfig
-          { rCommitDDL = cddl
-          , rRevealDDL = rddl
-          , rTicketPrice = 5_000_000
-          , rMinTickets = 4
-          , rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
+          { rCommitDDL = cddl,
+            rRevealDDL = rddl,
+            rTicketPrice = 5_000_000,
+            rMinTickets = 4,
+            rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
           }
   deployValidatorsAndCreateNewRaffleRun testWallets config
 

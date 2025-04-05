@@ -15,6 +15,7 @@ import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import RaffleizeDApp.TxBuilding.Utils
+import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
 
 addressFromSkey :: ProviderCtx -> GYExtendedPaymentSigningKey -> GYAddress
@@ -61,15 +62,19 @@ deployValidators pCtx skey = do
   let nid = (cfgNetworkId . ctxCoreCfg) pCtx
   let my_addr = addressFromPaymentSigningKey nid skey
   let userAddresses = UserAddresses [my_addr] my_addr Nothing
-  rTxBody <- runReaderT (deployRaffleizeValidatortTxBody userAddresses) pCtx
+  rTxBody <- runReaderT ((deployReferenceScriptTxBody . validatorToScript $ raffleizeValidatorGY) userAddresses) pCtx
   let rSigned = signGYTxBody rTxBody [skey]
   rTxOutRef <- runReaderT (submitTxAndWaitForConfirmation rSigned) pCtx
-  putStrLn $ yellowColorString ("1/2 deployed ..." :: String)
-  tTxBody <- runReaderT (deployTicketValidatortTxBody userAddresses) pCtx
+  putStrLn $ yellowColorString ("1/3 deployed ..." :: String)
+  tTxBody <- runReaderT ((deployReferenceScriptTxBody . validatorToScript $ ticketValidatorGY) userAddresses) pCtx
   let tSigned = signGYTxBody tTxBody [skey]
   tTxOutRef <- runReaderT (submitTxAndWaitForConfirmation tSigned) pCtx
-  putStrLn $ yellowColorString ("2/2 deployed ..." :: String)
-  let validators = RaffleizeTxBuildingContext {raffleValidatorRef = rTxOutRef, ticketValidatorRef = tTxOutRef}
+  putStrLn $ yellowColorString ("2/3 deployed ..." :: String)
+  mpTxBody <- runReaderT ((deployReferenceScriptTxBody . validatorToScript $ raffleizeMintingPolicyGY) userAddresses) pCtx
+  let mpSigned = signGYTxBody mpTxBody [skey]
+  mpTxOutRef <- runReaderT (submitTxAndWaitForConfirmation mpSigned) pCtx
+  putStrLn $ yellowColorString ("2/3 deployed ..." :: String)
+  let validators = RaffleizeTxBuildingContext {raffleValidatorRef = rTxOutRef, ticketValidatorRef = tTxOutRef, mintingPolicyRef = mpTxOutRef}
   B.writeFile raffleizeValidatorsConfig (encode . toJSON $ validators)
   putStrLn $ greenColorString ("exported to " <> raffleizeValidatorsConfig)
 

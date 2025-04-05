@@ -42,11 +42,7 @@ deployReferenceScriptTxBody script userAddresses = do
   providerCtx <- ask
   liftIO $ runTxI providerCtx userAddresses (addRefScriptSkeleton script)
 
-deployRaffleizeValidatortTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> m GYTxBody
-deployRaffleizeValidatortTxBody = deployReferenceScriptTxBody (validatorToScript raffleizeValidatorGY)
 
-deployTicketValidatortTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> m GYTxBody
-deployTicketValidatortTxBody = deployReferenceScriptTxBody (validatorToScript ticketValidatorGY)
 
 -----------------
 
@@ -57,7 +53,7 @@ deployTicketValidatortTxBody = deployReferenceScriptTxBody (validatorToScript ti
 interactionToTxBody :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m GYTxBody
 interactionToTxBody interaction@RaffleizeInteraction {userAddresses} = do
   roc <- ask
-  let skeleton = runReader (interactionToTxSkeleton interaction) (raffleizeTxBuildingCtx roc)
+  let skeleton = runReaderT (interactionToTxSkeleton interaction) (raffleizeTxBuildingCtx roc)
   liftIO $ runTxI (providerCtx roc) userAddresses (fst <$> skeleton)
 
 interactionToUnsignedTx :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m GYTx
