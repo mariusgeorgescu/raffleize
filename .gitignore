@@ -1,4 +1,5 @@
 #HASKELL
+tmpdir
 dist
 dist-*
 cabal-dev
@@ -48,6 +49,7 @@ out
 
 idealog.txt
 result
+result-man
 
 #Raffleize
 
