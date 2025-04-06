@@ -77,7 +77,7 @@ buyTicketTX secretHash recipient raffleRefAC = do
   spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC buyRedeemer raffleizeValidatorGY
   let (new_rsd, new_tsd) = buyTicketToRaffle secretHash rsd (rRaffleValidatorHash . rParam $ rsd)
   isRaffleStateUpdated <- txMustLockStateWithInlineDatumAndValue raffleizeValidatorGY (mkRaffleDatum new_rsd) (rValue #+ raffleTicketPriceValue rsd)
-  isMintingTicketRefAnUserNFTs <- txNFTAction mpScriptRef (MintTicket raffleRefAC)
+  isMintingTicketRefAnUserNFTs <- txNFTAction mpScriptRef (MintTicket raffleRefAC secretHash)
   let (ticketRefAC, ticketUserAC) = getNextTicketToMintAssetClasses rsd -- Generate ticket tokens based on no. of tickets sold.
   let ticketassetClassContextNFTp = assetClassValue ticketRefAC 1
   let ticketUserNFTp = assetClassValue ticketUserAC 1

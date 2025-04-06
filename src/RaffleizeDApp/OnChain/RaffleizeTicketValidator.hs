@@ -31,7 +31,7 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     evalTicketState,
     evaluateRaffleState,
     generateTicketACFromTicket,
-    getRaffleStateDatumAndValue,
+    unsafeGetRaffleStateDatumAndValue,
     isOneOutputTo,
     revealTicketToRaffleT,
   )
@@ -39,7 +39,7 @@ import RaffleizeDApp.OnChain.Utils
   ( AScriptContext (AScriptContext),
     ATxInfo (..),
     findTxInWith,
-    getOwnInput,
+    unsafeGetOwnInput,
     hasTxInWithToken,
     hasTxOutWithInlineDatumAnd,
     isBurningNFT,
@@ -66,7 +66,7 @@ ticketValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer bre
                     RaffleOwnerRedeemer GetCollateralOfExpiredTicket ->
                       let !raffleUserAC = deriveUserFromRefAC raffleRefAC
                           ---- RAFFLE STATE FROM REF INPUT
-                          (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs
+                          (!rValue, !rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs
                           !rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
                           !currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                        in pand
@@ -76,7 +76,7 @@ ticketValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer bre
                             ]
                     TicketOwnerRedeemer RefundCollateralLosing _ ->
                       let ---- RAFFLE STATE FROM REF INPUT
-                          (!rValue, !rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction has the raffleRef as reference input
+                          (!rValue, !rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction has the raffleRef as reference input
                           !rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
                           !currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
                        in pand
@@ -87,10 +87,10 @@ ticketValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer bre
                             ]
                     TicketOwnerRedeemer !toa _ ->
                       -- rsd must be strict to ensure that raffle state is spent
-                      let (rValue, rsd) = getRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
+                      let (rValue, rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
                           rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
                           currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
-                          ownInput = getOwnInput context
+                          ownInput = unsafeGetOwnInput context
                           ownValue = txOutValue ownInput
                           !ticketValidatorAddr = txOutAddress ownInput
                           hasOnly1InputFromValidator = case findTxInWith noConstraint (#== ticketValidatorAddr) txInfoInputs of

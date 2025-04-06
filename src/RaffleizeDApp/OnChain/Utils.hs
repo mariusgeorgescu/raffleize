@@ -202,20 +202,21 @@ hasTxInWith :: ValueConstraint -> AddressConstraint -> [TxInInfo] -> Bool
 hasTxInWith toValue addr = hasTxOutWith toValue addr . (txInInfoResolved #<$>)
 {-# INLINEABLE hasTxInWith #-}
 
-getInlineDatum :: TxOut -> BuiltinData
-getInlineDatum out = case txOutDatum out of
+unsafeGetInlineDatum :: TxOut -> BuiltinData
+unsafeGetInlineDatum out = case txOutDatum out of
   OutputDatum da -> getDatum da
   _ -> traceError "No inline datum"
-{-# INLINEABLE getInlineDatum #-}
+{-# INLINEABLE unsafeGetInlineDatum #-}
 
-getCurrentStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, BuiltinData)
-getCurrentStateDatumAndValue stateToken toAddress outs = case filter (isTxOutWith (`geq` assetClassValue stateToken 1) toAddress . txInInfoResolved) outs of
-  [TxInInfo _ out] -> (txOutValue out, getInlineDatum out)
+unsafeGetCurrentStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, BuiltinData)
+unsafeGetCurrentStateDatumAndValue stateToken toAddress outs = case filter (isTxOutWith (`geq` assetClassValue stateToken 1) toAddress . txInInfoResolved) outs of
+  [TxInInfo _ out] -> (txOutValue out, unsafeGetInlineDatum out)
   _ -> traceError "state nft not found"
-{-# INLINEABLE getCurrentStateDatumAndValue #-}
+{-# INLINEABLE unsafeGetCurrentStateDatumAndValue #-}
 
 hasTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstraint -> [TxOut] -> Bool
-hasTxOutWithInlineDatumAnd datum toValue toAddress = traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd datum toValue toAddress)
+hasTxOutWithInlineDatumAnd datum toValue toAddress =
+  traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd datum toValue toAddress)
 {-# INLINEABLE hasTxOutWithInlineDatumAnd #-}
 
 -- hasTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> [TxOut] -> Bool
@@ -314,11 +315,13 @@ tokenNameFromTxOutRef :: TxOutRef -> TokenName
 tokenNameFromTxOutRef (TxOutRef (TxId txIdbs) txIdx) = TokenName (takeByteString 28 $ blake2b_256 (txIdbs #<> (serialiseData . toBuiltinData) txIdx))
 {-# INLINEABLE tokenNameFromTxOutRef #-}
 
-getOwnInput :: AScriptContext -> TxOut
-getOwnInput context = case findOwnInputA context of
+-- | Function to get the spending input
+--  Fails if is not a SpendingScript
+unsafeGetOwnInput :: AScriptContext -> TxOut
+unsafeGetOwnInput context = case findOwnInputA context of
   Nothing -> traceError "Own input not found"
   Just (TxInInfo _inOutRef inOut) -> inOut
-{-# INLINEABLE getOwnInput #-}
+{-# INLINEABLE unsafeGetOwnInput #-}
 
 -- | Find the input currently being validated.
 findOwnInputA :: AScriptContext -> Maybe TxInInfo

@@ -30,7 +30,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
     raffleStateData,
   )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketStateData (..), TicketStateId (..), ticketStateData)
-import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger', getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
+import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger', integerToBs24, isTxOutWith, noConstraint, unsafeGetCurrentStateDatumAndValue)
 import Prelude
 
 ------------------------------------------------------------------------------------------------
@@ -270,13 +270,17 @@ checkTicketAction action currentStateLabel =
       Admin _ -> []
 {-# INLINEABLE checkTicketAction #-}
 
-getRaffleStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, RaffleStateData)
-getRaffleStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, raffleStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
-{-# INLINEABLE getRaffleStateDatumAndValue #-}
+unsafeGetRaffleStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, RaffleStateData)
+unsafeGetRaffleStateDatumAndValue ac addr txins =
+  let (v, b) = unsafeGetCurrentStateDatumAndValue ac addr txins
+   in (v, raffleStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
+{-# INLINEABLE unsafeGetRaffleStateDatumAndValue #-}
 
-getTicketStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, TicketStateData)
-getTicketStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, ticketStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
-{-# INLINEABLE getTicketStateDatumAndValue #-}
+unsafeGetTicketStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, TicketStateData)
+unsafeGetTicketStateDatumAndValue ac addr txins =
+  let (v, b) = unsafeGetCurrentStateDatumAndValue ac addr txins
+   in (v, ticketStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
+{-# INLINEABLE unsafeGetTicketStateDatumAndValue #-}
 
 isTicketForRaffle :: AssetClass -> TicketStateData -> RaffleStateData -> Bool
 isTicketForRaffle ticketUserAC tsd rsd =

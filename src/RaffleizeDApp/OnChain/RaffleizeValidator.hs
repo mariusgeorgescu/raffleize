@@ -38,25 +38,25 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     deriveUserFromRefAC,
     evaluateRaffleState,
     getNextTicketToMintAssetClasses,
-    getTicketStateDatumAndValue,
     isOneOutputTo,
     isTicketForRaffle,
     redeemerToAction,
     refundTicketToRaffle,
     revealTicketToRaffleR,
     ticketCollateralValue,
+    unsafeGetTicketStateDatumAndValue,
     updateRaffleStateValue,
   )
 import RaffleizeDApp.OnChain.Utils
   ( AScriptContext (..),
     ATxInfo (..),
-    getOwnInput,
     hasTxInWithToken,
     hasTxOutWithInlineDatumAnd,
     isBurningNFT,
     isMintingNFT,
     mkUntypedLambda,
     spendsToken,
+    unsafeGetOwnInput,
   )
 
 --- *  Validator Lambda
@@ -68,7 +68,7 @@ raffleizeValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer 
     (Just (RaffleDatum _mdata _vs rsd@RaffleStateData {rRaffleID, rParam, rRandomSeed}), Just redeemer) ->
       if spendsToken rRaffleID context --- Must spend the raffle ref NFT in the currently validating input.
         then
-          let !ownInput = getOwnInput context
+          let !ownInput = unsafeGetOwnInput context -- Fails if does
               !ownValue = txOutValue ownInput
               !action = redeemerToAction redeemer
               !updatedRaffleStateValue = updateRaffleStateValue action rsd ownValue
@@ -116,7 +116,7 @@ raffleizeValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer 
                                 locksRaffleStateWithUpdatedDatumAndValue rsd -- Must lock raffle state at Raffle Validator address (with updated value and datum).
                               ]
                   TicketOwnerRedeemer !ticketOwnerAction !ticketRefAC ->
-                    let !tsd = snd $ getTicketStateDatumAndValue ticketRefAC (#== ticketValidatorAddr) txInfoInputs --- Must spend the ticket ref NFT in another input.
+                    let !tsd = snd $ unsafeGetTicketStateDatumAndValue ticketRefAC (#== ticketValidatorAddr) txInfoInputs --- Must spend the ticket ref NFT in another input.
                         !ticketUserAC = deriveUserFromRefAC ticketRefAC
                         burnsTickets = isBurningNFT ticketRefAC txInfoMint && isBurningNFT ticketUserAC txInfoMint
                      in hasTxInWithToken ticketUserAC txInfoInputs -- Must spend the ticket user NFT

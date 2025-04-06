@@ -108,7 +108,7 @@ txNFTAction mpRefScript redeemer = do
           [ mustMint (GYMintReference mpRefScript raffleizeMintingPolicyGY) gyRedeemer gyRaffleRefTN 1,
             mustMint (GYMintReference mpRefScript raffleizeMintingPolicyGY) gyRedeemer gyRaffleUserTN 1
           ]
-    MintTicket raffleRefAC -> do
+    MintTicket raffleRefAC _ -> do
       (raffle, _) <- getRaffleStateDataAndValue raffleRefAC
       let (ticketRefAC, ticketUserAC) = getNextTicketToMintAssetClasses raffle -- Generate ticket tokens based on no. of tickets sold.
       gyTicketRefTN <- tokenNameFromPlutus' (snd . unAssetClass $ ticketRefAC)
