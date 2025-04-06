@@ -4,7 +4,8 @@ import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
 import PlutusLedgerApi.V3
-  ( POSIXTime (POSIXTime),
+  ( Address,
+    POSIXTime (POSIXTime),
     POSIXTimeRange,
     PubKeyHash,
     ScriptHash,
@@ -13,7 +14,7 @@ import PlutusLedgerApi.V3
     TxInInfo,
     TxOut (..),
     UnsafeFromData (unsafeFromBuiltinData),
-    Value, Address,
+    Value,
   )
 import PlutusTx.Builtins
   ( divideInteger,
@@ -101,7 +102,7 @@ checkRaffleConfig
         traceIfFalse "empty stake" $
           rStake #/= mempty,
         traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked.
-           -- to avoid double satisfaction when checking if stake is locked.
+        -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffleConfig #-}
@@ -240,8 +241,8 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId =
     REVEALING -> if isNothing tSecret then REVEALABLE else REVEALED
     SUCCESS_LOCKED_STAKE_AND_AMOUNT -> if randomSeed #== tNumber then WINNING else LOSING
     SUCCESS_LOCKED_STAKE -> if randomSeed #== tNumber then WINNING else LOSING
-    SUCCESS_LOCKED_AMOUNT -> LOSING
-    SUCCESS_FINAL -> LOSING
+    SUCCESS_LOCKED_AMOUNT -> LOSING -- in this state winning ticket is already burned
+    SUCCESS_FINAL -> LOSING -- in this state winning ticket is already burned
     UNREVEALED_NO_REVEALS -> UNREVEALED_EXPIRED
     UNREVEALED_LOCKED_STAKE_AND_REFUNDS -> if isJust tSecret then EXTRA_REFUNDABLE else UNREVEALED_EXPIRED
     UNREVEALED_LOCKED_REFUNDS -> if isJust tSecret then EXTRA_REFUNDABLE else UNREVEALED_EXPIRED

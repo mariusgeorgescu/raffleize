@@ -9,7 +9,7 @@
 module RaffleizeDApp.OnChain.RaffleizeValidator where
 
 import PlutusCore.Builtin.Debug (plcVersion110)
-import PlutusLedgerApi.V1 (assetClass, assetClassValue, pubKeyHashAddress)
+import PlutusLedgerApi.V1 (assetClassValue, pubKeyHashAddress)
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V2 (Redeemer (Redeemer))
 import PlutusLedgerApi.V3 (Datum (Datum), PubKeyHash, TxOut (txOutAddress, txOutValue), fromBuiltinData)
@@ -29,24 +29,20 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
     mkRaffleDatum,
   )
 import RaffleizeDApp.CustomTypes.TicketTypes
-  ( TicketStateData (tNumber),
+  ( TicketStateData,
     mkTicketDatum,
   )
 import RaffleizeDApp.OnChain.RaffleizeLogic
-  ( buyTicketToRaffle,
-    checkRaffleAction,
+  ( checkRaffleAction,
     checkRaffleConfig,
     checkTicketAction,
     deriveUserFromRefAC,
     evalTicketState,
     evaluateRaffleState,
     getNextTicketToMintAssetClasses,
-    isOneOutputTo,
     isValidTicketForRaffle,
     redeemerToAction,
-    refundTicketToRaffle,
     revealTicketToRaffleRT,
-    ticketCollateralValue,
     unsafeGetTicketStateDatumAndValue,
     updateRaffleStateValue,
   )
@@ -185,8 +181,3 @@ untypedRaffleizeValidatorLamba = mkUntypedLambda . raffleizeValidatorLamba
 -- | Function for producing the compiled spending validator script.
 compileRaffleizeValidator :: PubKeyHash -> CompiledCode (BuiltinData -> BuiltinUnit)
 compileRaffleizeValidator params = $$(compile [||untypedRaffleizeValidatorLamba||]) `unsafeApplyCode` liftCode plcVersion110 params
-
--- locksRaffleStateWithUpdatedDatumAndValue new_rsd, -- Must lock raffle state at Raffle Validator address (with updated value and datum).
---  locksTicketStateWithUpdatedDatumAndValue new_tsd (#== (ticketRefNFT #+ ticketCollateralValue rsd)) -- Must lock ticket state at Ticket Validator address (with collateral value and valid datum).
-
---

@@ -5,6 +5,7 @@
 module RaffleizeDApp.OnChain.RaffleizeTicketValidator where
 
 import PlutusCore.Builtin.Debug (plcVersion110)
+import PlutusLedgerApi.V1 (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V3
 import PlutusTx
@@ -27,18 +28,23 @@ import RaffleizeDApp.CustomTypes.TicketTypes
     mkTicketDatum,
   )
 import RaffleizeDApp.OnChain.RaffleizeLogic
-  ( deriveUserFromRefAC,
+  ( checkTicketAction,
+    deriveUserFromRefAC,
     evalTicketState,
     evaluateRaffleState,
     generateTicketACFromTicket,
     isOneOutputTo,
-    unsafeGetRaffleStateDatumAndValue, revealTicketToRaffleT,
+    isValidTicketForRaffle,
+    redeemerToAction,
+    revealTicketToRaffleT,
+    unsafeGetRaffleStateDatumAndValue,
   )
 import RaffleizeDApp.OnChain.Utils
   ( AScriptContext (AScriptContext),
     ATxInfo (..),
     findTxInWith,
     hasTxInWithToken,
+    hasTxOutWith,
     hasTxOutWithInlineDatumAnd,
     isBurningNFT,
     mkUntypedLambda,
@@ -51,71 +57,58 @@ import RaffleizeDApp.OnChain.Utils
 
 ticketValidatorLamba :: PubKeyHash -> AScriptContext -> Bool
 ticketValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer bredeemer) (SpendingScript _outRef (Just (Datum bdatum)))) =
-  case (fromBuiltinData bdatum, fromBuiltinData bredeemer) of
-    (Just (TicketDatum _ _ tsd@TicketStateData {..}), Just redeemer) ->
-      let (!ticketRefAC, !ticketUserAC) = generateTicketACFromTicket tsd
-       in if ownInputHasToken ticketRefAC context --- Transaction spends the ticket ref NFT in the currently validating input.
-            then
-              let !raffleRefAC = tRaffle
-                  !raffleValidatorAddr = scriptHashAddress tRaffleValidator
-                  burnsTicketUserAndRef =
-                    isBurningNFT ticketRefAC txInfoMint
-                      && isBurningNFT ticketUserAC txInfoMint
-               in case redeemer of
-                    RaffleOwnerRedeemer GetCollateralOfExpiredTicket ->
-                      let !raffleUserAC = deriveUserFromRefAC raffleRefAC
-                          ---- RAFFLE STATE FROM REF INPUT
-                          (!rValue, !rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction references the raffleRef.in ref inputs
-                          !rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                          !currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
-                       in pand
-                            [ currentTicketState #== UNREVEALED_EXPIRED, -- BURNABLE_BY_RAFFLE_OWNER (UNREVEALED_EXPIRED)
-                              isBurningNFT ticketRefAC txInfoMint, -- Transaction burns 1 ticketRef.
-                              hasTxInWithToken raffleUserAC txInfoInputs -- Transaction spends the raffle user NFT on another input.
-                            ]
-                    TicketOwnerRedeemer RefundCollateralLosing _ ->
-                      let ---- RAFFLE STATE FROM REF INPUT
-                          (!rValue, !rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs --- Transaction has the raffleRef as reference input
-                          !rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                          !currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
-                       in pand
-                            [ currentTicketState #== LOSING,
-                              burnsTicketUserAndRef, -- Must burn tickets NFTs
-                              traceIfFalse "are you stupid?" $
-                                rRandomSeed rsd #/= tNumber -- Must not be the winning ticket
-                            ]
-                    TicketOwnerRedeemer !toa _ ->
-                      -- rsd must be strict to ensure that raffle state is spent
-                      let (rValue, rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs --- Must spend the raffleRef on another input.
-                          rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
-                          currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
-                          ownInput = unsafeGetOwnInput context
-                          ownValue = txOutValue ownInput
-                          !ticketValidatorAddr = txOutAddress ownInput
-                          hasOnly1InputFromValidator = case findTxInWith noConstraint (#== ticketValidatorAddr) txInfoInputs of
-                            [_x] -> True
-                            _ -> False
-                       in ---- NO DOUBLE SATISFACTION when updating the raffle state
-                          hasOnly1InputFromValidator -- Must be only one ticket action per transaction
-                            && case toa of
-                              RevealTicketSecret secret ->
-                                let !new_tsd = revealTicketToRaffleT secret tsd
-                                 in pand
-                                      [ traceIfFalse "secret too long" $ lengthOfByteString secret #<= secretMaxLength,
-                                        hasTxInWithToken ticketUserAC txInfoInputs, -- Transaction spends the ticket user NFT on another input.
-                                        currentTicketState #== REVEALABLE, -- REVEALABLE -- Current state is valid for revealing ticket.
-                                        hasTxOutWithInlineDatumAnd (mkTicketDatum new_tsd) (#== ownValue) (#== ticketValidatorAddr) txInfoOutputs ---Transaction locks new ticket state at validator address (with updated datum).
-                                      ]
-                              _otherClosingAction ->
-                                -- burnsTicketUserAndRef -- Not checking the state to save memory; If you are stupid I let you be
-                                pand
-                                  [ currentTicketState `pelem` [FULLY_REFUNDABLE, EXTRA_REFUNDABLE, WINNING], -- BURNABLE_BY_TICKET_OWNER
-                                    burnsTicketUserAndRef
-                                  ]
-                    _ -> traceIfFalse "Invalid redeemer for ticket ref" False
-            else --- Transaction does not spend the ticket ref NFT in the currently validating input.
-              isOneOutputTo txInfoOutputs adminPKH --- Must have exactly one outoput to admin
-    _ -> False
+  let !ownInput = unsafeGetOwnInput context -- safe in this care since is SpendingScript
+      !ownValue = txOutValue ownInput
+   in case (fromBuiltinData bdatum, fromBuiltinData bredeemer) of
+        (Just (TicketDatum _ _ tsd@TicketStateData {..}), Just redeemer) ->
+          let (!ticketRefAC, !ticketUserAC) = generateTicketACFromTicket tsd
+           in --- Transaction spends the ticket ref NFT in the currently validating input.
+              ( ownInputHasToken ticketRefAC context
+                  && ( let !raffleRefAC = tRaffle
+                           !raffleValidatorAddr = scriptHashAddress tRaffleValidator
+                           burnsTicketUserAndRef =
+                             isBurningNFT ticketRefAC txInfoMint
+                               && isBurningNFT ticketUserAC txInfoMint
+                        in case redeemer of
+                             RaffleOwnerRedeemer GetCollateralOfExpiredTicket ->
+                               let !raffleUserAC = deriveUserFromRefAC raffleRefAC
+                                   ---- RAFFLE STATE FROM REF INPUT
+                                   -- Fails if the tx does not reference the corresponding raffle at the raffle validator address
+                                   (!rValue, !rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs
+                                   !rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
+                                   !currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
+                                in pand
+                                     [ currentTicketState #== UNREVEALED_EXPIRED, -- BURNABLE_BY_RAFFLE_OWNER (UNREVEALED_EXPIRED)
+                                       isBurningNFT ticketRefAC txInfoMint, -- Transaction burns 1 ticketRef.
+                                       hasTxInWithToken raffleUserAC txInfoInputs -- Transaction spends the raffle user NFT on another input.
+                                     ]
+                             TicketOwnerRedeemer RefundCollateralLosing _ ->
+                               let ---- RAFFLE STATE FROM REF INPUT
+                                   -- Fails if the tx does not reference the corresponding raffle at the raffle validator address.
+                                   (!rValue, !rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoReferenceInputs
+                                   !rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
+                                   !currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
+                                in pand
+                                     [ currentTicketState #== LOSING,
+                                       burnsTicketUserAndRef -- Must burn both tickets NFTs
+                                     ]
+                             TicketOwnerRedeemer _action _ ->
+                               let -- Fails if the tx does not spend the corresponding raffle at the raffle validator address, on another input.
+                                   !(rValue, rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs
+                                   rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
+                                   currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
+                                in pand -- Validate raffle relationship (rest of validations are delegated to raffle validator) 
+                                     [ hasTxInWithToken ticketUserAC txInfoInputs, -- Must prove ownership of the user token
+                                       isValidTicketForRaffle ticketUserAC tsd (rRaffleID rsd), -- The ticket must be of the current raffle
+                                       checkTicketAction (redeemerToAction redeemer) currentTicketState -- Redeemer action must be valid for the current ticket state.
+                                     ]
+                             _ -> traceIfFalse "Invalid redeemer for ticket ref" False
+                     )
+              )
+        (Just _, Nothing) -> traceError "invalid redeemer"
+        (Nothing, _) ->
+          trace "Output with invalid datum" $ --  Spendable to admin only
+            hasTxOutWith (#== ownValue) (#== pubKeyHashAddress adminPKH) txInfoOutputs
 ticketValidatorLamba _ _ = False
 
 ------------------------------------

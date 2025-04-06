@@ -62,7 +62,7 @@ import RaffleizeDApp.OnChain.Utils
 data RaffleizeMintingReedemer
   = MintRaffle RaffleConfig TxOutRef
   | MintTicket AssetClass SecretHash
-  | Burn AssetClass
+  | Burn
   deriving (Generic)
 
 unstableMakeIsData ''RaffleizeMintingReedemer ---  must be changed with stable version
@@ -117,7 +117,7 @@ raffleizePolicyLambda params@RaffleParam {rRaffleValidatorHash, rTicketValidator
                       traceIfFalse "Tx must mint JUST ticket's ref and user NFTs" $
                         txInfoMint #== (ticketRefNFT #+ ticketUserNFT)
                     ]
-            Burn _ac ->
+            Burn ->
               let mTokens = M.toList <$> M.lookup cs (getValue txInfoMint) -- All negative
                in case mTokens of
                     Nothing -> traceError "Impossible: current currency symbol not in txInfoMint"

@@ -93,9 +93,10 @@ txMustLockStateWithInlineDatumAndValue validator todata pValue = do
           gyTxOutRefS = Nothing
         }
 
-txNFTAction :: (GYTxUserQueryMonad m) => GYTxOutRef -> RaffleizeMintingReedemer -> m (GYTxSkeleton 'PlutusV3)
-txNFTAction mpRefScript redeemer = do
+txNFTAction :: (GYTxUserQueryMonad m) => GYTxOutRef -> RaffleizeMintingReedemer -> [AssetClass] -> m (GYTxSkeleton 'PlutusV3)
+txNFTAction mpRefScript redeemer burnACs = do
   let gyRedeemer = redeemerFromPlutus' . toBuiltinData $ redeemer
+      raffleizeMP = GYMintReference @'PlutusV3 mpRefScript raffleizeMintingPolicyGY
   case redeemer of
     MintRaffle _ tor -> do
       let (raffleRefTN, raffleUserTN) = generateRefAndUserTN $ tokenNameFromTxOutRef tor
@@ -105,8 +106,8 @@ txNFTAction mpRefScript redeemer = do
       gyRaffleUserTN <- tokenNameFromPlutus' (snd . unAssetClass $ raffleUserAC)
       return $ --
         mconcat
-          [ mustMint (GYMintReference mpRefScript raffleizeMintingPolicyGY) gyRedeemer gyRaffleRefTN 1,
-            mustMint (GYMintReference mpRefScript raffleizeMintingPolicyGY) gyRedeemer gyRaffleUserTN 1
+          [ mustMint raffleizeMP gyRedeemer gyRaffleRefTN 1,
+            mustMint raffleizeMP gyRedeemer gyRaffleUserTN 1
           ]
     MintTicket raffleRefAC _ -> do
       (raffle, _) <- getRaffleStateDataAndValue raffleRefAC
@@ -115,12 +116,12 @@ txNFTAction mpRefScript redeemer = do
       gyTicketUserTN <- tokenNameFromPlutus' (snd . unAssetClass $ ticketUserAC)
       return $
         mconcat
-          [ mustMint (GYMintReference mpRefScript raffleizeMintingPolicyGY) gyRedeemer gyTicketRefTN 1,
-            mustMint (GYMintReference mpRefScript raffleizeMintingPolicyGY) gyRedeemer gyTicketUserTN 1
+          [ mustMint raffleizeMP gyRedeemer gyTicketRefTN 1,
+            mustMint raffleizeMP gyRedeemer gyTicketUserTN 1
           ]
-    Burn ac -> do
-      gyTN <- tokenNameFromPlutus' (snd . unAssetClass $ ac)
-      return $ mustMint (GYMintScript raffleizeMintingPolicyGY) gyRedeemer gyTN (negate 1)
+    Burn -> do
+      gyTN <- mapM (tokenNameFromPlutus' . snd . unAssetClass) burnACs
+      return $ mconcat $ (\tn -> mustMint raffleizeMP gyRedeemer tn (negate 1)) <$> gyTN
 
 addRefScriptSkeleton :: (GYTxQueryMonad m) => GYScript 'PlutusV3 -> m (GYTxSkeleton v)
 addRefScriptSkeleton sc = do
