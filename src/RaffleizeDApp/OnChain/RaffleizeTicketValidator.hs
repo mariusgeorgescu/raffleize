@@ -14,18 +14,16 @@ import PlutusTx
     liftCode,
     unsafeApplyCode,
   )
-import RaffleizeDApp.Constants (secretMaxLength)
 import RaffleizeDApp.CustomTypes.ActionTypes
   ( RaffleOwnerAction (GetCollateralOfExpiredTicket),
     RaffleizeRedeemer (RaffleOwnerRedeemer, TicketOwnerRedeemer),
-    TicketOwnerAction (RefundCollateralLosing, RevealTicketSecret),
+    TicketOwnerAction (RefundCollateralLosing),
   )
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
   ( TicketDatum (..),
     TicketStateData (..),
     TicketStateId (..),
-    mkTicketDatum,
   )
 import RaffleizeDApp.OnChain.RaffleizeLogic
   ( checkTicketAction,
@@ -33,22 +31,17 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     evalTicketState,
     evaluateRaffleState,
     generateTicketACFromTicket,
-    isOneOutputTo,
     isValidTicketForRaffle,
     redeemerToAction,
-    revealTicketToRaffleT,
     unsafeGetRaffleStateDatumAndValue,
   )
 import RaffleizeDApp.OnChain.Utils
   ( AScriptContext (AScriptContext),
     ATxInfo (..),
-    findTxInWith,
     hasTxInWithToken,
     hasTxOutWith,
-    hasTxOutWithInlineDatumAnd,
     isBurningNFT,
     mkUntypedLambda,
-    noConstraint,
     ownInputHasToken,
     unsafeGetOwnInput,
   )
@@ -97,7 +90,7 @@ ticketValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer bre
                                    !(rValue, rsd) = unsafeGetRaffleStateDatumAndValue raffleRefAC (#== raffleValidatorAddr) txInfoInputs
                                    rStateId = evaluateRaffleState (txInfoValidRange, rsd, rValue)
                                    currentTicketState = evalTicketState tsd (rRandomSeed rsd) rStateId
-                                in pand -- Validate raffle relationship (rest of validations are delegated to raffle validator) 
+                                in pand -- Validate raffle relationship (rest of validations are delegated to raffle validator)
                                      [ hasTxInWithToken ticketUserAC txInfoInputs, -- Must prove ownership of the user token
                                        isValidTicketForRaffle ticketUserAC tsd (rRaffleID rsd), -- The ticket must be of the current raffle
                                        checkTicketAction (redeemerToAction redeemer) currentTicketState -- Redeemer action must be valid for the current ticket state.

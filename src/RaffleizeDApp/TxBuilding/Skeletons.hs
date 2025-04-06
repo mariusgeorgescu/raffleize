@@ -7,7 +7,6 @@ import PlutusLedgerApi.V1.Value
 import PlutusLedgerApi.V3
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
-import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils

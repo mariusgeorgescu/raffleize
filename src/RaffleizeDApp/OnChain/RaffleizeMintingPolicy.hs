@@ -45,6 +45,7 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     generateRefAndUserAC,
     getNextTicketToMintAssetClasses,
     ticketCollateralValue,
+    tokenNameFromTxOutRef,
     unsafeGetRaffleStateDatumAndValue,
     updateRaffleStateValue,
   )
@@ -55,7 +56,6 @@ import RaffleizeDApp.OnChain.Utils
     hasTxInWithRef,
     hasTxOutWithInlineDatumAnd,
     mkUntypedLambda,
-    tokenNameFromTxOutRef,
   )
 
 -- | Custom redeemer type to indicate minting mode.

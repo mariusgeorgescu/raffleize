@@ -1,21 +1,8 @@
 module RaffleizeDApp.OnChain.RaffleizeLogic where
 
-import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
-import PlutusLedgerApi.V3
-  ( Address,
-    POSIXTime (POSIXTime),
-    POSIXTimeRange,
-    PubKeyHash,
-    ScriptHash,
-    ToData (toBuiltinData),
-    TokenName (TokenName),
-    TxInInfo,
-    TxOut (..),
-    UnsafeFromData (unsafeFromBuiltinData),
-    Value,
-  )
+import PlutusLedgerApi.V3 (POSIXTime (POSIXTime), POSIXTimeRange, ScriptHash, ToData (toBuiltinData), TokenName (TokenName), TxId (..), TxInInfo, TxOutRef (..), UnsafeFromData (unsafeFromBuiltinData), Value)
 import PlutusTx.Builtins
   ( divideInteger,
     modInteger,
@@ -30,7 +17,13 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
     raffleStateData,
   )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketStateData (..), TicketStateId (..), ticketStateData)
-import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger', integerToBs24, isTxOutWith, noConstraint, unsafeGetCurrentStateDatumAndValue)
+import RaffleizeDApp.OnChain.Utils
+  ( AddressConstraint,
+    adaValueFromLovelaces,
+    bsToInteger,
+    integerToBs24,
+    unsafeGetCurrentStateDatumAndValue,
+  )
 import Prelude
 
 ------------------------------------------------------------------------------------------------
@@ -300,35 +293,23 @@ buyTicketToRaffle sh raffle@RaffleStateData {..} raffleValidator =
    in (raffle_data, ticket_data)
 {-# INLINEABLE buyTicketToRaffle #-}
 
--- revealTicketToRaffleR :: BuiltinByteString -> TicketStateData -> RaffleStateData -> RaffleStateData
--- revealTicketToRaffleR secret TicketStateData {tSecretHash} raffle@RaffleStateData {rRevealedTickets, rRandomSeed, rSoldTickets} =
---   if blake2b_256 secret #== tSecretHash --  secret matches the secret hash
---     then raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger' secret) `modInteger` rSoldTickets}
---     else traceError "secret does not match the secret hash"
--- {-# INLINEABLE revealTicketToRaffleR #-}
-
-revealTicketToRaffleT :: BuiltinByteString -> TicketStateData -> TicketStateData
-revealTicketToRaffleT secret ticket@TicketStateData {tSecretHash} =
-  if blake2b_256 secret #== tSecretHash --  secret matches the secret hash
-    then ticket {tSecret = Just secret}
-    else traceError "secret does not match the secret hash"
-{-# INLINEABLE revealTicketToRaffleT #-}
-
 revealTicketToRaffleRT :: BuiltinByteString -> TicketStateData -> RaffleStateData -> (RaffleStateData, TicketStateData)
 revealTicketToRaffleRT secret ticket@TicketStateData {tSecretHash, tRaffle} raffle@RaffleStateData {rRevealedTickets, rRandomSeed, rRaffleID, rSoldTickets} =
   if tRaffle #== rRaffleID && blake2b_256 secret #== tSecretHash -- is correct ticket for the raffle and the secret matches the secret hash
     then
       let updated_ticket = ticket {tSecret = Just secret}
-          updated_raffle = raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger' secret) `modInteger` rSoldTickets}
+          updated_raffle = raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger secret) `modInteger` rSoldTickets}
        in (updated_raffle, updated_ticket)
     else traceError "secret does not match the secret hash"
 
-refundTicketToRaffle :: TicketStateData -> RaffleStateData -> RaffleStateData
-refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefundedTickets, rRaffleID} =
-  if tRaffle #== rRaffleID
-    then raffle {rRefundedTickets = rRefundedTickets #+ 1}
-    else traceError "ticket raffle id and raffle id does not match"
-{-# INLINEABLE refundTicketToRaffle #-}
+-------
+-------
+-------
+-------
+
+tokenNameFromTxOutRef :: TxOutRef -> TokenName
+tokenNameFromTxOutRef (TxOutRef (TxId txIdbs) txIdx) = TokenName (takeByteString 28 $ blake2b_256 (txIdbs #<> integerToBs24 txIdx))
+{-# INLINEABLE tokenNameFromTxOutRef #-}
 
 generateTicketTN :: Integer -> PlutusLedgerApi.V3.TokenName -> PlutusLedgerApi.V3.TokenName
 generateTicketTN i (PlutusLedgerApi.V3.TokenName bs) = PlutusLedgerApi.V3.TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . PlutusLedgerApi.V3.toBuiltinData) i))
@@ -373,13 +354,6 @@ generateTicketACFromTicket :: TicketStateData -> (AssetClass, AssetClass)
 generateTicketACFromTicket TicketStateData {tNumber, tRaffle} = generateRefAndUserAC $ generateTicketAC tNumber tRaffle
 {-# INLINEABLE generateTicketACFromTicket #-}
 
-isOneOutputTo :: [PlutusLedgerApi.V3.TxOut] -> PlutusLedgerApi.V3.PubKeyHash -> Bool
-isOneOutputTo [out] adminPKH =
-  traceIfFalse "The TxOut should be locked to the admin addr" $
-    isTxOutWith noConstraint (#== pubKeyHashAddress adminPKH) out
-isOneOutputTo _ _ = traceIfFalse "More than one output found" False
-{-# INLINEABLE isOneOutputTo #-}
-
 refTokenPrefixBS :: BuiltinByteString
 refTokenPrefixBS = integerToBs24 (0x000643b0 :: Integer) -- cheaper
 {-# INLINEABLE refTokenPrefixBS #-}
@@ -387,43 +361,6 @@ refTokenPrefixBS = integerToBs24 (0x000643b0 :: Integer) -- cheaper
 userTokenPrefixBS :: BuiltinByteString
 userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer) -- cheaper
 {-# INLINEABLE userTokenPrefixBS #-}
-
--- hasRaffleDatumWithValue :: RaffleDatum -> Value -> Address -> [TxOut] -> Bool
--- hasRaffleDatumWithValue _ _ _ [] = False
--- hasRaffleDatumWithValue rDatum rValue rAddr ((TxOut outAddr outValue (OutputDatum (Datum datum)) Nothing) : outs) =
---   traceIfFalse "raffle state not locked" $
---     pand
---       [ toBuiltinData rDatum #== datum
---       , rValue #== outValue
---       , rAddr #== outAddr
---       ]
---       || hasRaffleDatumWithValue rDatum rValue rAddr outs
--- hasRaffleDatumWithValue _ _ _ _ = False
--- {-# INLINEABLE hasRaffleDatumWithValue #-}
-
--- hasTicketDatumWithValue :: TicketDatum -> Value -> Address -> [TxOut] -> Bool
--- hasTicketDatumWithValue _ _ _ [] = False
--- hasTicketDatumWithValue ticketDatum tValue tAddr ((TxOut outAddr outValue (OutputDatum (Datum datum)) Nothing) : outs) =
---   traceIfFalse "ticket state not locked" $
---     pand
---       [ toBuiltinData ticketDatum #== datum
---       , tValue #== outValue
---       , tAddr #== outAddr
---       ]
---       || hasTicketDatumWithValue ticketDatum tValue tAddr outs
--- hasTicketDatumWithValue _ _ _ _ = False
--- {-# INLINEABLE hasTicketDatumWithValue #-}
-
--- paysValueToAddr :: Value -> Address -> [TxOut] -> Bool
--- paysValueToAddr _ _ [] = False
--- paysValueToAddr pValue pAddr ((TxOut outAddr outValue _ _) : outs) =
---   traceIfFalse "value not paid" $
---     pand
---       [ outValue `geq` pValue
---       , pAddr #== outAddr
---       ]
---       || paysValueToAddr pValue pAddr outs
--- {-# INLINEABLE paysValueToAddr #-}
 
 -- Used for Offchain to identify valid utxos before parsing datum
 -- This function checks if tokenname has the raffle prefix
@@ -454,7 +391,7 @@ validActionLabelsForRaffleState = fmap actionToLabel . validActionsForRaffleStat
   where
     validActionsForRaffleState :: RaffleStateId -> [RaffleizeAction]
     validActionsForRaffleState r = case r of
-      NEW -> [User (BuyTicket mempty), RaffleOwner Cancel, RaffleOwner (Update mempty)]
+      NEW -> [User (BuyTicket mempty), RaffleOwner Cancel, RaffleOwner (Update (RaffleConfig 0 0 0 0 mempty))]
       EXPIRED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
       EXPIRED_FINAL -> [Admin CloseRaffle]
       COMMITTING -> [User (BuyTicket mempty)]

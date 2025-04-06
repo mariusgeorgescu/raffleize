@@ -442,8 +442,7 @@ handleMyTicketsEvents s@RaffleizeUI {..} event
         (VtyEvent (EvKey key _modifiers), Just secretKey, Just validatorsTxOutRefs) ->
           case mySelectedTicket of
             Just selectedTicketInfo -> do
-              let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
-                  contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
+              let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
                   actionHandler action = raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` tiAvailableActions selectedTicketInfo)
               case key of
                 (KChar 's') -> if ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo then put $ s {currentScreen = RevealTicketSecretScreen} else put s
@@ -478,7 +477,6 @@ handleMyRafflesEvents s@RaffleizeUI {..} event
             (VtyEvent (EvKey key _modifiers), Just secretKey, Just validatorsTxOutRefs) ->
               case maybeSelectedRaffle of
                 Just selectedRaffleInfo -> do
-                  let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
                   let contextNFT = rRaffleID $ riRsd selectedRaffleInfo
                       actionHandler action = raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` riAvailableActions selectedRaffleInfo)
                   case key of
