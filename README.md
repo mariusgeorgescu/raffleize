@@ -313,7 +313,7 @@ Below are summarized the major functions of the DApp, grouped based on the user 
 
 ### Transactions
 
-#### Legend
+*Legend*
 | Symbol        | Description          |
 | ------------- | -------------------- |
 | orange circle | UTxO                 |

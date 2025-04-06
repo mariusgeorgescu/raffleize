@@ -2,8 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- Required for `makeLift`:
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.1.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeMintingPolicy where
@@ -11,44 +11,45 @@ module RaffleizeDApp.OnChain.RaffleizeMintingPolicy where
 import PlutusCore.Builtin.Debug (plcVersion110)
 import PlutusLedgerApi.V1.Address (scriptHashAddress)
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue)
-import PlutusLedgerApi.V3 (
-  FromData (fromBuiltinData),
-  Redeemer (Redeemer),
-  TxOutRef,
- )
-import PlutusLedgerApi.V3.Contexts (
-  ScriptInfo (MintingScript),
- )
-import PlutusTx (
-  CompiledCode,
-  compile,
-  liftCode,
-  unsafeApplyCode,
-  unstableMakeIsData,
- )
-import RaffleizeDApp.CustomTypes.RaffleTypes (
-  RaffleConfig (RaffleConfig, rStake),
-  RaffleParam (RaffleParam, rRaffleCollateral, rRaffleValidatorHash),
-  mkNewRaffle,
-  mkRaffleDatum,
- )
-import RaffleizeDApp.OnChain.RaffleizeLogic (
-  checkRaffle,
-  evaluateRaffleState,
-  generateRefAndUserAC,
-  getRaffleStateDatumAndValue,
- )
-import RaffleizeDApp.OnChain.Utils (
-  AScriptContext (AScriptContext),
-  ATxInfo (..),
-  adaValueFromLovelaces,
-  hasTxInWithRef,
-  hasTxOutWithInlineDatumAnd,
-  isBurningNFT,
-  isMintingNFT,
-  mkUntypedLambda,
-  tokenNameFromTxOutRef,
- )
+import PlutusLedgerApi.V3
+  ( FromData (fromBuiltinData),
+    Redeemer (Redeemer),
+    TxOutRef,
+  )
+import PlutusLedgerApi.V3.Contexts
+  ( ScriptInfo (MintingScript),
+  )
+import PlutusTx
+  ( CompiledCode,
+    compile,
+    liftCode,
+    unsafeApplyCode,
+    unstableMakeIsData,
+  )
+import RaffleizeDApp.CustomTypes.RaffleTypes
+  ( RaffleConfig (RaffleConfig, rStake),
+    RaffleParam (RaffleParam, rRaffleCollateral, rRaffleValidatorHash),
+    RaffleStateId (COMMITTING, NEW),
+    mkNewRaffle,
+    mkRaffleDatum,
+  )
+import RaffleizeDApp.OnChain.RaffleizeLogic
+  ( checkRaffleConfig,
+    evaluateRaffleState,
+    generateRefAndUserAC,
+    getRaffleStateDatumAndValue,
+  )
+import RaffleizeDApp.OnChain.Utils
+  ( AScriptContext (AScriptContext),
+    ATxInfo (..),
+    adaValueFromLovelaces,
+    hasTxInWithRef,
+    hasTxOutWithInlineDatumAnd,
+    isBurningNFT,
+    isMintingNFT,
+    mkUntypedLambda,
+    tokenNameFromTxOutRef,
+  )
 
 -- | Custom redeemer type to indicate minting mode.
 data RaffleizeMintingReedemer
@@ -60,7 +61,7 @@ data RaffleizeMintingReedemer
 unstableMakeIsData ''RaffleizeMintingReedemer ---  must be changed with stable version
 
 raffleizePolicyLambda :: RaffleParam -> AScriptContext -> Bool --- TODO : Updatable params-> Move raffle params to a reference input with inline datum
-raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral} (AScriptContext ATxInfo {..} (Redeemer bredeemer) (MintingScript cs)) =
+raffleizePolicyLambda params@RaffleParam {rRaffleValidatorHash, rRaffleCollateral} (AScriptContext ATxInfo {..} (Redeemer bredeemer) (MintingScript cs)) =
   let raffleValidatorAddress = scriptHashAddress rRaffleValidatorHash
    in case fromBuiltinData bredeemer of
         Nothing -> traceError "invalid redeemer"
@@ -69,24 +70,22 @@ raffleizePolicyLambda param@RaffleParam {rRaffleValidatorHash, rRaffleCollateral
             (MintRaffle config@RaffleConfig {rStake} seedTxOutRef) ->
               let (!raffleRefAC, !raffleUserAC) = generateRefAndUserAC $ AssetClass (cs, tokenNameFromTxOutRef seedTxOutRef)
                   raffleRefTokenValue = assetClassValue raffleRefAC 1
-                  raffleUserTokenValue = assetClassValue raffleUserAC 1
-                  !newRaffleDatum = mkRaffleDatum $ mkNewRaffle raffleRefAC param config
+                  !newRaffleDatum = mkRaffleDatum $ mkNewRaffle raffleRefAC params config
                in pand
                     [ traceIfFalse "Must be valid configuration" $
-                        checkRaffle param txInfoValidRange config
-                    , traceIfFalse "Must spend seed utxo" $
-                        hasTxInWithRef seedTxOutRef txInfoInputs
-                    , traceIfFalse "Must mint the ref NFT" $
-                        isMintingNFT raffleRefAC txInfoMint
-                    , traceIfFalse "Must mint the user NFT" $
-                        isMintingNFT raffleUserAC txInfoMint
-                    , traceIfFalse "Must lock new raffle state at Raffle Validator (with correct value and datum)" $
+                        checkRaffleConfig params txInfoValidRange config,
+                      traceIfFalse "Must spend seed utxo" $
+                        hasTxInWithRef seedTxOutRef txInfoInputs,
+                      traceIfFalse "Must mint the ref NFT" $
+                        isMintingNFT raffleRefAC txInfoMint,
+                      traceIfFalse "Must mint the user NFT" $
+                        isMintingNFT raffleUserAC txInfoMint,
+                      traceIfFalse "Must lock new raffle state at Raffle Validator (with correct value and datum)" $
                         hasTxOutWithInlineDatumAnd newRaffleDatum (#== (raffleRefTokenValue #+ rStake #+ adaValueFromLovelaces rRaffleCollateral)) (#== raffleValidatorAddress) txInfoOutputs
                     ]
             (MintTicket raffleID) ->
-              let raffleRefToken = assetClassValue raffleID 1
-                  (currentValue, rsd) = getRaffleStateDatumAndValue raffleID (#== raffleValidatorAddress) txInfoInputs -- TO DOOOO de updatat tipul datum
-               in evaluateRaffleState (txInfoValidRange, rsd, currentValue) `pelem` [1, 2]
+              let (currentValue, rsd) = getRaffleStateDatumAndValue raffleID (#== raffleValidatorAddress) txInfoInputs -- TO DOOOO de updatat tipul datum
+               in evaluateRaffleState (txInfoValidRange, rsd, currentValue) `pelem` [NEW, COMMITTING]
             (Burn ac) -> isBurningNFT ac txInfoMint
 raffleizePolicyLambda _ _ = traceError "invalid purpose"
 {-# INLINEABLE raffleizePolicyLambda #-}

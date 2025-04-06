@@ -19,11 +19,11 @@ import Test.QuickCheck.Arbitrary.Generic
 
 -------------------------------------------------------------------------------
 
--- | Arbitraty insance for BuiltinByteStringF
+-- | Arbitraty insance for BuiltinByteString
 instance Arbitrary BuiltinByteString where
   arbitrary = stringToBuiltinByteString <$> arbitrary
 
--- | Datatype representng the actions that can be peformed by any user.
+-- | Actions that can be peformed by any user.
 data UserAction
   = CreateRaffle
       RaffleConfig --- ^ The raffle configuration
@@ -34,7 +34,7 @@ data UserAction
 
 unstableMakeIsData ''UserAction --- TODO must be changed with stable version
 
--- | Datatype representng the actions that can be peformed by Ticket Owner.
+-- | Actions that can be peformed by Ticket Owner.
 data TicketOwnerAction
   = RevealTicketSecret
       Secret --- ^ The revealed secret (it's hash should match the one stored in the ticket ref NFT datum).
@@ -47,7 +47,7 @@ data TicketOwnerAction
 
 unstableMakeIsData ''TicketOwnerAction --- TODO must be changed with stable version
 
--- | Datatype representng the actions that can be peformed by Raffle Owner.
+-- | Actions that can be peformed by Raffle Owner.
 data RaffleOwnerAction
   = Update
       RaffleConfig --- ^ The raF
@@ -69,25 +69,21 @@ data AdminAction = CloseRaffle ---
 unstableMakeIsData ''AdminAction --- TODO must be changed with stable version
 
 -- | Datatype representng the actions supported by the Raffleize DApp.
--- This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
 data RaffleizeAction
   = User
       UserAction --- ^ Action that can be peformed by any user.
   | TicketOwner
       TicketOwnerAction --- ^ Action that can be peformed by Ticket Owner.
-      -- AssetClass --- ^ The ticket id (ticket ref. NFT @AssetClass@).
   | RaffleOwner
       RaffleOwnerAction --- ^ Action that can be peformed by Raffle Owner.
   | Admin
       AdminAction --- ^ Action that can be peformed by Admin.
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
-  deriving (Arbitrary) via GenericArbitrary RaffleizeAction
 
 unstableMakeIsData ''RaffleizeAction --- TODO must be changed with stable version
 
 type RaffleizeActionLabel = (String, String)
 
--- | Datatype representng the actions supported by the Raffleize DApp.
 -- This datatype is used as "Redeemer" for the validation logic for updating both raffle and tickets states.
 data RaffleizeRedeemer
   = UserRedeemer

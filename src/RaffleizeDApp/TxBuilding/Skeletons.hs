@@ -1,6 +1,5 @@
 module RaffleizeDApp.TxBuilding.Skeletons where
 
-import GHC.Stack
 import GeniusYield.Examples.Limbo
 import GeniusYield.TxBuilder
 import GeniusYield.Types
@@ -46,7 +45,7 @@ txIsValidByDDL ddl = do
   validUntil <- gySlotFromPOSIXTime (min ddl after36hTime)
   return $ isValidBetween now validUntil
 
-txMustSpendStateFromRefScriptWithRedeemer :: (HasCallStack, GYTxUserQueryMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYScript 'PlutusV3 -> m (GYTxSkeleton 'PlutusV3)
+txMustSpendStateFromRefScriptWithRedeemer :: (GYTxUserQueryMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYScript 'PlutusV3 -> m (GYTxSkeleton 'PlutusV3)
 txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyValidator =
   do
     let gyRedeemer = redeemerFromPlutusData redeemer
@@ -63,13 +62,13 @@ txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyVali
     gyGetInlineDatumAndValue' :: (MonadError GYTxMonadException m) => GYUTxO -> m (GYDatum, GYValue)
     gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getInlineDatumAndValue utxo
 
-txMustHaveStateAsRefInput :: (HasCallStack, GYTxUserQueryMonad m) => AssetClass -> GYScript 'PlutusV3 -> m (GYTxSkeleton 'PlutusV3)
+txMustHaveStateAsRefInput :: (GYTxUserQueryMonad m) => AssetClass -> GYScript 'PlutusV3 -> m (GYTxSkeleton 'PlutusV3)
 txMustHaveStateAsRefInput stateTokenId gyValidator = do
   validatorAddr <- scriptAddress gyValidator
   stateUTxO <- getUTxOWithStateToken stateTokenId validatorAddr
   return $ mustHaveRefInput (utxoRef stateUTxO)
 
-txMustSpendFromAddress :: (HasCallStack, GYTxUserQueryMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV3)
+txMustSpendFromAddress :: (GYTxUserQueryMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV3)
 txMustSpendFromAddress tokenId addrs = do
   do
     tokenUtxo <- getUTxOWithStateTokenAtAddresses tokenId addrs
@@ -94,7 +93,7 @@ txMustLockStateWithInlineDatumAndValue validator todata pValue = do
           gyTxOutRefS = Nothing
         }
 
-txNFTAction :: (HasCallStack, GYTxUserQueryMonad m) => GYTxOutRef -> RaffleizeMintingReedemer -> m (GYTxSkeleton 'PlutusV3)
+txNFTAction :: (GYTxUserQueryMonad m) => GYTxOutRef -> RaffleizeMintingReedemer -> m (GYTxSkeleton 'PlutusV3)
 txNFTAction mpRefScript redeemer = do
   let gyRedeemer = redeemerFromPlutus' . toBuiltinData $ redeemer
   case redeemer of

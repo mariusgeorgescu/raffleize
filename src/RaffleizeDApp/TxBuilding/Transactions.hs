@@ -8,7 +8,6 @@ import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Skeletons (addRefScriptSkeleton)
-import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
 
 ------------------------------------------------------------------------------------------------
@@ -23,9 +22,8 @@ import RaffleizeDApp.Utils
 
 ------------------------------------------------------------------------------------------------
 
-{- | This function  'UserAddresses', 'String' representing the token name and an 'Integer' representing the amount,
-| and returns the 'GYTxBody' of a transaction minting the test tokens.
--}
+-- | This function  'UserAddresses', 'String' representing the token name and an 'Integer' representing the amount,
+-- | and returns the 'GYTxBody' of a transaction minting the test tokens.
 mintTestTokensTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> String -> Integer -> m GYTxBody
 mintTestTokensTxBody userAddresses tn amount = do
   providerCtx <- ask
@@ -41,8 +39,6 @@ deployReferenceScriptTxBody :: (MonadIO m, MonadReader ProviderCtx m) => GYScrip
 deployReferenceScriptTxBody script userAddresses = do
   providerCtx <- ask
   liftIO $ runTxI providerCtx userAddresses (addRefScriptSkeleton script)
-
-
 
 -----------------
 

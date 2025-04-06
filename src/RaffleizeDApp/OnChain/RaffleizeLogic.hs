@@ -1,111 +1,97 @@
 module RaffleizeDApp.OnChain.RaffleizeLogic where
 
-import PlutusTx.Builtins (
-  divideInteger,
-  modInteger,
-  serialiseData,
- )
-
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
-import PlutusLedgerApi.V3 (
-  Address,
-  Datum (Datum),
-  OutputDatum (OutputDatum),
-  POSIXTime (POSIXTime),
-  POSIXTimeRange,
-  PubKeyHash,
-  ScriptHash,
-  ToData (toBuiltinData),
-  TokenName (TokenName),
-  TxInInfo,
-  TxOut (TxOut),
-  UnsafeFromData (unsafeFromBuiltinData),
-  Value,
- )
+import PlutusLedgerApi.V3
+  ( POSIXTime (POSIXTime),
+    POSIXTimeRange,
+    PubKeyHash,
+    ScriptHash,
+    ToData (toBuiltinData),
+    TokenName (TokenName),
+    TxInInfo,
+    TxOut,
+    UnsafeFromData (unsafeFromBuiltinData),
+    Value,
+  )
+import PlutusTx.Builtins
+  ( divideInteger,
+    modInteger,
+    serialiseData,
+  )
 import RaffleizeDApp.CustomTypes.ActionTypes
-import RaffleizeDApp.CustomTypes.RaffleTypes (
-  RaffleConfig (..),
-  RaffleDatum,
-  RaffleParam (..),
-  RaffleStateData (..),
-  RaffleStateId,
-  raffleStateData,
- )
-import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketDatum, TicketStateData (..), TicketStateId, ticketStateData)
+import RaffleizeDApp.CustomTypes.RaffleTypes
+  ( RaffleConfig (..),
+    RaffleParam (..),
+    RaffleStateData (..),
+    RaffleStateId (..),
+    raffleStateData,
+  )
+import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketStateData (..), TicketStateId (..), ticketStateData)
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger', getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude
 
-raffleTicketPriceValue :: RaffleStateData -> Value
+------------------------------------------------------------------------------------------------
+
+-- * RaffleStateData Helpers
+
+------------------------------------------------------------------------------------------------
+raffleTicketPriceValue :: RaffleStateData -> PlutusLedgerApi.V3.Value
 raffleTicketPriceValue RaffleStateData {rConfig} = adaValueFromLovelaces (rTicketPrice rConfig)
 {-# INLINEABLE raffleTicketPriceValue #-}
 
-raffleAccumulatedValue :: RaffleStateData -> Value
+raffleAccumulatedValue :: RaffleStateData -> PlutusLedgerApi.V3.Value
 raffleAccumulatedValue RaffleStateData {rConfig, rSoldTickets} = adaValueFromLovelaces $ rTicketPrice rConfig #* rSoldTickets
 {-# INLINEABLE raffleAccumulatedValue #-}
 
-raffleCollateralValue :: RaffleStateData -> Value
+raffleCollateralValue :: RaffleStateData -> PlutusLedgerApi.V3.Value
 raffleCollateralValue RaffleStateData {rParam} = adaValueFromLovelaces $ rRaffleCollateral rParam
 {-# INLINEABLE raffleCollateralValue #-}
 
-raffleTicketCollateralValue :: RaffleStateData -> Value
-raffleTicketCollateralValue RaffleStateData {rParam} = adaValueFromLovelaces $ rTicketCollateral rParam
-{-# INLINEABLE raffleTicketCollateralValue #-}
+ticketCollateralValue :: RaffleStateData -> PlutusLedgerApi.V3.Value
+ticketCollateralValue RaffleStateData {rParam} = adaValueFromLovelaces $ rTicketCollateral rParam
+{-# INLINEABLE ticketCollateralValue #-}
 
+------------------------------------------------------------------------------------------------
+
+-- * Validation Logic
+
+------------------------------------------------------------------------------------------------
+
+-- | Check Parameters Validity
 checkRaffleParam :: RaffleParam -> Bool
 checkRaffleParam RaffleParam {..} =
   pand
-    [ rMinRevealingWindow #> 0
-    , rMaxNoOfTickets #> 0
-    , rTicketCollateral #>= 2_000_000
-    , rRaffleCollateral #>= 2_000_000
+    [ rMinRevealingWindow #> 0,
+      rMaxNoOfTickets #> 0,
+      rTicketCollateral #>= 2_000_000,
+      rRaffleCollateral #>= 2_000_000
     ]
 {-# INLINEABLE checkRaffleParam #-}
 
-checkRaffle :: RaffleParam -> POSIXTimeRange -> RaffleConfig -> Bool
-checkRaffle
+-- | Check Raffle Configurartion Validity
+checkRaffleConfig :: RaffleParam -> PlutusLedgerApi.V3.POSIXTimeRange -> RaffleConfig -> Bool
+checkRaffleConfig
   param@RaffleParam {rMinRevealingWindow, rMinTicketPrice}
   timeRange
   RaffleConfig {rRevealDDL, rCommitDDL, rTicketPrice, rMinTickets, rStake} =
     pand
-      [ checkRaffleParam param
-      , traceIfFalse "invalid commit ddl" $
-          rCommitDDL `after` timeRange
-      , traceIfFalse "invalid reveal ddl" $
-          rRevealDDL #>= rCommitDDL #+ POSIXTime rMinRevealingWindow
-      , traceIfFalse "invalid ticket price" $
-          rTicketPrice #>= rMinTicketPrice
-      , traceIfFalse "invalid min tickets" $
-          rMinTickets #> 0
-      , traceIfFalse "empty stake" $
-          rStake #/= mempty
-      , traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
+      [ checkRaffleParam param,
+        traceIfFalse "invalid commit ddl" $
+          rCommitDDL `after` timeRange,
+        traceIfFalse "invalid reveal ddl" $
+          rRevealDDL #>= rCommitDDL #+ PlutusLedgerApi.V3.POSIXTime rMinRevealingWindow,
+        traceIfFalse "invalid ticket price" $
+          rTicketPrice #>= rMinTicketPrice,
+        traceIfFalse "invalid min tickets" $
+          rMinTickets #> 0,
+        traceIfFalse "empty stake" $
+          rStake #/= mempty,
+        traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
-{-# INLINEABLE checkRaffle #-}
-
-showRaffleStateLabel :: RaffleStateId -> String
-showRaffleStateLabel r = case r of
-  1 -> "NEW"
-  10 -> "EXPIRED_LOCKED_STAKE"
-  11 -> "EXPIRED_FINAL"
-  2 -> "COMMITTING"
-  20 -> "UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS"
-  21 -> "UNDERFUNDED_LOCKED_REFUNDS"
-  22 -> "UNDERFUNDED_LOCKED_STAKE"
-  23 -> "UNDERFUNDED_FINAL"
-  3 -> "REVEALING"
-  40 -> "SUCCESS_LOCKED_STAKE_AND_AMOUNT"
-  41 -> "SUCCESS_LOCKED_AMOUNT"
-  42 -> "SUCCESS_LOCKED_STAKE"
-  43 -> "SUCCESS_FINAL"
-  300 -> "UNREVEALED_NO_REVEALS"
-  30 -> "UNREVEALED_LOCKED_STAKE_AND_REFUNDS"
-  31 -> "UNREVEALED_LOCKED_REFUNDS"
-  32 -> "UNREVEALED_LOCKED_STAKE"
-  33 -> "UNREVEALED_FINAL"
-  _ -> "INVALID STATE"
+{-# INLINEABLE checkRaffleConfig #-}
 
 redeemerToAction :: RaffleizeRedeemer -> RaffleizeAction
 redeemerToAction (UserRedeemer action) = User action
@@ -113,23 +99,23 @@ redeemerToAction (RaffleOwnerRedeemer action) = RaffleOwner action
 redeemerToAction (TicketOwnerRedeemer action _) = TicketOwner action
 redeemerToAction (AdminRedeemer action) = Admin action
 
-updateRaffleStateValue :: RaffleizeAction -> RaffleStateData -> Value -> Value
-updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets} rValue = case action of
-  User (BuyTicket _) -> rValue #+ raffleTicketPriceValue rsd
-  RaffleOwner RecoverStake -> rValue #- rStake rConfig
-  RaffleOwner RecoverStakeAndAmount -> rValue #- rStake rConfig #- raffleAccumulatedValue rsd
-  RaffleOwner CollectAmount -> rValue #- raffleAccumulatedValue rsd
-  RaffleOwner (Update newconfig) -> (rValue #- rStake rConfig) #+ rStake newconfig
-  TicketOwner (RevealTicketSecret _) -> rValue
-  TicketOwner CollectStake -> rValue #- rStake rConfig
-  TicketOwner RefundTicket -> rValue #- raffleTicketPriceValue rsd
+updateRaffleStateValue :: RaffleizeAction -> RaffleStateData -> PlutusLedgerApi.V3.Value -> PlutusLedgerApi.V3.Value
+updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets} currentValue = case action of
+  User (BuyTicket _) -> currentValue #+ raffleTicketPriceValue rsd
+  RaffleOwner RecoverStake -> currentValue #- rStake rConfig
+  RaffleOwner RecoverStakeAndAmount -> currentValue #- rStake rConfig #- raffleAccumulatedValue rsd
+  RaffleOwner CollectAmount -> currentValue #- raffleAccumulatedValue rsd
+  RaffleOwner (Update newConfig) -> (currentValue #- rStake rConfig) #+ rStake newConfig
+  TicketOwner (RevealTicketSecret _) -> currentValue
+  TicketOwner CollectStake -> currentValue #- rStake rConfig
+  TicketOwner RefundTicket -> currentValue #- raffleTicketPriceValue rsd
   TicketOwner RefundTicketExtra ->
-    let
-      extraRefundValue =
-        adaValueFromLovelaces (rSoldTickets #* rTicketPrice rConfig `divideInteger` rRevealedTickets)
-     in
-      rValue #- extraRefundValue
-  _ -> trace "no raffle state should exist after this action" pmempty
+    let extraRefundValue =
+          adaValueFromLovelaces (rSoldTickets #* rTicketPrice rConfig `divideInteger` rRevealedTickets)
+     in currentValue #- extraRefundValue
+  Admin CloseRaffle -> trace "no raffle state should exist after this action" pmempty
+  RaffleOwner Cancel -> trace "no raffle state should exist after this action" pmempty
+  _ -> traceError "Invalid action on existing raffle"
 {-# INLINEABLE updateRaffleStateValue #-}
 
 validateRaffleAction :: RaffleizeAction -> RaffleStateId -> Bool
@@ -142,45 +128,45 @@ validRaffleStatesForRaffleizeAction :: RaffleizeAction -> [RaffleStateId]
 validRaffleStatesForRaffleizeAction action = case action of
   User (CreateRaffle _) -> []
   User (BuyTicket _) ->
-    [ 1 -- NEW
-    , 2 -- COMMIT
+    [ NEW,
+      COMMITTING
     ]
   RaffleOwner roa -> case roa of
-    Cancel -> [1] -- NEW -- Current state is valid for cancelling the raffle.
-    (Update _) -> [1] -- NEW -- Current state is valid for updating raffle config.
+    Cancel -> [NEW]
+    (Update _) -> [NEW]
     RecoverStake ->
-      [ 10 -- EXPIRED_LOCKED_STAKE
-      , 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-      , 22 -- UNDERFUNDED_LOCKED_STAKE
-      , 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-      , 32 -- UNREVEALED_LOCKED_STAKE
+      [ EXPIRED_LOCKED_STAKE,
+        UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS,
+        UNDERFUNDED_LOCKED_STAKE,
+        UNREVEALED_LOCKED_STAKE_AND_REFUNDS,
+        UNREVEALED_LOCKED_STAKE
       ]
-    RecoverStakeAndAmount -> [300] -- UNREVEALED_NO_REVEALS
+    RecoverStakeAndAmount -> [UNREVEALED_NO_REVEALS]
     CollectAmount ->
-      [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-      , 41 -- SUCCESS_LOCKED_AMOUNT
+      [ SUCCESS_LOCKED_STAKE_AND_AMOUNT,
+        SUCCESS_LOCKED_AMOUNT
       ]
     GetCollateralOfExpiredTicket -> [] -- ticket action, not on raffle state
   TicketOwner toa -> case toa of
-    (RevealTicketSecret _) -> [3]
+    (RevealTicketSecret _) -> [REVEALING]
     CollectStake ->
-      [ 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-      , 42 -- SUCCESS_LOCKED_STAKE
+      [ SUCCESS_LOCKED_STAKE_AND_AMOUNT,
+        SUCCESS_LOCKED_STAKE
       ]
     RefundTicket ->
-      [ 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-      , 21 -- UNDERFUNDED_LOCKED_REFUNDS.
+      [ UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS,
+        UNDERFUNDED_LOCKED_REFUNDS
       ]
     RefundTicketExtra ->
-      [ 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-      , 31 -- UNREVEALED_LOCKED_REFUNDS
+      [ UNREVEALED_LOCKED_STAKE_AND_REFUNDS,
+        UNREVEALED_LOCKED_REFUNDS
       ]
     RefundCollateralLosing -> [] -- ticket action, not on raffle state
   Admin _ ->
-    [ 11 -- EXPIRED_FINAL
-    , 23 -- UNDERFUNDED_FINAL
-    , 33 -- UNREVEALED_FINAL
-    , 43 -- SUCCESS_FINAL
+    [ EXPIRED_FINAL,
+      UNDERFUNDED_FINAL,
+      UNREVEALED_FINAL,
+      SUCCESS_FINAL
     ]
 {-# INLINEABLE validRaffleStatesForRaffleizeAction #-}
 
@@ -198,142 +184,140 @@ actionToLabel action = case action of
     _ -> show toa
   Admin CloseRaffle -> ("Admin", "CloseRaffle")
 
-validActionLabelsForRaffleState :: RaffleStateId -> [RaffleizeActionLabel]
-validActionLabelsForRaffleState r = case r of
-  1 -> [("User", "BuyTicket"), ("RaffleOwner", "Cancel"), ("RaffleOwner", "Update")]
-  10 -> [("RaffleOwner", "RecoverStake")]
-  11 -> [("Admin", "CloseRaffle")]
-  2 -> [("User", "BuyTicket")]
-  20 -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicket")]
-  21 -> [("TicketOwner", "RefundTicket")]
-  22 -> [("RaffleOwner", "RecoverStake")]
-  23 -> [("Admin", "CloseRaffle")]
-  3 -> [("TicketOwner", "RevealTicketSecret")]
-  40 -> [("RaffleOwner", "CollectAmount"), ("TicketOwner", "CollectStake")]
-  41 -> [("RaffleOwner", "CollectAmount")]
-  42 -> [("TicketOwner", "CollectStake")]
-  43 -> [("Admin", "CloseRaffle")]
-  300 -> [("RaffleOwner", "RecoverStakeAndAmount")]
-  30 -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicketExtra")]
-  31 -> [("TicketOwner", "RefundTicketExtra")]
-  32 -> [("RaffleOwner", "RecoverStake")]
-  33 -> [("Admin", "CloseRaffle")]
-  _ -> []
+-- validActionLabelsForRaffleState :: RaffleStateId -> [RaffleizeRedeemer]
+-- validActionLabelsForRaffleState r = case r of
+--   NEW -> [UserRedeemer (BuyTicket mempty), RaffleOwnerRedeemer Cancel, RaffleOwnerRedeemer Update]
+--   EXPIRED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
+--   EXPIRED_FINAL -> [("Admin", "CloseRaffle")]
+--   COMMITTING -> [("User", "BuyTicket")]
+--   UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicket")]
+--   UNDERFUNDED_LOCKED_REFUNDS -> [("TicketOwner", "RefundTicket")]
+--   UNDERFUNDED_LOCKED_STAKE -> [("RaffleOwner", "RecoverStake")]
+--   UNDERFUNDED_FINAL -> [("Admin", "CloseRaffle")]
+--   REVEALING -> [("TicketOwner", "RevealTicketSecret")]
+--   SUCCESS_LOCKED_STAKE_AND_AMOUNT -> [("RaffleOwner", "CollectAmount"), ("TicketOwner", "CollectStake")]
+--   SUCCESS_LOCKED_AMOUNT -> [("RaffleOwner", "CollectAmount")]
+--   SUCCESS_LOCKED_STAKE -> [("TicketOwner", "CollectStake")]
+--   SUCCESS_FINAL -> [("Admin", "CloseRaffle")]
+--   UNREVEALED_NO_REVEALS -> [("RaffleOwner", "RecoverStakeAndAmount")]
+--   UNREVEALED_LOCKED_STAKE_AND_REFUNDS -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicketExtra")]
+--   UNREVEALED_LOCKED_REFUNDS -> [("TicketOwner", "RefundTicketExtra")]
+--   UNREVEALED_LOCKED_STAKE -> [("RaffleOwner", "RecoverStake")]
+--   UNREVEALED_FINAL -> [("Admin", "CloseRaffle")]
 
-evaluateRaffleState :: (POSIXTimeRange, RaffleStateData, Value) -> RaffleStateId
+evaluateRaffleState :: (PlutusLedgerApi.V3.POSIXTimeRange, RaffleStateData, PlutusLedgerApi.V3.Value) -> RaffleStateId
 evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets, rRevealedTickets, rRefundedTickets}, svalue) =
-  let
-    isBeforeCommitDDL = after (rCommitDDL rConfig) time_range
-    isBetweenCommitAndRevealDDL = before (rCommitDDL rConfig) time_range && after (rRevealDDL rConfig) time_range
-    isStakeLocked = svalue `geq` rStake rConfig
-    isCollectedAmmoutLocked = (valueOf svalue adaSymbol adaToken #- rRaffleCollateral rParam) #>= (rTicketPrice rConfig #* rSoldTickets) -- lovelaces wo collateral >  sold ticket * ticket price
-    outstandingFullRefunds = rRefundedTickets #< rSoldTickets
-    outstandingExtraRefunds = rRefundedTickets #< rRevealedTickets
-    anyTicketsSold = rSoldTickets #> 0
-    minNoOfTicketsSold = rSoldTickets #< rMinTickets rConfig
-    anyTicketsRevealed = rRevealedTickets #> 0
-    allTicketsRevealed = rSoldTickets #== rRevealedTickets
-   in
-    if isBeforeCommitDDL
-      then
-        if anyTicketsSold
-          then 2 -- COMMITTING
-          else 1 -- NEW
-      else
-        if not anyTicketsSold
-          then
-            if isStakeLocked
-              then 10 -- EXPIRED_LOCKED_STAKE
-              else 11 -- EXPIRED_FINAL
-          else
-            if minNoOfTicketsSold
-              then -- UNDERFUNDED
-                case (isStakeLocked, outstandingFullRefunds) of
-                  (True, True) -> 20 -- UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
-                  (False, True) -> 21 -- UNDERFUNDED_LOCKED_REFUNDS
-                  (True, False) -> 22 -- UNDERFUNDED_LOCKED_STAKE
-                  (False, False) -> 23 -- UNDERFUNDED_FINAL
-              else
-                if allTicketsRevealed
-                  then -- SUCCESS
-                    case (isStakeLocked, isCollectedAmmoutLocked) of
-                      (True, True) -> 40 -- SUCCESS_LOCKED_STAKE_AND_AMOUNT
-                      (False, True) -> 41 -- SUCCESS_LOCKED_AMOUNT
-                      (True, False) -> 42 -- SUCCESS_LOCKED_STAKE
-                      (False, False) -> 43 -- SUCCESS_FINAL
-                  else
-                    if isBetweenCommitAndRevealDDL
-                      then 3 -- REVEALING
-                      else case (anyTicketsRevealed, isStakeLocked, outstandingExtraRefunds) of
-                        (False, True, False) -> 300 -- UNREVEALED_NO_REVEALS
-                        (True, True, True) -> 30 -- UNREVEALED_LOCKED_STAKE_AND_REFUNDS
-                        (True, False, True) -> 31 -- UNREVEALED_LOCKED_REFUNDS
-                        (True, True, False) -> 32 -- UNREVEALED_LOCKED_STAKE
-                        (_, False, False) -> 33 -- UNREVEALED_FINAL
-                        (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
+  let isBeforeCommitDDL = after (rCommitDDL rConfig) time_range
+      isBetweenCommitAndRevealDDL = before (rCommitDDL rConfig) time_range && after (rRevealDDL rConfig) time_range
+      isStakeLocked = svalue `geq` rStake rConfig
+      isCollectedAmmoutLocked = (valueOf svalue adaSymbol adaToken #- rRaffleCollateral rParam) #>= (rTicketPrice rConfig #* rSoldTickets) -- lovelaces wo collateral >  sold ticket * ticket price
+      outstandingFullRefunds = rRefundedTickets #< rSoldTickets
+      outstandingExtraRefunds = rRefundedTickets #< rRevealedTickets
+      anyTicketsSold = rSoldTickets #> 0
+      minNoOfTicketsSold = rSoldTickets #< rMinTickets rConfig
+      anyTicketsRevealed = rRevealedTickets #> 0
+      allTicketsRevealed = rSoldTickets #== rRevealedTickets
+   in if isBeforeCommitDDL
+        then
+          if anyTicketsSold
+            then COMMITTING
+            else NEW
+        else
+          if not anyTicketsSold
+            then
+              if isStakeLocked
+                then EXPIRED_LOCKED_STAKE
+                else EXPIRED_FINAL
+            else
+              if minNoOfTicketsSold
+                then -- UNDERFUNDED
+                  case (isStakeLocked, outstandingFullRefunds) of
+                    (True, True) -> UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+                    (False, True) -> UNDERFUNDED_LOCKED_REFUNDS
+                    (True, False) -> UNDERFUNDED_LOCKED_STAKE
+                    (False, False) -> UNDERFUNDED_FINAL
+                else
+                  if allTicketsRevealed
+                    then -- SUCCESS
+                      case (isStakeLocked, isCollectedAmmoutLocked) of
+                        (True, True) -> SUCCESS_LOCKED_STAKE_AND_AMOUNT
+                        (False, True) -> SUCCESS_LOCKED_AMOUNT
+                        (True, False) -> SUCCESS_LOCKED_STAKE
+                        (False, False) -> SUCCESS_FINAL
+                    else
+                      if isBetweenCommitAndRevealDDL
+                        then REVEALING
+                        else case (anyTicketsRevealed, isStakeLocked, outstandingExtraRefunds) of
+                          (False, True, False) -> UNREVEALED_NO_REVEALS
+                          (True, True, True) -> UNREVEALED_LOCKED_STAKE_AND_REFUNDS
+                          (True, False, True) -> UNREVEALED_LOCKED_REFUNDS
+                          (True, True, False) -> UNREVEALED_LOCKED_STAKE
+                          (_, False, False) -> UNREVEALED_FINAL
+                          (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
 {-# INLINEABLE evaluateRaffleState #-}
 
-showTicketStateLabel :: TicketStateId -> String
-showTicketStateLabel r = case r of
-  90 -> "COMMITTED"
-  91 -> "FULLY_REFUNDABLE"
-  92 -> "REVEALABLE"
-  93 -> "REVEALED"
-  94 -> "WINNING"
-  95 -> "LOSING"
-  96 -> "EXTRA_REFUNDABLE"
-  97 -> "UNREVEALED_EXPIRED"
-  _ -> "INVALID STATE"
+-- showTicketStateLabel :: TicketStateId -> String
+-- showTicketStateLabel r = case r of
+--   90 -> "COMMITTED"
+--   91 -> "FULLY_REFUNDABLE"
+--   92 -> "REVEALABLE"
+--   93 -> "REVEALED"
+--   94 -> "WINNING"
+--   95 -> "LOSING"
+--   96 -> "EXTRA_REFUNDABLE"
+--   97 -> "UNREVEALED_EXPIRED"
+--   _ -> "INVALID STATE"
 
 evalTicketState :: TicketStateData -> Integer -> RaffleStateId -> TicketStateId
-evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId
-  | raffleStateId #== 2 = 90 -- COMMITTED
-  | raffleStateId #== 10 = 91 -- FULLY_REFUNDABLE
-  | raffleStateId #== 20 = 91 -- FULLY_REFUNDABLE
-  | raffleStateId #== 21 = 91 -- FULLY_REFUNDABLE
-  | raffleStateId #== 3 =
-      if isNothing tSecret
-        then 92 -- REVEALABLE
-        else 93 -- REVEALED
-  | raffleStateId #== 40 || raffleStateId #== 41 || raffleStateId #== 42 || raffleStateId #== 43 =
-      if randomSeed #== tNumber
-        then 94 -- WINNING
-        else 95 -- LOSING
-  | raffleStateId #== 30 || raffleStateId #== 31 =
-      if isJust tSecret
-        then 96 -- EXTRA_REFUNDABLE
-        else 97 -- UNREVEALED_EXPIRED
-        -- \| raffleStateId #== 1 = traceError "Raffle cannot be NEW"
-        -- \| raffleStateId #== 11 = traceError "Raffle cannot be EXPIRED_FINAL"
-        -- \| raffleStateId #== 22 = traceError "Raffle cannot be UNDERFUNDED_LOCKED_STAKE"
-        -- \| raffleStateId #== 23 = traceError "Raffle cannot be UNDERFUNDED_FINAL"
-        -- \| raffleStateId #== 32 = traceError "Raffle cannot be UNREVEALED_LOCKED_STAKE"
-        -- \| raffleStateId #== 33 = traceError "Raffle cannot be UNREVEALED_LOCKED_FINAL"
-        -- \| raffleStateId #== 300 = traceError "Raffle cannot be UNREVEALED_NO_REVEALS"
-evalTicketState _ _ _ = 9999 -- traceError "invalid state"  - TO DO - SOMETHING ABOUT
+evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId =
+  case raffleStateId of
+    COMMITTING -> COMMITTED
+    UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS -> FULLY_REFUNDABLE
+    UNDERFUNDED_LOCKED_REFUNDS -> FULLY_REFUNDABLE
+    REVEALING -> if isNothing tSecret then REVEALABLE else REVEALED
+    SUCCESS_LOCKED_STAKE_AND_AMOUNT -> if randomSeed #== tNumber then WINNING else LOSING
+    SUCCESS_LOCKED_STAKE -> if randomSeed #== tNumber then WINNING else LOSING
+    SUCCESS_LOCKED_AMOUNT -> LOSING
+    SUCCESS_FINAL -> LOSING
+    UNREVEALED_NO_REVEALS -> UNREVEALED_EXPIRED
+    UNREVEALED_LOCKED_STAKE_AND_REFUNDS -> if isJust tSecret then EXTRA_REFUNDABLE else UNREVEALED_EXPIRED
+    UNREVEALED_LOCKED_REFUNDS -> if isJust tSecret then EXTRA_REFUNDABLE else UNREVEALED_EXPIRED
+    UNREVEALED_LOCKED_STAKE -> UNREVEALED_EXPIRED
+    UNREVEALED_FINAL -> UNREVEALED_EXPIRED
+    _ -> traceError "Ticket should not exist for raffle in this state"
 {-# INLINEABLE evalTicketState #-}
 
 validActionLabelsForTicketState :: TicketStateId -> [RaffleizeActionLabel]
 validActionLabelsForTicketState r = case r of
-  91 -> [("TicketOwner", "RefundTicket")]
-  92 -> [("TicketOwner", "RevealTicketSecret")]
-  94 -> [("TicketOwner", "CollectStake")]
-  95 -> [("TicketOwner", "RefundCollateralLosing")]
-  96 -> [("TicketOwner", "RefundTicketExtra")]
-  97 -> [("RaffleOwner", "GetCollateraOfExpiredTicket")]
+  FULLY_REFUNDABLE -> [("TicketOwner", "RefundTicket")]
+  REVEALABLE -> [("TicketOwner", "RevealTicketSecret")]
+  WINNING -> [("TicketOwner", "CollectStake")]
+  LOSING -> [("TicketOwner", "RefundCollateralLosing")]
+  EXTRA_REFUNDABLE -> [("TicketOwner", "RefundTicketExtra")]
+  UNREVEALED_EXPIRED -> [("RaffleOwner", "GetCollateraOfExpiredTicket")]
+  _ -> []
+
+validActionsForTicketState :: TicketStateId -> [RaffleizeAction]
+validActionsForTicketState r = case r of
+  FULLY_REFUNDABLE -> [TicketOwner RefundTicket]
+  REVEALABLE -> [TicketOwner (RevealTicketSecret mempty)]
+  WINNING -> [TicketOwner CollectStake]
+  LOSING -> [TicketOwner RefundCollateralLosing]
+  EXTRA_REFUNDABLE -> [TicketOwner RefundTicketExtra]
+  UNREVEALED_EXPIRED -> [RaffleOwner GetCollateralOfExpiredTicket]
   _ -> []
 
 validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateId]
 validTicketStatesForRaffleizeAction ra = case ra of
   RaffleOwner roa -> case roa of
-    GetCollateralOfExpiredTicket -> [97] ---- UNREVEALED_EXPIRED   | ticket action only,  not on raffle state
+    GetCollateralOfExpiredTicket -> [UNREVEALED_EXPIRED]
     _ -> []
   TicketOwner toa -> case toa of
-    (RevealTicketSecret _) -> [92] -- REVEALABLE
-    CollectStake -> [94] -- WINNING
-    RefundTicket -> [91] -- FULLY_REFUNDABLE
-    RefundTicketExtra -> [96] -- EXTRA_REFUNDABLE
-    RefundCollateralLosing -> [95] -- -- LOSING    | ticket action only, not on raffle state
+    (RevealTicketSecret _) -> [REVEALABLE]
+    CollectStake -> [WINNING]
+    RefundTicket -> [FULLY_REFUNDABLE]
+    RefundTicketExtra -> [EXTRA_REFUNDABLE]
+    RefundCollateralLosing -> [LOSING]
   User _ -> []
   Admin _ -> []
 
@@ -343,25 +327,25 @@ validateTicketAction action currentStateLabel =
     currentStateLabel `pelem` validTicketStatesForRaffleizeAction action
 {-# INLINEABLE validateTicketAction #-}
 
-getRaffleStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, RaffleStateData)
-getRaffleStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, raffleStateData $ unsafeFromBuiltinData b)
+getRaffleStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, RaffleStateData)
+getRaffleStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, raffleStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
 {-# INLINEABLE getRaffleStateDatumAndValue #-}
 
-getTicketStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, TicketStateData)
-getTicketStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, ticketStateData $ unsafeFromBuiltinData b)
+getTicketStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, TicketStateData)
+getTicketStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, ticketStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
 {-# INLINEABLE getTicketStateDatumAndValue #-}
 
 isTicketForRaffle :: AssetClass -> TicketStateData -> RaffleStateData -> Bool
 isTicketForRaffle ticketUserAC tsd rsd =
   pand
     [ traceIfFalse "Raffle ids do not match" $
-        tRaffle tsd #== rRaffleID rsd
-    , traceIfFalse " Currency symbols do not match" $
+        tRaffle tsd #== rRaffleID rsd,
+      traceIfFalse " Currency symbols do not match" $
         fst (unAssetClass (rRaffleID rsd)) #== fst (unAssetClass ticketUserAC) --  -- Must be a ticket of the current raffle.
     ]
 {-# INLINEABLE isTicketForRaffle #-}
 
-buyTicketToRaffle :: SecretHash -> RaffleStateData -> ScriptHash -> (RaffleStateData, TicketStateData)
+buyTicketToRaffle :: SecretHash -> RaffleStateData -> PlutusLedgerApi.V3.ScriptHash -> (RaffleStateData, TicketStateData)
 buyTicketToRaffle sh raffle@RaffleStateData {..} raffleValidator =
   let raffle_data = raffle {rSoldTickets = rSoldTickets #+ 1}
       ticket_data = TicketStateData rSoldTickets sh Nothing rRaffleID raffleValidator
@@ -398,8 +382,8 @@ refundTicketToRaffle TicketStateData {tRaffle} raffle@RaffleStateData {rRefunded
     else traceError "ticket raffle id and raffle id does not match"
 {-# INLINEABLE refundTicketToRaffle #-}
 
-generateTicketTN :: Integer -> TokenName -> TokenName
-generateTicketTN i (TokenName bs) = TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . toBuiltinData) i))
+generateTicketTN :: Integer -> PlutusLedgerApi.V3.TokenName -> PlutusLedgerApi.V3.TokenName
+generateTicketTN i (PlutusLedgerApi.V3.TokenName bs) = PlutusLedgerApi.V3.TokenName (takeByteString 28 $ blake2b_256 (bs #<> (serialiseData . PlutusLedgerApi.V3.toBuiltinData) i))
 -- TokenName (blake2b_224 (bs #<> (serialiseData . toBuiltinData) i)) --  cheaper than bsToInt
 {-# INLINEABLE generateTicketTN #-}
 
@@ -407,12 +391,12 @@ generateTicketAC :: Integer -> AssetClass -> AssetClass
 generateTicketAC i (AssetClass (ac, tn)) = AssetClass (ac, generateTicketTN i tn)
 {-# INLINEABLE generateTicketAC #-}
 
-deriveUserFromRefTN :: TokenName -> TokenName
-deriveUserFromRefTN (TokenName bs) = TokenName (userTokenPrefixBS #<> sliceByteString 4 (lengthOfByteString bs) bs)
+deriveUserFromRefTN :: PlutusLedgerApi.V3.TokenName -> PlutusLedgerApi.V3.TokenName
+deriveUserFromRefTN (PlutusLedgerApi.V3.TokenName bs) = PlutusLedgerApi.V3.TokenName (userTokenPrefixBS #<> sliceByteString 4 (lengthOfByteString bs) bs)
 {-# INLINEABLE deriveUserFromRefTN #-}
 
-deriveRefFromUserTN :: TokenName -> TokenName
-deriveRefFromUserTN (TokenName bs) = TokenName (refTokenPrefixBS #<> sliceByteString 4 (lengthOfByteString bs) bs)
+deriveRefFromUserTN :: PlutusLedgerApi.V3.TokenName -> PlutusLedgerApi.V3.TokenName
+deriveRefFromUserTN (PlutusLedgerApi.V3.TokenName bs) = PlutusLedgerApi.V3.TokenName (refTokenPrefixBS #<> sliceByteString 4 (lengthOfByteString bs) bs)
 {-# INLINEABLE deriveRefFromUserTN #-}
 
 deriveUserFromRefAC :: AssetClass -> AssetClass
@@ -425,12 +409,12 @@ deriveRefFromUserAC (AssetClass (ac, tn)) = AssetClass (ac, deriveRefFromUserTN 
 
 --------------
 
-generateRefAndUserTN :: TokenName -> (TokenName, TokenName)
-generateRefAndUserTN (TokenName bs) = (TokenName (refTokenPrefixBS #<> bs), TokenName (userTokenPrefixBS #<> bs))
+generateRefAndUserTN :: PlutusLedgerApi.V3.TokenName -> (PlutusLedgerApi.V3.TokenName, PlutusLedgerApi.V3.TokenName)
+generateRefAndUserTN (PlutusLedgerApi.V3.TokenName bs) = (PlutusLedgerApi.V3.TokenName (refTokenPrefixBS #<> bs), PlutusLedgerApi.V3.TokenName (userTokenPrefixBS #<> bs))
 {-# INLINEABLE generateRefAndUserTN #-}
 
 generateRefAndUserAC :: AssetClass -> (AssetClass, AssetClass)
-generateRefAndUserAC (AssetClass (ac, TokenName bs)) = (AssetClass (ac, TokenName (refTokenPrefixBS #<> bs)), AssetClass (ac, TokenName (userTokenPrefixBS #<> bs)))
+generateRefAndUserAC (AssetClass (ac, PlutusLedgerApi.V3.TokenName bs)) = (AssetClass (ac, PlutusLedgerApi.V3.TokenName (refTokenPrefixBS #<> bs)), AssetClass (ac, PlutusLedgerApi.V3.TokenName (userTokenPrefixBS #<> bs)))
 {-# INLINEABLE generateRefAndUserAC #-}
 
 getNextTicketToMintAssetClasses :: RaffleStateData -> (AssetClass, AssetClass)
@@ -441,7 +425,7 @@ generateTicketACFromTicket :: TicketStateData -> (AssetClass, AssetClass)
 generateTicketACFromTicket TicketStateData {tNumber, tRaffle} = generateRefAndUserAC $ generateTicketAC tNumber tRaffle
 {-# INLINEABLE generateTicketACFromTicket #-}
 
-isOneOutputTo :: [TxOut] -> PubKeyHash -> Bool
+isOneOutputTo :: [PlutusLedgerApi.V3.TxOut] -> PlutusLedgerApi.V3.PubKeyHash -> Bool
 isOneOutputTo [out] adminPKH =
   traceIfFalse "The TxOut should be locked to the admin addr" $
     isTxOutWith noConstraint (#== pubKeyHashAddress adminPKH) out
@@ -495,5 +479,5 @@ userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer) -- cheaper
 
 -- Used for Offchain to identify valid utxos before parsing datum
 -- This function checks if tokenname has the raffle prefix
-hasRefPrefix :: TokenName -> Bool
-hasRefPrefix (TokenName tnbs) = sliceByteString 0 4 tnbs #== refTokenPrefixBS
+hasRefPrefix :: PlutusLedgerApi.V3.TokenName -> Bool
+hasRefPrefix (PlutusLedgerApi.V3.TokenName tnbs) = sliceByteString 0 4 tnbs #== refTokenPrefixBS

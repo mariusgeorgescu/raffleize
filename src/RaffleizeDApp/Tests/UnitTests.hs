@@ -262,7 +262,6 @@ buy1stTicketTest =
     buy1stTicketTC1 :: TestInfo -> GYTxMonadClb ()
     buy1stTicketTC1 TestInfo {..} = do
       (ri, roc) <- deployValidatorsAndCreateNewValidRaffleRun testWallets
-      let raffleId = rRaffleID $ riRsd ri
       let secret = "abaa26009811bc8cd67953256523fea78280ebf3bf061b87e3c8bea43188a222"
       void $ buyTicketToRaffleRun ri roc (w1 testWallets) secret
 

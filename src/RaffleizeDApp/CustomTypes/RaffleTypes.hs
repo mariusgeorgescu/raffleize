@@ -3,30 +3,32 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- Required for `makeLift`:
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module RaffleizeDApp.CustomTypes.RaffleTypes where
 
+import PlutusLedgerApi.Data.V3 (toBuiltinData)
 import PlutusLedgerApi.V1.Value (AssetClass)
-import PlutusLedgerApi.V2 (
-  POSIXTime (..),
-  ScriptHash,
-  Value,
- )
-
+import PlutusLedgerApi.V2
+  ( POSIXTime (..),
+    ScriptHash,
+    Value,
+  )
 import PlutusTx (makeIsDataIndexed, makeLift, unstableMakeIsData)
 import PlutusTx.AssocMap (lookup, safeFromList)
-import RaffleizeDApp.Constants (
-  metadataVersion,
-  raffleDescription,
-  raffleImageURI,
-  raffleName,
- )
+import PlutusTx.Eq qualified
+import RaffleizeDApp.Constants
+  ( metadataVersion,
+    raffleDescription,
+    raffleImageURI,
+    raffleName,
+  )
 import RaffleizeDApp.CustomTypes.Types (Metadata)
-import RaffleizeDApp.OnChain.Utils (
-  adaValueFromLovelaces,
-  encodeUtf8KV,
-  showValue,
-  wrapTitle,
- )
+import RaffleizeDApp.OnChain.Utils
+  ( adaValueFromLovelaces,
+    encodeUtf8KV,
+    showValue,
+    wrapTitle,
+  )
 import Test.QuickCheck.Arbitrary.Generic (Arbitrary (arbitrary))
 
 -----------------------------------------------------------------
@@ -35,15 +37,14 @@ import Test.QuickCheck.Arbitrary.Generic (Arbitrary (arbitrary))
 
 -------------------------------------------------------------------------------
 
-{- | Raffle configuration (
-These attributes should be defined by the Raffle Owner when creating/updating a raffle.
--}
+-- | Raffle configuration (
+-- These attributes should be defined by the Raffle Owner when creating/updating a raffle.
 data RaffleConfig = RaffleConfig
-  { rCommitDDL :: POSIXTime --- ^ The deadline for buying tickets and committing the secrret hash.
-  , rRevealDDL :: POSIXTime --- ^ The deadline for reavealing the secrets.
-  , rTicketPrice :: Integer --- ^ The ticket price (expressed in lovelaces).
-  , rMinTickets :: Integer --- ^ The minimum number of tickets that must be sold for the raffle.
-  , rStake :: Value --- ^ The raffle stake value.
+  { rCommitDDL :: POSIXTime, --- ^ The deadline for buying tickets and committing the secrret hash.
+    rRevealDDL :: POSIXTime, --- ^ The deadline for reavealing the secrets.
+    rTicketPrice :: Integer, --- ^ The ticket price (expressed in lovelaces).
+    rMinTickets :: Integer, --- ^ The minimum number of tickets that must be sold for the raffle.
+    rStake :: Value --- ^ The raffle stake value.
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
 
@@ -52,17 +53,16 @@ instance Arbitrary RaffleConfig where
 
 unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 
-{- | Raffle parameters
-These attributes should be defined by the Protocol Admin.
--}
+-- | Raffle parameters
+-- These attributes should be defined by the Protocol Admin.
 data RaffleParam = RaffleParam
-  { rMaxNoOfTickets :: Integer --- ^ The maximum number of tickets that can be sold for the raffle.
-  , rMinRevealingWindow :: Integer --- ^ The minimum no. of milliseconds that must pass between commit deadline and reveal deadline.
-  , rMinTicketPrice :: Integer --- ^ The minimum ticket price (expressed in lovelaces).
-  , rRaffleValidatorHash :: ScriptHash --- ^ The validator hash of the validation logic for spending the raffle state UTxO.
-  , rTicketValidatorHash :: ScriptHash --- ^ The validator hash of the validation logic for spending the ticket state UTxO.
-  , rTicketCollateral :: Integer --- ^ The min. no. of lovelaces that must be locked with the ticket state (recovered when ticket ref NFT is burned).
-  , rRaffleCollateral :: Integer --- ^ The min. no. of lovelaces that must be locked with the raffle state (recovered when raffle ref. NFT is burned).
+  { rMaxNoOfTickets :: Integer, --- ^ The maximum number of tickets that can be sold for the raffle.
+    rMinRevealingWindow :: Integer, --- ^ The minimum no. of milliseconds that must pass between commit deadline and reveal deadline.
+    rMinTicketPrice :: Integer, --- ^ The minimum ticket price (expressed in lovelaces).
+    rRaffleValidatorHash :: ScriptHash, --- ^ The validator hash of the validation logic for spending the raffle state UTxO.
+    rTicketValidatorHash :: ScriptHash, --- ^ The validator hash of the validation logic for spending the ticket state UTxO.
+    rTicketCollateral :: Integer, --- ^ The min. no. of lovelaces that must be locked with the ticket state (recovered when ticket ref NFT is burned).
+    rRaffleCollateral :: Integer --- ^ The min. no. of lovelaces that must be locked with the raffle state (recovered when raffle ref. NFT is burned).
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
 
@@ -71,18 +71,17 @@ makeLift ''RaffleParam
 
 --  generating Lift instance with TH
 
-{- | Raffle State Data
-This datatype is part of the RAFFLE STATE.
-The RAFFLE STATE is defined by the the @RaffleStateData@, the UTxO Value and the @txInfoValidRange@.
--}
+-- | Raffle State Data
+-- This datatype is part of the RAFFLE STATE.
+-- The RAFFLE STATE is defined by the the @RaffleStateData@, the UTxO Value and the @txInfoValidRange@.
 data RaffleStateData = RaffleStateData
-  { rRaffleID :: AssetClass --- ^ The raffle id is the raffle ref NFT @AssetClass@ (since it is unique).
-  , rParam :: RaffleParam --- ^  Raffle parameeters defined by the Protocol Admin.
-  , rConfig :: RaffleConfig --- ^  Raffle configuration defined by the Raffle Owner.
-  , rSoldTickets :: Integer --- ^  The current number of tickets sold.
-  , rRevealedTickets :: Integer --- ^  The current number of tickets revealed.
-  , rRefundedTickets :: Integer --- ^  The current number of tickets refunded.
-  , rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
+  { rRaffleID :: AssetClass, --- ^ The raffle id is the raffle ref NFT @AssetClass@ (since it is unique).
+    rParam :: RaffleParam, --- ^  Raffle parameeters defined by the Protocol Admin.
+    rConfig :: RaffleConfig, --- ^  Raffle configuration defined by the Raffle Owner.
+    rSoldTickets :: Integer, --- ^  The current number of tickets sold.
+    rRevealedTickets :: Integer, --- ^  The current number of tickets revealed.
+    rRefundedTickets :: Integer, --- ^  The current number of tickets refunded.
+    rRandomSeed :: Integer --- ^  The current accumulated random seed (is valid only when all tickets sold are revealed).
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
 
@@ -93,13 +92,12 @@ mkNewRaffle :: AssetClass -> RaffleParam -> RaffleConfig -> RaffleStateData
 mkNewRaffle raffleId param config = RaffleStateData raffleId param config 0 0 0 0
 {-# INLINEABLE mkNewRaffle #-}
 
-{- | The datum datatype which should be locked with raffle ref NFT.
-| This datatype is following the CIP-68 Datum Metadata Standard.
--}
+-- | The datum datatype which should be locked with raffle ref NFT.
+-- | This datatype is following the CIP-68 Datum Metadata Standard.
 data RaffleDatum = RaffleDatum
-  { metadata :: Metadata --- ^  Map k v (where k and v arr  UTF-8 encoded @BuiltinByteString@s)
-  , version :: Integer --- ^ version of CIP-68 Datum Metadata Standard.
-  , extra :: RaffleStateData --- ^ Plutus data
+  { metadata :: Metadata, --- ^  Map k v (where k and v arr  UTF-8 encoded @BuiltinByteString@s)
+    version :: Integer, --- ^ version of CIP-68 Datum Metadata Standard.
+    extra :: RaffleStateData --- ^ Plutus data
   }
   deriving (Generic)
 
@@ -121,17 +119,42 @@ mkRaffleDatum rsd =
     { metadata =
         safeFromList $
           encodeUtf8KV
-            #<$> [ ("description", raffleDescription)
-                 , ("image", raffleImageURI)
-                 , ("name", raffleName)
-                 ]
-    , version = metadataVersion
-    , extra = rsd
+            #<$> [ ("description", raffleDescription),
+                   ("image", raffleImageURI),
+                   ("name", raffleName)
+                 ],
+      version = metadataVersion,
+      extra = rsd
     }
 {-# INLINEABLE mkRaffleDatum #-}
 
 -- | Using a synonym for @Integer@ because a custom sum type would increase the scrpt size
-type RaffleStateId = Integer -- TODO : check if any data encoding works bette on Plutus V3
+data RaffleStateId
+  = NEW
+  | EXPIRED_LOCKED_STAKE
+  | EXPIRED_FINAL
+  | COMMITTING
+  | UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS
+  | UNDERFUNDED_LOCKED_REFUNDS
+  | UNDERFUNDED_LOCKED_STAKE
+  | UNDERFUNDED_FINAL
+  | REVEALING
+  | SUCCESS_LOCKED_STAKE_AND_AMOUNT
+  | SUCCESS_LOCKED_AMOUNT
+  | SUCCESS_LOCKED_STAKE
+  | SUCCESS_FINAL
+  | UNREVEALED_NO_REVEALS
+  | UNREVEALED_LOCKED_STAKE_AND_REFUNDS
+  | UNREVEALED_LOCKED_REFUNDS
+  | UNREVEALED_LOCKED_STAKE
+  | UNREVEALED_FINAL
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+
+unstableMakeIsData ''RaffleStateId ---  must be changed with stable version
+
+instance PlutusTx.Eq.Eq RaffleStateId where
+  (==) :: RaffleStateId -> RaffleStateId -> Bool
+  (==) x y = toBuiltinData x #== toBuiltinData y
 
 -------------------------------------------------------------------------------
 

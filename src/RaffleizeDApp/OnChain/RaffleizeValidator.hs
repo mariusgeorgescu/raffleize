@@ -2,8 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- Required for `makeLift`:
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:remove-trace #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.1.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeValidator where
@@ -14,50 +14,50 @@ import PlutusLedgerApi.V1.Value (assetClassValue)
 import PlutusLedgerApi.V2 (Redeemer (Redeemer))
 import PlutusLedgerApi.V3 (Datum (Datum), PubKeyHash, TxOut (txOutAddress, txOutValue), fromBuiltinData)
 import PlutusLedgerApi.V3.Contexts
-import PlutusTx (
-  CompiledCode,
-  compile,
-  liftCode,
-  unsafeApplyCode,
- )
+import PlutusTx
+  ( CompiledCode,
+    compile,
+    liftCode,
+    unsafeApplyCode,
+  )
 import RaffleizeDApp.CustomTypes.ActionTypes
-import RaffleizeDApp.CustomTypes.RaffleTypes (
-  RaffleDatum (RaffleDatum),
-  RaffleParam (..),
-  RaffleStateData (..),
-  mkRaffleDatum,
- )
-import RaffleizeDApp.CustomTypes.TicketTypes (
-  TicketStateData (tNumber),
-  mkTicketDatum,
- )
-import RaffleizeDApp.OnChain.RaffleizeLogic (
-  buyTicketToRaffle,
-  checkRaffle,
-  deriveUserFromRefAC,
-  evaluateRaffleState,
-  getNextTicketToMintAssetClasses,
-  getTicketStateDatumAndValue,
-  isOneOutputTo,
-  isTicketForRaffle,
-  raffleTicketCollateralValue,
-  redeemerToAction,
-  refundTicketToRaffle,
-  revealTicketToRaffleR,
-  updateRaffleStateValue,
-  validateRaffleAction,
- )
-import RaffleizeDApp.OnChain.Utils (
-  AScriptContext (..),
-  ATxInfo (..),
-  getOwnInput,
-  hasTxInWithToken,
-  hasTxOutWithInlineDatumAnd,
-  isBurningNFT,
-  isMintingNFT,
-  mkUntypedLambda,
-  spendsToken,
- )
+import RaffleizeDApp.CustomTypes.RaffleTypes
+  ( RaffleDatum (RaffleDatum),
+    RaffleParam (..),
+    RaffleStateData (..),
+    mkRaffleDatum,
+  )
+import RaffleizeDApp.CustomTypes.TicketTypes
+  ( TicketStateData (tNumber),
+    mkTicketDatum,
+  )
+import RaffleizeDApp.OnChain.RaffleizeLogic
+  ( buyTicketToRaffle,
+    checkRaffleConfig,
+    deriveUserFromRefAC,
+    evaluateRaffleState,
+    getNextTicketToMintAssetClasses,
+    getTicketStateDatumAndValue,
+    isOneOutputTo,
+    isTicketForRaffle,
+    redeemerToAction,
+    refundTicketToRaffle,
+    revealTicketToRaffleR,
+    ticketCollateralValue,
+    updateRaffleStateValue,
+    validateRaffleAction,
+  )
+import RaffleizeDApp.OnChain.Utils
+  ( AScriptContext (..),
+    ATxInfo (..),
+    getOwnInput,
+    hasTxInWithToken,
+    hasTxOutWithInlineDatumAnd,
+    isBurningNFT,
+    isMintingNFT,
+    mkUntypedLambda,
+    spendsToken,
+  )
 
 --- *  Validator Lambda
 
@@ -89,34 +89,32 @@ raffleizeValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer 
                         !ticketRefNFT = assetClassValue ticketRefAC 1
                         (!new_rsd, !new_tsd) = buyTicketToRaffle secret rsd (rRaffleValidatorHash rParam)
                      in pand
-                          [ isMintingNFT ticketRefAC txInfoMint --  Must mint the ticket ref NFT.
-                          , isMintingNFT ticketUserAC txInfoMint -- Must mint the ticket user NFT.
-                          , locksRaffleStateWithUpdatedDatumAndValue new_rsd -- Must lock raffle state at Raffle Validator address (with updated value and datum).
-                          , hasNewTicketState new_tsd (#== (ticketRefNFT #+ raffleTicketCollateralValue rsd)) -- Must lock ticket state at Ticket Validator address (with collateral value and valid datum).
+                          [ isMintingNFT ticketRefAC txInfoMint, --  Must mint the ticket ref NFT.
+                            isMintingNFT ticketUserAC txInfoMint, -- Must mint the ticket user NFT.
+                            locksRaffleStateWithUpdatedDatumAndValue new_rsd, -- Must lock raffle state at Raffle Validator address (with updated value and datum).
+                            hasNewTicketState new_tsd (#== (ticketRefNFT #+ ticketCollateralValue rsd)) -- Must lock ticket state at Ticket Validator address (with collateral value and valid datum).
                           ]
                   RaffleOwnerRedeemer raffleOwnerAction ->
-                    let
-                      !raffleUserAC = deriveUserFromRefAC rRaffleID
-                      !burnsRaffleUser = isBurningNFT raffleUserAC txInfoMint
-                      !burnsRaffleRef = isBurningNFT rRaffleID txInfoMint
-                     in
-                      case raffleOwnerAction of
-                        GetCollateralOfExpiredTicket -> traceError "never"
-                        Cancel ->
-                          pand
-                            [ burnsRaffleUser -- Must burn raffle user NFT.
-                            , burnsRaffleRef --  Must burn raffle ref NFT.
-                            ]
-                        Update newConfig ->
-                          pand
-                            [ checkRaffle rParam txInfoValidRange newConfig -- Must be a valid configuration.
-                            , locksRaffleStateWithUpdatedDatumAndValue rsd {rConfig = newConfig} -- Must lock raffle state with updated config.
-                            ]
-                        _raffleOwnerClosingAction ->
-                          pand
-                            [ burnsRaffleUser -- Must burn raffle user NFT.
-                            , locksRaffleStateWithUpdatedDatumAndValue rsd -- Must lock raffle state at Raffle Validator address (with updated value and datum).
-                            ]
+                    let !raffleUserAC = deriveUserFromRefAC rRaffleID
+                        !burnsRaffleUser = isBurningNFT raffleUserAC txInfoMint
+                        !burnsRaffleRef = isBurningNFT rRaffleID txInfoMint
+                     in case raffleOwnerAction of
+                          GetCollateralOfExpiredTicket -> traceError "never"
+                          Cancel ->
+                            pand
+                              [ burnsRaffleUser, -- Must burn raffle user NFT.
+                                burnsRaffleRef --  Must burn raffle ref NFT.
+                              ]
+                          Update newConfig ->
+                            pand
+                              [ checkRaffleConfig rParam txInfoValidRange newConfig, -- Must be a valid configuration.
+                                locksRaffleStateWithUpdatedDatumAndValue rsd {rConfig = newConfig} -- Must lock raffle state with updated config.
+                              ]
+                          _raffleOwnerClosingAction ->
+                            pand
+                              [ burnsRaffleUser, -- Must burn raffle user NFT.
+                                locksRaffleStateWithUpdatedDatumAndValue rsd -- Must lock raffle state at Raffle Validator address (with updated value and datum).
+                              ]
                   TicketOwnerRedeemer !ticketOwnerAction !ticketRefAC ->
                     let !tsd = snd $ getTicketStateDatumAndValue ticketRefAC (#== ticketValidatorAddr) txInfoInputs --- Must spend the ticket ref NFT in another input.
                         !ticketUserAC = deriveUserFromRefAC ticketRefAC
@@ -127,31 +125,29 @@ raffleizeValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer 
                             RevealTicketSecret secret ->
                               pand
                                 [ -- , hasNewTicketState new_tsd tValue -- Must lock ticket state at Ticket Validator address (with updated datum)
-                                  locksRaffleStateWithUpdatedDatumAndValue (revealTicketToRaffleR secret tsd rsd) -- Must lock raffle state at Raffle Validator address (with updated datum).
-                                , isTicketForRaffle ticketRefAC tsd rsd
+                                  locksRaffleStateWithUpdatedDatumAndValue (revealTicketToRaffleR secret tsd rsd), -- Must lock raffle state at Raffle Validator address (with updated datum).
+                                  isTicketForRaffle ticketRefAC tsd rsd
                                 ]
                             CollectStake ->
                               pand
-                                [ traceIfFalse "not winning ticket  " $ rRandomSeed #== tNumber tsd -- check if the current ticket is the winning ticket
-                                , burnsTickets
-                                , locksRaffleStateWithUpdatedDatumAndValue rsd -- Transaction locks new raffle state at validator address (with updated value).
+                                [ traceIfFalse "not winning ticket  " $ rRandomSeed #== tNumber tsd, -- check if the current ticket is the winning ticket
+                                  burnsTickets,
+                                  locksRaffleStateWithUpdatedDatumAndValue rsd -- Transaction locks new raffle state at validator address (with updated value).
                                 ]
                             _refundAction ->
                               pand
-                                [ burnsTickets
-                                , locksRaffleStateWithUpdatedDatumAndValue (refundTicketToRaffle tsd rsd) -- Transaction locks new raffle state at validator address (with updated value and datum).
+                                [ burnsTickets,
+                                  locksRaffleStateWithUpdatedDatumAndValue (refundTicketToRaffle tsd rsd) -- Transaction locks new raffle state at validator address (with updated value and datum).
                                 ]
                   AdminRedeemer CloseRaffle ->
-                    let
-                      raffleUserAC = deriveUserFromRefAC rRaffleID
-                      burnsRaffleUser = isBurningNFT raffleUserAC txInfoMint
-                      burnsRaffleRef = isBurningNFT rRaffleID txInfoMint
-                     in
-                      pand
-                        [ burnsRaffleRef
-                        , burnsRaffleUser
-                        , isOneOutputTo txInfoOutputs adminPKH --- Must have exactly one outoput to admin
-                        ]
+                    let raffleUserAC = deriveUserFromRefAC rRaffleID
+                        burnsRaffleUser = isBurningNFT raffleUserAC txInfoMint
+                        burnsRaffleRef = isBurningNFT rRaffleID txInfoMint
+                     in pand
+                          [ burnsRaffleRef,
+                            burnsRaffleUser,
+                            isOneOutputTo txInfoOutputs adminPKH --- Must have exactly one outoput to admin
+                          ]
         else --- Transaction does not spend the raffle ref NFT in the currently validating input.
           isOneOutputTo txInfoOutputs adminPKH --- Must have exactly one outoput to
     _ -> False

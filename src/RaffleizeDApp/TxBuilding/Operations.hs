@@ -10,7 +10,7 @@ import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleTicketCollateralValue, raffleTicketPriceValue, redeemerToAction, refundTicketToRaffle, revealTicketToRaffleRT, updateRaffleStateValue)
+import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleTicketPriceValue, redeemerToAction, refundTicketToRaffle, revealTicketToRaffleRT, ticketCollateralValue, updateRaffleStateValue)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Context
@@ -26,7 +26,7 @@ import RaffleizeDApp.TxBuilding.Validators
 
 -- |  Create Raffle Transaction
 createRaffleTX ::
-  (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
+  (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
   GYAddress ->
   RaffleConfig ->
   m (GYTxSkeleton 'PlutusV3, AssetClass)
@@ -63,7 +63,7 @@ createRaffleTX recipient config@RaffleConfig {rCommitDDL, rStake} = do
 
 -- |  Buy Ticket Transaction
 buyTicketTX ::
-  (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
+  (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
   SecretHash ->
   GYAddress ->
   AssetClass ->
@@ -82,7 +82,7 @@ buyTicketTX secretHash recipient raffleRefAC = do
   let ticketassetClassContextNFTp = assetClassValue ticketRefAC 1
   let ticketUserNFTp = assetClassValue ticketUserAC 1
   ticketUserNFT <- valueFromPlutus' ticketUserNFTp
-  isTicketStateLocked <- txMustLockStateWithInlineDatumAndValue ticketValidatorGY (mkTicketDatum new_tsd) (ticketassetClassContextNFTp #+ raffleTicketCollateralValue rsd)
+  isTicketStateLocked <- txMustLockStateWithInlineDatumAndValue ticketValidatorGY (mkTicketDatum new_tsd) (ticketassetClassContextNFTp #+ ticketCollateralValue rsd)
   isGettingTicketUserNFT <- txIsPayingValueToAddress recipient ticketUserNFT
   return
     ( mconcat
@@ -104,7 +104,7 @@ buyTicketTX secretHash recipient raffleRefAC = do
 
 -- |  Update Raffle Transaction
 updateRaffleTX ::
-  (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
+  (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
   GYAddress ->
   RaffleConfig ->
   [GYAddress] ->
@@ -136,7 +136,7 @@ updateRaffleTX recipient newConfig ownAddrs raffleRefAC = do
 
 -- |  Cancel Transaction
 cancelRaffleTX ::
-  (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
+  (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
   [GYAddress] ->
   GYAddress ->
   AssetClass ->
@@ -207,7 +207,7 @@ raffleOwnerClosingTX roa ownAddr raffleRefAC
 raffleOwnerClosingTX _ _ _ = error "Invalid Raffle Owner Action"
 
 -- | Get Collateral of Expired Ticket Transaction
-getCollateralOfExpiredTicketTX :: (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) => [GYAddress] -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
+getCollateralOfExpiredTicketTX :: (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) => [GYAddress] -> GYAddress -> AssetClass -> m (GYTxSkeleton 'PlutusV3)
 getCollateralOfExpiredTicketTX ownAddrs recipient ticketRefAC = do
   mpScriptRef <- asks mintingPolicyRef
   ticketScriptRef <- asks ticketValidatorRef
@@ -223,8 +223,8 @@ getCollateralOfExpiredTicketTX ownAddrs recipient ticketRefAC = do
       (RaffleOwner GetCollateralOfExpiredTicket)
       ticketValidatorGY
   isBurningTicketRefNFT <- txNFTAction mpScriptRef (Burn ticketRefAC)
-  ticketCollateralValue <- valueFromPlutus' tValue
-  isGettingCollateralValue <- txIsPayingValueToAddress recipient ticketCollateralValue
+  ticketCollateralVal <- valueFromPlutus' (tValue #- assetClassValue ticketRefAC 1)
+  isGettingCollateralValue <- txIsPayingValueToAddress recipient ticketCollateralVal
   return $
     mconcat
       [ spendsRaffleUserNFT,
@@ -242,7 +242,7 @@ getCollateralOfExpiredTicketTX ownAddrs recipient ticketRefAC = do
 
 -- | Reveal Ticket Transaction
 revealTicketTX ::
-  (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
+  (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
   Secret ->
   GYAddress ->
   AssetClass ->
@@ -307,7 +307,7 @@ ticketOwnerClosingTX toa ownAddr ticketRefAC = do
       let ticketUserAC = deriveUserFromRefAC ticketRefAC
       isBurningTicketUserNFT <- txNFTAction mpScriptRef (Burn ticketUserAC)
       isBurningTicketRefNFT <- txNFTAction mpScriptRef (Burn ticketRefAC)
-      diffValue <- valueFromPlutus' (if toa == CollectStake then rValue #- newRaffleValue else rValue #- newRaffleValue #+ raffleTicketCollateralValue rsd)
+      diffValue <- valueFromPlutus' (if toa == CollectStake then rValue #- newRaffleValue else rValue #- newRaffleValue #+ ticketCollateralValue rsd)
       isGettingStakeAndTicketCollateral <- txIsPayingValueToAddress ownAddr diffValue
       return
         ( mconcat
@@ -323,7 +323,7 @@ ticketOwnerClosingTX toa ownAddr ticketRefAC = do
 
 -- | Refund Collateral of Losing Ticket Transaction
 refundCollateralOfLosingTicketTX ::
-  (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
+  (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
   GYAddress ->
   AssetClass ->
   m (GYTxSkeleton 'PlutusV3)
@@ -342,8 +342,8 @@ refundCollateralOfLosingTicketTX ownAddr ticketRefAC = do
       ticketValidatorGY
   isBurningTicketRefNFT <- txNFTAction mpScriptRef (Burn ticketRefAC)
   isBurningTicketUserNFT <- txNFTAction mpScriptRef (Burn ticketUserAC)
-  ticketCollateralValue <- valueFromPlutus' (tValue #- assetClassValue ticketRefAC 1)
-  isGettingCollateralValue <- txIsPayingValueToAddress ownAddr ticketCollateralValue
+  ticketCollateralVal <- valueFromPlutus' (tValue #- assetClassValue ticketRefAC 1)
+  isGettingCollateralValue <- txIsPayingValueToAddress ownAddr ticketCollateralVal
   return $
     mconcat
       [ hasRaffleStateAsReferenceInput,
