@@ -31,21 +31,20 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     evalTicketState,
     evaluateRaffleState,
     generateTicketACFromTicket,
-    unsafeGetRaffleStateDatumAndValue,
     isOneOutputTo,
-    revealTicketToRaffleT,
+    unsafeGetRaffleStateDatumAndValue, revealTicketToRaffleT,
   )
 import RaffleizeDApp.OnChain.Utils
   ( AScriptContext (AScriptContext),
     ATxInfo (..),
     findTxInWith,
-    unsafeGetOwnInput,
     hasTxInWithToken,
     hasTxOutWithInlineDatumAnd,
     isBurningNFT,
     mkUntypedLambda,
     noConstraint,
-    spendsToken,
+    ownInputHasToken,
+    unsafeGetOwnInput,
   )
 
 --- *  Validator Lambda
@@ -55,7 +54,7 @@ ticketValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer bre
   case (fromBuiltinData bdatum, fromBuiltinData bredeemer) of
     (Just (TicketDatum _ _ tsd@TicketStateData {..}), Just redeemer) ->
       let (!ticketRefAC, !ticketUserAC) = generateTicketACFromTicket tsd
-       in if spendsToken ticketRefAC context --- Transaction spends the ticket ref NFT in the currently validating input.
+       in if ownInputHasToken ticketRefAC context --- Transaction spends the ticket ref NFT in the currently validating input.
             then
               let !raffleRefAC = tRaffle
                   !raffleValidatorAddr = scriptHashAddress tRaffleValidator

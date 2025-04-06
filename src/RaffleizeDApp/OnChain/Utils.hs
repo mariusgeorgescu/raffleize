@@ -172,11 +172,11 @@ noConstraint = const True
 {-# INLINEABLE noConstraint #-}
 
 isTxOutWith :: ValueConstraint -> AddressConstraint -> TxOut -> Bool
-isTxOutWith toValue toAddress TxOut {txOutValue, txOutAddress} = toValue txOutValue && toAddress txOutAddress
+isTxOutWith !toValue !toAddress TxOut {txOutValue, txOutAddress} = toValue txOutValue && toAddress txOutAddress
 {-# INLINEABLE isTxOutWith #-}
 
 isTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstraint -> TxOut -> Bool
-isTxOutWithInlineDatumAnd datum toValue toAddress TxOut {txOutValue, txOutAddress, txOutDatum} = toValue txOutValue && toAddress txOutAddress && isGivenInlineDatum datum txOutDatum
+isTxOutWithInlineDatumAnd datum !toValue !toAddress TxOut {txOutValue, txOutAddress, txOutDatum} = toValue txOutValue && toAddress txOutAddress && isGivenInlineDatum datum txOutDatum
 {-# INLINEABLE isTxOutWithInlineDatumAnd #-}
 
 -- isTxOutWithInlineDatumAnd' :: (ToData a) => a -> Value -> Address -> TxOut -> Bool
@@ -191,15 +191,15 @@ hasTxInWithRef oref = pany (\(TxInInfo oref' _) -> oref' #== oref)
 {-# INLINEABLE hasTxInWithRef #-}
 
 findTxInWith :: ValueConstraint -> AddressConstraint -> [TxInInfo] -> [TxInInfo]
-findTxInWith toValue toAddress = filter (isTxOutWith toValue toAddress . txInInfoResolved)
+findTxInWith !toValue !toAddress = filter (isTxOutWith toValue toAddress . txInInfoResolved)
 {-# INLINEABLE findTxInWith #-}
 
 hasTxOutWith :: ValueConstraint -> AddressConstraint -> [TxOut] -> Bool
-hasTxOutWith toValue addr = pany (isTxOutWith toValue addr)
+hasTxOutWith !toValue !toAddress = pany (isTxOutWith toValue toAddress)
 {-# INLINEABLE hasTxOutWith #-}
 
 hasTxInWith :: ValueConstraint -> AddressConstraint -> [TxInInfo] -> Bool
-hasTxInWith toValue addr = hasTxOutWith toValue addr . (txInInfoResolved #<$>)
+hasTxInWith !toValue !toAddress = hasTxOutWith toValue toAddress . (txInInfoResolved #<$>)
 {-# INLINEABLE hasTxInWith #-}
 
 unsafeGetInlineDatum :: TxOut -> BuiltinData
@@ -209,13 +209,13 @@ unsafeGetInlineDatum out = case txOutDatum out of
 {-# INLINEABLE unsafeGetInlineDatum #-}
 
 unsafeGetCurrentStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, BuiltinData)
-unsafeGetCurrentStateDatumAndValue stateToken toAddress outs = case filter (isTxOutWith (`geq` assetClassValue stateToken 1) toAddress . txInInfoResolved) outs of
+unsafeGetCurrentStateDatumAndValue stateToken !toAddress outs = case filter (isTxOutWith (`geq` assetClassValue stateToken 1) toAddress . txInInfoResolved) outs of
   [TxInInfo _ out] -> (txOutValue out, unsafeGetInlineDatum out)
   _ -> traceError "state nft not found"
 {-# INLINEABLE unsafeGetCurrentStateDatumAndValue #-}
 
 hasTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstraint -> [TxOut] -> Bool
-hasTxOutWithInlineDatumAnd datum toValue toAddress =
+hasTxOutWithInlineDatumAnd !datum !toValue !toAddress =
   traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd datum toValue toAddress)
 {-# INLINEABLE hasTxOutWithInlineDatumAnd #-}
 
@@ -303,13 +303,13 @@ inputHas1of = outHas1of . txInInfoResolved
 {-# INLINEABLE inputHas1of #-}
 
 -- | Helper function: check that the validating input contains a given token
-spendsToken :: AssetClass -> AScriptContext -> Bool
-spendsToken proofToken sc =
+ownInputHasToken :: AssetClass -> AScriptContext -> Bool
+ownInputHasToken proofToken sc =
   "The transaction must spend the state token"
     `traceIfFalse` case (`inputHas1of` proofToken) #<$> findOwnInputA sc of
       Nothing -> trace "Own input not found" False
       Just result -> traceIfFalse "Proof Token Not Spent" result
-{-# INLINEABLE spendsToken #-}
+{-# INLINEABLE ownInputHasToken #-}
 
 tokenNameFromTxOutRef :: TxOutRef -> TokenName
 tokenNameFromTxOutRef (TxOutRef (TxId txIdbs) txIdx) = TokenName (takeByteString 28 $ blake2b_256 (txIdbs #<> (serialiseData . toBuiltinData) txIdx))

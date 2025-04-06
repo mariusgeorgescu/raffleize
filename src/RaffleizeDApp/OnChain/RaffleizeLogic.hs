@@ -4,17 +4,16 @@ import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
 import PlutusLedgerApi.V3
-  ( Map,
-    POSIXTime (POSIXTime),
+  ( POSIXTime (POSIXTime),
     POSIXTimeRange,
     PubKeyHash,
     ScriptHash,
     ToData (toBuiltinData),
     TokenName (TokenName),
     TxInInfo,
-    TxOut,
+    TxOut (..),
     UnsafeFromData (unsafeFromBuiltinData),
-    Value,
+    Value, Address,
   )
 import PlutusTx.Builtins
   ( divideInteger,
@@ -101,7 +100,8 @@ checkRaffleConfig
           rMinTickets #> 0,
         traceIfFalse "empty stake" $
           rStake #/= mempty,
-        traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked.
+        traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked.
+           -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffleConfig #-}
@@ -282,15 +282,15 @@ unsafeGetTicketStateDatumAndValue ac addr txins =
    in (v, ticketStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
 {-# INLINEABLE unsafeGetTicketStateDatumAndValue #-}
 
-isTicketForRaffle :: AssetClass -> TicketStateData -> RaffleStateData -> Bool
-isTicketForRaffle ticketUserAC tsd rsd =
+isValidTicketForRaffle :: AssetClass -> TicketStateData -> AssetClass -> Bool
+isValidTicketForRaffle ticketUserAC tsd raffleId =
   pand
     [ traceIfFalse "Raffle ids do not match" $
-        tRaffle tsd #== rRaffleID rsd,
+        tRaffle tsd #== raffleId,
       traceIfFalse " Currency symbols do not match" $
-        fst (unAssetClass (rRaffleID rsd)) #== fst (unAssetClass ticketUserAC) --  -- Must be a ticket of the current raffle.
+        fst (unAssetClass raffleId) #== fst (unAssetClass ticketUserAC) --  -- Must be a ticket of the current raffle.
     ]
-{-# INLINEABLE isTicketForRaffle #-}
+{-# INLINEABLE isValidTicketForRaffle #-}
 
 buyTicketToRaffle :: SecretHash -> RaffleStateData -> PlutusLedgerApi.V3.ScriptHash -> (RaffleStateData, TicketStateData)
 buyTicketToRaffle sh raffle@RaffleStateData {..} raffleValidator =
@@ -299,12 +299,12 @@ buyTicketToRaffle sh raffle@RaffleStateData {..} raffleValidator =
    in (raffle_data, ticket_data)
 {-# INLINEABLE buyTicketToRaffle #-}
 
-revealTicketToRaffleR :: BuiltinByteString -> TicketStateData -> RaffleStateData -> RaffleStateData
-revealTicketToRaffleR secret TicketStateData {tSecretHash} raffle@RaffleStateData {rRevealedTickets, rRandomSeed, rSoldTickets} =
-  if blake2b_256 secret #== tSecretHash --  secret matches the secret hash
-    then raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger' secret) `modInteger` rSoldTickets}
-    else traceError "secret does not match the secret hash"
-{-# INLINEABLE revealTicketToRaffleR #-}
+-- revealTicketToRaffleR :: BuiltinByteString -> TicketStateData -> RaffleStateData -> RaffleStateData
+-- revealTicketToRaffleR secret TicketStateData {tSecretHash} raffle@RaffleStateData {rRevealedTickets, rRandomSeed, rSoldTickets} =
+--   if blake2b_256 secret #== tSecretHash --  secret matches the secret hash
+--     then raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger' secret) `modInteger` rSoldTickets}
+--     else traceError "secret does not match the secret hash"
+-- {-# INLINEABLE revealTicketToRaffleR #-}
 
 revealTicketToRaffleT :: BuiltinByteString -> TicketStateData -> TicketStateData
 revealTicketToRaffleT secret ticket@TicketStateData {tSecretHash} =
