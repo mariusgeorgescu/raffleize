@@ -47,6 +47,7 @@ data RaffleConfig = RaffleConfig
     rStake :: Value --- ^ The raffle stake value.
   }
   deriving (Generic, Eq, ToJSON, FromJSON)
+  deriving anyclass (Semigroup, Monoid)
 
 instance Arbitrary RaffleConfig where
   arbitrary = (RaffleConfig . POSIXTime <$> arbitrary) <*> (POSIXTime <$> arbitrary) <*> arbitrary <*> arbitrary <*> (adaValueFromLovelaces <$> arbitrary)

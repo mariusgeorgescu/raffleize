@@ -63,10 +63,7 @@ lookupTicketInfosByACs uACs = do
       Nothing -> mkTicketsInfo tr tis ris
       Just (RaffleInfo {..}) ->
         let raffleStateId = evaluateRaffleState (tr, riRsd, riValue)
-            ticketStateId = evalTicketState tsd (rRandomSeed riRsd) raffleStateId
-            ticketStateLabel = show ticketStateId
-            actions = validActionLabelsForTicketState ticketStateId
-         in TicketInfo tsd tVal tImg ticketStateLabel actions : mkTicketsInfo tr tis ris
+         in mkTicketInfo raffleStateId (rRandomSeed riRsd) (tsd, tVal, tImg) : mkTicketsInfo tr tis ris
     mkTicketsInfo _ _ _ = []
 
 ------------------------------------------------------------------------------------------------
@@ -141,10 +138,7 @@ lookupTicketInfoByRefAC ticketRefAC = do
         Just (rsd, rVal) -> do
           tr <- getTimeRangeForNextNSlots 1
           let raffleStateId = evaluateRaffleState (tr, rsd, rVal)
-          let ticketStateId = evalTicketState tsd (rRandomSeed rsd) raffleStateId
-          let ticketStateLabel = show ticketStateId
-          let actions = validActionLabelsForTicketState ticketStateId
-          return $ Just $ TicketInfo tsd tVal tImg ticketStateLabel actions
+          return $ Just $ mkTicketInfo raffleStateId (rRandomSeed rsd) (tsd, tVal, tImg)
 
 lookupTicketInfoByUserAC :: (GYTxQueryMonad m) => AssetClass -> m (Maybe TicketInfo)
 lookupTicketInfoByUserAC ticketUserAC = do

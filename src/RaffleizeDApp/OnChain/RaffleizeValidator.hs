@@ -33,6 +33,7 @@ import RaffleizeDApp.CustomTypes.TicketTypes
   )
 import RaffleizeDApp.OnChain.RaffleizeLogic
   ( buyTicketToRaffle,
+    checkRaffleAction,
     checkRaffleConfig,
     deriveUserFromRefAC,
     evaluateRaffleState,
@@ -45,7 +46,6 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     revealTicketToRaffleR,
     ticketCollateralValue,
     updateRaffleStateValue,
-    validateRaffleAction,
   )
 import RaffleizeDApp.OnChain.Utils
   ( AScriptContext (..),
@@ -81,7 +81,7 @@ raffleizeValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer 
               hasNewTicketState (newStateData :: TicketStateData) newValue =
                 traceIfFalse "ticket state not locked" $
                   hasTxOutWithInlineDatumAnd (mkTicketDatum newStateData) newValue (#== ticketValidatorAddr) txInfoOutputs
-           in validateRaffleAction action currentStateLabel -- Must be a valid action for the raffle state.
+           in checkRaffleAction action currentStateLabel -- Must be a valid action for the raffle state.
                 && case redeemer of
                   UserRedeemer (CreateRaffle _) -> traceIfFalse "invalid redeemer" False
                   UserRedeemer (BuyTicket secret) ->

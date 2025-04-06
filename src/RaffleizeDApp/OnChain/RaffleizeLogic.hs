@@ -4,7 +4,8 @@ import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (after, before)
 import PlutusLedgerApi.V1.Value (AssetClass (..), adaSymbol, adaToken, assetClass, assetClassValueOf, geq, valueOf)
 import PlutusLedgerApi.V3
-  ( POSIXTime (POSIXTime),
+  ( Map,
+    POSIXTime (POSIXTime),
     POSIXTimeRange,
     PubKeyHash,
     ScriptHash,
@@ -31,6 +32,18 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketStateData (..), TicketStateId (..), ticketStateData)
 import RaffleizeDApp.OnChain.Utils (AddressConstraint, adaValueFromLovelaces, bsToInteger', getCurrentStateDatumAndValue, integerToBs24, isTxOutWith, noConstraint)
 import Prelude
+
+------------------------------------------------------------------------------------------------
+
+-- * RaffleStateData Helpers
+
+------------------------------------------------------------------------------------------------
+redeemerToAction :: RaffleizeRedeemer -> RaffleizeAction
+redeemerToAction (UserRedeemer action) = User action
+redeemerToAction (RaffleOwnerRedeemer action) = RaffleOwner action
+redeemerToAction (TicketOwnerRedeemer action _) = TicketOwner action
+redeemerToAction (AdminRedeemer action) = Admin action
+{-# INLINEABLE redeemerToAction #-}
 
 ------------------------------------------------------------------------------------------------
 
@@ -70,7 +83,7 @@ checkRaffleParam RaffleParam {..} =
     ]
 {-# INLINEABLE checkRaffleParam #-}
 
--- | Check Raffle Configurartion Validity
+-- | Check Raffle Configuration Validity
 checkRaffleConfig :: RaffleParam -> PlutusLedgerApi.V3.POSIXTimeRange -> RaffleConfig -> Bool
 checkRaffleConfig
   param@RaffleParam {rMinRevealingWindow, rMinTicketPrice}
@@ -93,13 +106,62 @@ checkRaffleConfig
       ]
 {-# INLINEABLE checkRaffleConfig #-}
 
-redeemerToAction :: RaffleizeRedeemer -> RaffleizeAction
-redeemerToAction (UserRedeemer action) = User action
-redeemerToAction (RaffleOwnerRedeemer action) = RaffleOwner action
-redeemerToAction (TicketOwnerRedeemer action _) = TicketOwner action
-redeemerToAction (AdminRedeemer action) = Admin action
+-- | Check if an action is valid on a state.
+checkRaffleAction :: RaffleizeAction -> RaffleStateId -> Bool
+checkRaffleAction action currentStateLabel =
+  traceIfFalse "Action not permited in this raffle state" $
+    currentStateLabel `pelem` validRaffleStatesForRaffleizeAction action
+  where
+    validRaffleStatesForRaffleizeAction :: RaffleizeAction -> [RaffleStateId]
+    validRaffleStatesForRaffleizeAction = \case
+      User (CreateRaffle _) -> []
+      User (BuyTicket _) ->
+        [ NEW,
+          COMMITTING
+        ]
+      RaffleOwner roa -> case roa of
+        Cancel -> [NEW]
+        (Update _) -> [NEW]
+        RecoverStake ->
+          [ EXPIRED_LOCKED_STAKE,
+            UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS,
+            UNDERFUNDED_LOCKED_STAKE,
+            UNREVEALED_LOCKED_STAKE_AND_REFUNDS,
+            UNREVEALED_LOCKED_STAKE
+          ]
+        RecoverStakeAndAmount -> [UNREVEALED_NO_REVEALS]
+        CollectAmount ->
+          [ SUCCESS_LOCKED_STAKE_AND_AMOUNT,
+            SUCCESS_LOCKED_AMOUNT
+          ]
+        GetCollateralOfExpiredTicket -> [] -- ticket action, not on raffle state
+      TicketOwner toa -> case toa of
+        (RevealTicketSecret _) -> [REVEALING]
+        CollectStake ->
+          [ SUCCESS_LOCKED_STAKE_AND_AMOUNT,
+            SUCCESS_LOCKED_STAKE
+          ]
+        RefundTicket ->
+          [ UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS,
+            UNDERFUNDED_LOCKED_REFUNDS
+          ]
+        RefundTicketExtra ->
+          [ UNREVEALED_LOCKED_STAKE_AND_REFUNDS,
+            UNREVEALED_LOCKED_REFUNDS
+          ]
+        RefundCollateralLosing -> [] -- ticket action, not on raffle state
+      Admin _ ->
+        [ EXPIRED_FINAL,
+          UNDERFUNDED_FINAL,
+          UNREVEALED_FINAL,
+          SUCCESS_FINAL
+        ]
+{-# INLINEABLE checkRaffleAction #-}
 
-updateRaffleStateValue :: RaffleizeAction -> RaffleStateData -> PlutusLedgerApi.V3.Value -> PlutusLedgerApi.V3.Value
+-- | Function that returns the updated value of a raffle.
+-- Receives  current raffle state (and configuration), current value locked and and an action.
+-- Returns the updated value after the action.
+updateRaffleStateValue :: RaffleizeAction -> RaffleStateData -> Value -> Value
 updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevealedTickets} currentValue = case action of
   User (BuyTicket _) -> currentValue #+ raffleTicketPriceValue rsd
   RaffleOwner RecoverStake -> currentValue #- rStake rConfig
@@ -117,93 +179,6 @@ updateRaffleStateValue action rsd@RaffleStateData {rConfig, rSoldTickets, rRevea
   RaffleOwner Cancel -> trace "no raffle state should exist after this action" pmempty
   _ -> traceError "Invalid action on existing raffle"
 {-# INLINEABLE updateRaffleStateValue #-}
-
-validateRaffleAction :: RaffleizeAction -> RaffleStateId -> Bool
-validateRaffleAction action currentStateLabel =
-  traceIfFalse "Action not permited in this raffle state" $
-    currentStateLabel `pelem` validRaffleStatesForRaffleizeAction action
-{-# INLINEABLE validateRaffleAction #-}
-
-validRaffleStatesForRaffleizeAction :: RaffleizeAction -> [RaffleStateId]
-validRaffleStatesForRaffleizeAction action = case action of
-  User (CreateRaffle _) -> []
-  User (BuyTicket _) ->
-    [ NEW,
-      COMMITTING
-    ]
-  RaffleOwner roa -> case roa of
-    Cancel -> [NEW]
-    (Update _) -> [NEW]
-    RecoverStake ->
-      [ EXPIRED_LOCKED_STAKE,
-        UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS,
-        UNDERFUNDED_LOCKED_STAKE,
-        UNREVEALED_LOCKED_STAKE_AND_REFUNDS,
-        UNREVEALED_LOCKED_STAKE
-      ]
-    RecoverStakeAndAmount -> [UNREVEALED_NO_REVEALS]
-    CollectAmount ->
-      [ SUCCESS_LOCKED_STAKE_AND_AMOUNT,
-        SUCCESS_LOCKED_AMOUNT
-      ]
-    GetCollateralOfExpiredTicket -> [] -- ticket action, not on raffle state
-  TicketOwner toa -> case toa of
-    (RevealTicketSecret _) -> [REVEALING]
-    CollectStake ->
-      [ SUCCESS_LOCKED_STAKE_AND_AMOUNT,
-        SUCCESS_LOCKED_STAKE
-      ]
-    RefundTicket ->
-      [ UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS,
-        UNDERFUNDED_LOCKED_REFUNDS
-      ]
-    RefundTicketExtra ->
-      [ UNREVEALED_LOCKED_STAKE_AND_REFUNDS,
-        UNREVEALED_LOCKED_REFUNDS
-      ]
-    RefundCollateralLosing -> [] -- ticket action, not on raffle state
-  Admin _ ->
-    [ EXPIRED_FINAL,
-      UNDERFUNDED_FINAL,
-      UNREVEALED_FINAL,
-      SUCCESS_FINAL
-    ]
-{-# INLINEABLE validRaffleStatesForRaffleizeAction #-}
-
--- | used in property based testing to check consistency of validActionLabelsForState with  validateRaffleAction
-actionToLabel :: RaffleizeAction -> RaffleizeActionLabel
-actionToLabel action = case action of
-  User a -> ("User",) $ case a of
-    (CreateRaffle _) -> "CreateRaffle"
-    (BuyTicket _) -> "BuyTicket"
-  RaffleOwner roa -> ("RaffleOwner",) $ case roa of
-    (Update _) -> "Update"
-    _ -> show roa
-  TicketOwner toa -> ("TicketOwner",) $ case toa of
-    (RevealTicketSecret _) -> "RevealTicketSecret"
-    _ -> show toa
-  Admin CloseRaffle -> ("Admin", "CloseRaffle")
-
--- validActionLabelsForRaffleState :: RaffleStateId -> [RaffleizeRedeemer]
--- validActionLabelsForRaffleState r = case r of
---   NEW -> [UserRedeemer (BuyTicket mempty), RaffleOwnerRedeemer Cancel, RaffleOwnerRedeemer Update]
---   EXPIRED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
---   EXPIRED_FINAL -> [("Admin", "CloseRaffle")]
---   COMMITTING -> [("User", "BuyTicket")]
---   UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicket")]
---   UNDERFUNDED_LOCKED_REFUNDS -> [("TicketOwner", "RefundTicket")]
---   UNDERFUNDED_LOCKED_STAKE -> [("RaffleOwner", "RecoverStake")]
---   UNDERFUNDED_FINAL -> [("Admin", "CloseRaffle")]
---   REVEALING -> [("TicketOwner", "RevealTicketSecret")]
---   SUCCESS_LOCKED_STAKE_AND_AMOUNT -> [("RaffleOwner", "CollectAmount"), ("TicketOwner", "CollectStake")]
---   SUCCESS_LOCKED_AMOUNT -> [("RaffleOwner", "CollectAmount")]
---   SUCCESS_LOCKED_STAKE -> [("TicketOwner", "CollectStake")]
---   SUCCESS_FINAL -> [("Admin", "CloseRaffle")]
---   UNREVEALED_NO_REVEALS -> [("RaffleOwner", "RecoverStakeAndAmount")]
---   UNREVEALED_LOCKED_STAKE_AND_REFUNDS -> [("RaffleOwner", "RecoverStake"), ("TicketOwner", "RefundTicketExtra")]
---   UNREVEALED_LOCKED_REFUNDS -> [("TicketOwner", "RefundTicketExtra")]
---   UNREVEALED_LOCKED_STAKE -> [("RaffleOwner", "RecoverStake")]
---   UNREVEALED_FINAL -> [("Admin", "CloseRaffle")]
 
 evaluateRaffleState :: (PlutusLedgerApi.V3.POSIXTimeRange, RaffleStateData, PlutusLedgerApi.V3.Value) -> RaffleStateId
 evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets, rRevealedTickets, rRefundedTickets}, svalue) =
@@ -256,18 +231,6 @@ evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets,
                           (False, _, True) -> traceError "no refunds when 0 tickets are revealed"
 {-# INLINEABLE evaluateRaffleState #-}
 
--- showTicketStateLabel :: TicketStateId -> String
--- showTicketStateLabel r = case r of
---   90 -> "COMMITTED"
---   91 -> "FULLY_REFUNDABLE"
---   92 -> "REVEALABLE"
---   93 -> "REVEALED"
---   94 -> "WINNING"
---   95 -> "LOSING"
---   96 -> "EXTRA_REFUNDABLE"
---   97 -> "UNREVEALED_EXPIRED"
---   _ -> "INVALID STATE"
-
 evalTicketState :: TicketStateData -> Integer -> RaffleStateId -> TicketStateId
 evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId =
   case raffleStateId of
@@ -287,45 +250,25 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId =
     _ -> traceError "Ticket should not exist for raffle in this state"
 {-# INLINEABLE evalTicketState #-}
 
-validActionLabelsForTicketState :: TicketStateId -> [RaffleizeActionLabel]
-validActionLabelsForTicketState r = case r of
-  FULLY_REFUNDABLE -> [("TicketOwner", "RefundTicket")]
-  REVEALABLE -> [("TicketOwner", "RevealTicketSecret")]
-  WINNING -> [("TicketOwner", "CollectStake")]
-  LOSING -> [("TicketOwner", "RefundCollateralLosing")]
-  EXTRA_REFUNDABLE -> [("TicketOwner", "RefundTicketExtra")]
-  UNREVEALED_EXPIRED -> [("RaffleOwner", "GetCollateraOfExpiredTicket")]
-  _ -> []
-
-validActionsForTicketState :: TicketStateId -> [RaffleizeAction]
-validActionsForTicketState r = case r of
-  FULLY_REFUNDABLE -> [TicketOwner RefundTicket]
-  REVEALABLE -> [TicketOwner (RevealTicketSecret mempty)]
-  WINNING -> [TicketOwner CollectStake]
-  LOSING -> [TicketOwner RefundCollateralLosing]
-  EXTRA_REFUNDABLE -> [TicketOwner RefundTicketExtra]
-  UNREVEALED_EXPIRED -> [RaffleOwner GetCollateralOfExpiredTicket]
-  _ -> []
-
-validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateId]
-validTicketStatesForRaffleizeAction ra = case ra of
-  RaffleOwner roa -> case roa of
-    GetCollateralOfExpiredTicket -> [UNREVEALED_EXPIRED]
-    _ -> []
-  TicketOwner toa -> case toa of
-    (RevealTicketSecret _) -> [REVEALABLE]
-    CollectStake -> [WINNING]
-    RefundTicket -> [FULLY_REFUNDABLE]
-    RefundTicketExtra -> [EXTRA_REFUNDABLE]
-    RefundCollateralLosing -> [LOSING]
-  User _ -> []
-  Admin _ -> []
-
-validateTicketAction :: RaffleizeAction -> TicketStateId -> Bool
-validateTicketAction action currentStateLabel =
+checkTicketAction :: RaffleizeAction -> TicketStateId -> Bool
+checkTicketAction action currentStateLabel =
   traceIfFalse "Action not permitted in this ticket state" $
     currentStateLabel `pelem` validTicketStatesForRaffleizeAction action
-{-# INLINEABLE validateTicketAction #-}
+  where
+    validTicketStatesForRaffleizeAction :: RaffleizeAction -> [TicketStateId]
+    validTicketStatesForRaffleizeAction ra = case ra of
+      RaffleOwner roa -> case roa of
+        GetCollateralOfExpiredTicket -> [UNREVEALED_EXPIRED]
+        _ -> []
+      TicketOwner toa -> case toa of
+        (RevealTicketSecret _) -> [REVEALABLE]
+        CollectStake -> [WINNING]
+        RefundTicket -> [FULLY_REFUNDABLE]
+        RefundTicketExtra -> [EXTRA_REFUNDABLE]
+        RefundCollateralLosing -> [LOSING]
+      User _ -> []
+      Admin _ -> []
+{-# INLINEABLE checkTicketAction #-}
 
 getRaffleStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, RaffleStateData)
 getRaffleStateDatumAndValue ac addr txins = let (v, b) = getCurrentStateDatumAndValue ac addr txins in (v, raffleStateData $ PlutusLedgerApi.V3.unsafeFromBuiltinData b)
@@ -481,3 +424,59 @@ userTokenPrefixBS = integerToBs24 (0x000de140 :: Integer) -- cheaper
 -- This function checks if tokenname has the raffle prefix
 hasRefPrefix :: PlutusLedgerApi.V3.TokenName -> Bool
 hasRefPrefix (PlutusLedgerApi.V3.TokenName tnbs) = sliceByteString 0 4 tnbs #== refTokenPrefixBS
+
+---------
+---------
+---------
+---------
+---------
+
+actionToLabel :: RaffleizeAction -> RaffleizeActionLabel
+actionToLabel action = case action of
+  User a -> ("User",) $ case a of
+    (CreateRaffle _) -> "CreateRaffle"
+    (BuyTicket _) -> "BuyTicket"
+  RaffleOwner roa -> ("RaffleOwner",) $ case roa of
+    (Update _) -> "Update"
+    _ -> show roa
+  TicketOwner toa -> ("TicketOwner",) $ case toa of
+    (RevealTicketSecret _) -> "RevealTicketSecret"
+    _ -> show toa
+  Admin CloseRaffle -> ("Admin", "CloseRaffle")
+
+validActionLabelsForRaffleState :: RaffleStateId -> [RaffleizeActionLabel]
+validActionLabelsForRaffleState = fmap actionToLabel . validActionsForRaffleState
+  where
+    validActionsForRaffleState :: RaffleStateId -> [RaffleizeAction]
+    validActionsForRaffleState r = case r of
+      NEW -> [User (BuyTicket mempty), RaffleOwner Cancel, RaffleOwner (Update mempty)]
+      EXPIRED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
+      EXPIRED_FINAL -> [Admin CloseRaffle]
+      COMMITTING -> [User (BuyTicket mempty)]
+      UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS -> [RaffleOwner RecoverStake, TicketOwner RefundTicket]
+      UNDERFUNDED_LOCKED_REFUNDS -> [TicketOwner RefundTicket]
+      UNDERFUNDED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
+      UNDERFUNDED_FINAL -> [Admin CloseRaffle]
+      REVEALING -> [TicketOwner (RevealTicketSecret mempty)]
+      SUCCESS_LOCKED_STAKE_AND_AMOUNT -> [RaffleOwner CollectAmount, TicketOwner CollectStake]
+      SUCCESS_LOCKED_AMOUNT -> [RaffleOwner CollectAmount]
+      SUCCESS_LOCKED_STAKE -> [TicketOwner CollectStake]
+      SUCCESS_FINAL -> [Admin CloseRaffle]
+      UNREVEALED_NO_REVEALS -> [RaffleOwner RecoverStakeAndAmount]
+      UNREVEALED_LOCKED_STAKE_AND_REFUNDS -> [RaffleOwner RecoverStake, TicketOwner RefundTicketExtra]
+      UNREVEALED_LOCKED_REFUNDS -> [TicketOwner RefundTicketExtra]
+      UNREVEALED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
+      UNREVEALED_FINAL -> [Admin CloseRaffle]
+
+validActionLabelsForTicketState :: TicketStateId -> [RaffleizeActionLabel]
+validActionLabelsForTicketState = fmap actionToLabel . validActionsForTicketState
+  where
+    validActionsForTicketState :: TicketStateId -> [RaffleizeAction]
+    validActionsForTicketState r = case r of
+      FULLY_REFUNDABLE -> [TicketOwner RefundTicket]
+      REVEALABLE -> [TicketOwner (RevealTicketSecret mempty)]
+      WINNING -> [TicketOwner CollectStake]
+      LOSING -> [TicketOwner RefundCollateralLosing]
+      EXTRA_REFUNDABLE -> [TicketOwner RefundTicketExtra]
+      UNREVEALED_EXPIRED -> [RaffleOwner GetCollateralOfExpiredTicket]
+      _ -> []

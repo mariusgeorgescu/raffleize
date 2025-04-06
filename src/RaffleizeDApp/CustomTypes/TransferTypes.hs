@@ -47,7 +47,7 @@ mkRaffleInfo :: POSIXTimeRange -> (RaffleStateData, Value, String) -> RaffleInfo
 mkRaffleInfo tr (rsd, rVal, img) =
   let raffleStateId = evaluateRaffleState (tr, rsd, rVal)
       stateLabel = show raffleStateId
-      actions = mempty -- validActionLabelsForRaffleState raffleStateId
+      actions = validActionLabelsForRaffleState raffleStateId
    in RaffleInfo rsd rVal img stateLabel actions
 
 mkTicketInfo :: RaffleStateId -> Integer -> (TicketStateData, Value, String) -> TicketInfo
