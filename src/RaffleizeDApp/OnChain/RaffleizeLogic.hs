@@ -308,7 +308,7 @@ revealTicketToRaffleRT secret ticket@TicketStateData {tSecretHash, tRaffle} raff
 -------
 
 tokenNameFromTxOutRef :: TxOutRef -> TokenName
-tokenNameFromTxOutRef (TxOutRef (TxId txIdbs) txIdx) = TokenName (takeByteString 28 $ blake2b_256 (txIdbs #<> integerToBs24 txIdx))
+tokenNameFromTxOutRef (TxOutRef (TxId txIdbs) txIdx) = TokenName (takeByteString 28 $ blake2b_256 (txIdbs #<> (serialiseData . PlutusLedgerApi.V3.toBuiltinData) txIdx))
 {-# INLINEABLE tokenNameFromTxOutRef #-}
 
 generateTicketTN :: Integer -> PlutusLedgerApi.V3.TokenName -> PlutusLedgerApi.V3.TokenName
