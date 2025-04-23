@@ -65,7 +65,9 @@ instance FromJSON Value where
 
 instance ToJSON TokenName where
   toJSON :: TokenName -> Data.Aeson.Value
-  toJSON tn = toJSON $ drop 2 . toString $ tn
+  toJSON tn =
+    let tnStr = toString tn
+     in if take 2 tnStr == "0x" then toJSON (drop 2 tnStr) else toJSON tnStr
 
 instance FromJSON TokenName where
   parseJSON :: Data.Aeson.Value -> Parser TokenName

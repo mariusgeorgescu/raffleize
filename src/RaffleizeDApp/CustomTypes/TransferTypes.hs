@@ -113,7 +113,7 @@ sampleAddr :: GYAddress
 sampleAddr = unsafeAddressFromText "addr_test1qrsuhwqdhz0zjgnf46unas27h93amfghddnff8lpc2n28rgmjv8f77ka0zshfgssqr5cnl64zdnde5f8q2xt923e7ctqu49mg5"
 
 sampleAssetClass :: AssetClass
-sampleAssetClass = AssetClass (CurrencySymbol "RaffleizeCurrencySymbol", TokenName "00RaffleizeTokenName")
+sampleAssetClass = AssetClass (CurrencySymbol "RaffleizeCurrencySymbol", TokenName "0xRaffleizeTokenName")
 
 sampleRaffleConfig :: RaffleConfig
 sampleRaffleConfig =
