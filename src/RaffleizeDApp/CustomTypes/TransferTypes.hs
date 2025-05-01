@@ -29,7 +29,8 @@ data TicketInfo = TicketInfo
     tiValue :: Value,
     tiImage :: String,
     tiStateLabel :: TicketStateLabel,
-    tiAvailableActions :: [RaffleizeActionLabel]
+    tiAvailableActions :: [RaffleizeActionLabel],
+    tiTicketId :: AssetClass
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
@@ -55,7 +56,7 @@ mkTicketInfo raffleStateId currentRandom (tsd, tVal, tImg) =
   let ticketStateId = evalTicketState tsd currentRandom raffleStateId
       ticketStateLabel = show ticketStateId
       actions = validActionLabelsForTicketState ticketStateId
-   in TicketInfo tsd tVal tImg ticketStateLabel actions
+   in TicketInfo tsd tVal tImg ticketStateLabel actions (fst $ generateTicketACFromTicket tsd)
 
 data RaffleizeInteraction = RaffleizeInteraction
   { -- | The @AssetClass@ of the Raffle or Ticket the ticket which are in scope of the interaction (if set).

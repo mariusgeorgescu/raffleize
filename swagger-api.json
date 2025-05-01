@@ -813,6 +813,10 @@
                                     "tiAvailableActions": [],
                                     "tiImage": "ipfs://notarealurl",
                                     "tiStateLabel": "REVEALED",
+                                    "tiTicketId": [
+                                        "526166666c65697a6543757272656e637953796d626f6c",
+                                        "000643b04ffdd5f1e998ef912da4baa81a5e518d5c3cec6106853a5745155f2a"
+                                    ],
                                     "tiTsd": {
                                         "tNumber": 0,
                                         "tRaffle": [
@@ -837,6 +841,12 @@
                                     },
                                     "tiStateLabel": {
                                         "type": "string"
+                                    },
+                                    "tiTicketId": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
                                     },
                                     "tiTsd": {
                                         "properties": {
@@ -879,6 +889,7 @@
                                     "tiStateLabel",
                                     "tiValue",
                                     "tiTsd",
+                                    "tiTicketId",
                                     "tiImage",
                                     "tiAvailableActions"
                                 ],
