@@ -11,34 +11,34 @@ import Data.Conduit.Combinators ()
 import Data.Swagger (HasHost (host), HasInfo (info), HasLicense (license), Swagger (..), ToSchema, description, sketchSchema, title, version)
 import Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), plain)
 import GeniusYield.Imports qualified as GeniusYield.Types.Tx
-import GeniusYield.Types (
-  GYAddress,
-  GYAssetClass,
-  GYAwaitTxParameters (GYAwaitTxParameters),
-  GYProviders (gyAwaitTxConfirmed, gySubmitTx),
-  GYTxId,
-  assetClassToPlutus,
-  getTxBody,
-  makeSignedTransaction,
- )
+import GeniusYield.Types
+  ( GYAddress,
+    GYAssetClass,
+    GYAwaitTxParameters (GYAwaitTxParameters),
+    GYProviders (gyAwaitTxConfirmed, gySubmitTx),
+    GYTxId,
+    assetClassToPlutus,
+    getTxBody,
+    makeSignedTransaction,
+  )
 import Network.HTTP.Types qualified as HttpTypes
-import Network.Wai.Middleware.Cors (
-  CorsResourcePolicy (corsRequestHeaders),
-  cors,
-  simpleCorsResourcePolicy,
- )
+import Network.Wai.Middleware.Cors
+  ( CorsResourcePolicy (corsRequestHeaders),
+    cors,
+    simpleCorsResourcePolicy,
+  )
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import Servant
-import Servant.API.EventStream (
-  RecommendedEventSourceHeaders,
-  ServerEvent (ServerEvent),
-  ServerSentEvents,
-  ToServerEvent (..),
-  recommendedEventSourceHeaders,
- )
+import Servant.API.EventStream
+  ( RecommendedEventSourceHeaders,
+    ServerEvent (ServerEvent),
+    ServerSentEvents,
+    ToServerEvent (..),
+    recommendedEventSourceHeaders,
+  )
 import Servant.Conduit ()
 import Servant.Swagger
 
@@ -50,8 +50,7 @@ type RaffleizeREST =
     :<|> "raffles" :> Get '[JSON] [RaffleInfo]
     :<|> "raffle" :> Capture "raffleId" GYAssetClass :> Get '[JSON] (Maybe RaffleInfo)
     :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
-    :<|> "user-raffles2" :> Capture "address" GYAddress :> Get '[JSON] [RaffleInfo]
-    :<|> "user-tickets" :> Capture "address" GYAddress :> Get '[JSON] [TicketInfo]
+    :<|> "user-tickets" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [TicketInfo]
 
 type RaffleizeSSE = "submit-tx-sse" :> Capture "txid" String :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 
@@ -62,8 +61,7 @@ raffleizeServer roc@RaffleizeOffchainContext {..} =
       :<|> handleGetRaffles providerCtx
       :<|> handleGetRaffleById providerCtx
       :<|> handleGetRafflesByAddresses providerCtx
-      :<|> handleGetRafflesByAddress providerCtx
-      :<|> handleGetMyTickets providerCtx
+      :<|> handleGeTicketsByAddresses providerCtx
   )
     :<|> handleSubmitSSE providerCtx
 
@@ -101,17 +99,14 @@ handleGetRaffleById pCtx gyRaffleId = do
   liftIO $ print mri
   return mri
 
-handleGetRafflesByAddress :: ProviderCtx -> GYAddress -> IO [RaffleInfo]
-handleGetRafflesByAddress pCtx addrs = runQuery pCtx (lookupRafflesOfAddress addrs)
-
 handleGetRafflesByAddresses :: ProviderCtx -> [GYAddress] -> IO [RaffleInfo]
-handleGetRafflesByAddresses pCtx addrs = runQuery pCtx (lookupRafflesOfAddressses addrs)
+handleGetRafflesByAddresses pCtx addrs = runQuery pCtx (lookupRafflesOfAddresses addrs)
 
 handleGetOneRaffle :: ProviderCtx -> IO RaffleInfo
 handleGetOneRaffle pCtx = head <$> handleGetRaffles pCtx
 
-handleGetMyTickets :: ProviderCtx -> GYAddress -> IO [TicketInfo]
-handleGetMyTickets pCtx addr = runQuery pCtx (lookupTicketsOfAddress addr)
+handleGeTicketsByAddresses :: ProviderCtx -> [GYAddress] -> IO [TicketInfo]
+handleGeTicketsByAddresses pCtx addr = runQuery pCtx (lookupTicketsOfAddresses addr)
 
 handleInteraction :: RaffleizeOffchainContext -> RaffleizeInteraction -> IO String
 handleInteraction roc i = do

@@ -145,6 +145,12 @@ lookupTicketInfoByUserAC ticketUserAC = do
   let ticketRefAC = deriveRefFromUserAC ticketUserAC
   lookupTicketInfoByRefAC ticketRefAC
 
+getAllRaffleizeUserTokens :: (GYTxQueryMonad m) => [GYAddress] -> m [AssetClass]
+getAllRaffleizeUserTokens addrs = do
+  utxos <- mapM lookupUTxOsAtAddress addrs
+  let val = getValueBalance <$> utxos
+  return $ concatMap getMyRaffleizeUserTokensFromValue val
+
 -- | FILTER ONLY VALID UTXOS BASED ON EXISTANCE OF A RAFFLE STATE TOKEN
 lookupActiveRaffles :: (GYTxQueryMonad m) => m [RaffleInfo]
 lookupActiveRaffles = do
@@ -154,25 +160,14 @@ lookupActiveRaffles = do
   tr <- getTimeRangeForNextNSlots 1
   return $ mapMaybe (`raffleInfoFromUTxO` tr) raffleUTxOs
 
-lookupTicketsOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [TicketInfo]
-lookupTicketsOfAddress addr = do
-  utxos <- lookupUTxOsAtAddress addr
-  let val = getValueBalance utxos
-  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
-  lookupTicketInfosByACs raffleizeUserTokens
+lookupTicketsOfAddresses :: (GYTxQueryMonad m) => [GYAddress] -> m [TicketInfo]
+lookupTicketsOfAddresses addrs = do
+  raffleizeUserTokens <- getAllRaffleizeUserTokens addrs
+  lookupTicketInfosByACs (deriveRefFromUserAC <$> raffleizeUserTokens)
 
-lookupRafflesOfAddress :: (GYTxQueryMonad m) => GYAddress -> m [RaffleInfo]
-lookupRafflesOfAddress addr = do
-  utxos <- lookupUTxOsAtAddress addr
-  let val = getValueBalance utxos
-  let raffleizeUserTokens = getMyRaffleizeUserTokensFromValue val
-  lookupRaffleInfosByACs (deriveRefFromUserAC <$> raffleizeUserTokens)
-
-lookupRafflesOfAddressses :: (GYTxQueryMonad m) => [GYAddress] -> m [RaffleInfo]
-lookupRafflesOfAddressses addrs = do
-  utxos <- mapM lookupUTxOsAtAddress addrs
-  let val = getValueBalance <$> utxos
-  let raffleizeUserTokens = concatMap getMyRaffleizeUserTokensFromValue val
+lookupRafflesOfAddresses :: (GYTxQueryMonad m) => [GYAddress] -> m [RaffleInfo]
+lookupRafflesOfAddresses addrs = do
+  raffleizeUserTokens <- getAllRaffleizeUserTokens addrs
   lookupRaffleInfosByACs (deriveRefFromUserAC <$> raffleizeUserTokens)
 
 getTimeRangeForNextNSlots :: (GYTxQueryMonad m) => Integer -> m POSIXTimeRange

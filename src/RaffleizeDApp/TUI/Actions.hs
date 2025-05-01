@@ -44,13 +44,13 @@ getMyTickets :: ProviderCtx -> GYAddress -> IO [TicketInfo]
 getMyTickets pCtx addr = do
   let msg = "Getting tickets of: \n\t" <> Data.Text.unpack (addressToText addr)
   putStrLn $ yellowColorString msg
-  runQuery pCtx (lookupTicketsOfAddress addr)
+  runQuery pCtx (lookupTicketsOfAddresses [addr])
 
 getMyRaffles :: ProviderCtx -> GYAddress -> IO [RaffleInfo]
 getMyRaffles pCtx addr = do
   let msg = "Getting raffles of: \n\t " <> Data.Text.unpack (addressToText addr)
   putStrLn $ yellowColorString msg
-  runQuery pCtx (lookupRafflesOfAddress addr)
+  runQuery pCtx (lookupRafflesOfAddresses [addr])
 
 ----------------
 ----------------
