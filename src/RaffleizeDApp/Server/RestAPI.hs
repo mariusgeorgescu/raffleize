@@ -51,6 +51,7 @@ type RaffleizeREST =
     :<|> "raffle" :> Capture "raffleId" GYAssetClass :> Get '[JSON] (Maybe RaffleInfo)
     :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
     :<|> "user-tickets" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [TicketInfo]
+    :<|> "ticket" :> Capture "ticketId" GYAssetClass :> Get '[JSON] (Maybe RaffleInfo)
 
 type RaffleizeSSE = "submit-tx-sse" :> Capture "txid" String :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 
@@ -62,6 +63,7 @@ raffleizeServer roc@RaffleizeOffchainContext {..} =
       :<|> handleGetRaffleById providerCtx
       :<|> handleGetRafflesByAddresses providerCtx
       :<|> handleGeTicketsByAddresses providerCtx
+      :<|> handleGetRaffleById providerCtx
   )
     :<|> handleSubmitSSE providerCtx
 
@@ -95,15 +97,18 @@ handleGetRaffles pCtx = runQuery pCtx lookupActiveRaffles
 handleGetRaffleById :: ProviderCtx -> GYAssetClass -> IO (Maybe RaffleInfo)
 handleGetRaffleById pCtx gyRaffleId = do
   liftIO $ putStrLn $ "Lookup for raffle: " <> show gyRaffleId
-  mri <- runQuery pCtx $ lookupRaffleInfoByRefAC (assetClassToPlutus gyRaffleId)
-  liftIO $ print mri
-  return mri
+  runQuery pCtx $ lookupRaffleInfoByRefAC (assetClassToPlutus gyRaffleId)
 
 handleGetRafflesByAddresses :: ProviderCtx -> [GYAddress] -> IO [RaffleInfo]
 handleGetRafflesByAddresses pCtx addrs = runQuery pCtx (lookupRafflesOfAddresses addrs)
 
-handleGetOneRaffle :: ProviderCtx -> IO RaffleInfo
-handleGetOneRaffle pCtx = head <$> handleGetRaffles pCtx
+-- handleGetOneRaffle :: ProviderCtx -> IO RaffleInfo
+-- handleGetOneRaffle pCtx = head <$> handleGetRaffles pCtx
+
+handleGetTicketById :: ProviderCtx -> GYAssetClass -> IO (Maybe TicketInfo)
+handleGetTicketById pCtx gyTicketId = do
+  liftIO $ putStrLn $ "Lookup for ticket: " <> show gyTicketId
+  runQuery pCtx $ lookupTicketInfoByRefAC (assetClassToPlutus gyTicketId)
 
 handleGeTicketsByAddresses :: ProviderCtx -> [GYAddress] -> IO [TicketInfo]
 handleGeTicketsByAddresses pCtx addr = runQuery pCtx (lookupTicketsOfAddresses addr)

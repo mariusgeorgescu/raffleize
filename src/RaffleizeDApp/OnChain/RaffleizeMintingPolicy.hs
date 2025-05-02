@@ -106,7 +106,8 @@ raffleizePolicyLambda params@RaffleParam {rRaffleValidatorHash, rTicketValidator
                   locksNewTicketState (newStateData :: TicketStateData) newValue =
                     hasTxOutWithInlineDatumAnd (mkTicketDatum newStateData) newValue (#== ticketValidatorAddr) txInfoOutputs
                in pand
-                    [ traceIfFalse "Tx must spend a raffle  with valid state for minting tickets" $
+                    [ traceIfFalse "Not SHA256 hash" $ lengthOfByteString secretHash #== 64,
+                      traceIfFalse "Tx must spend a raffle  with valid state for minting tickets" $
                         evaluateRaffleState (txInfoValidRange, rsd, currentValue) `pelem` [NEW, COMMITTING],
                       traceIfFalse "Tx must update the raffle state" $
                         locksRaffleStateWithUpdatedDatumAndValue new_rsd, -- Must lock raffle state at Raffle Validator address (with updated value and datum).
