@@ -1,6 +1,9 @@
 module RaffleizeDApp.CustomTypes.TicketTypes where
 
-import PlutusLedgerApi.V1.Value (AssetClass)
+import Data.Aeson
+import Data.Aeson.Types
+import GeniusYield.Types (tokenNameToPlutus, unsafeTokenNameFromHex)
+import PlutusLedgerApi.V1.Value (AssetClass, TokenName (..), toString)
 import PlutusLedgerApi.V2 (ScriptHash, ToData (toBuiltinData))
 import PlutusTx (unstableMakeIsData)
 import PlutusTx.AssocMap (lookup, safeFromList)
@@ -12,8 +15,6 @@ import RaffleizeDApp.Constants
     ticketName,
   )
 import RaffleizeDApp.CustomTypes.Types
-  ( Metadata,
-  )
 import RaffleizeDApp.OnChain.Utils (encodeUtf8KV, wrapTitle)
 
 -------------------------------------------------------------------------------
@@ -22,7 +23,21 @@ import RaffleizeDApp.OnChain.Utils (encodeUtf8KV, wrapTitle)
 
 -------------------------------------------------------------------------------
 
-type SecretHash = BuiltinByteString
+newtype SecretHash = SecretHash
+  {unSecretHash :: BuiltinByteString}
+  deriving (Generic, Eq, Show)
+
+unstableMakeIsData ''SecretHash ---  must be changed with stable version
+
+instance ToJSON SecretHash where
+  toJSON :: SecretHash -> Data.Aeson.Value
+  toJSON (SecretHash s) = toJSON $ toString (TokenName s) --- using TokenName for hex conversion
+
+instance FromJSON SecretHash where
+  parseJSON :: Data.Aeson.Value -> Parser SecretHash
+  parseJSON v =
+    let tn = tokenNameToPlutus . unsafeTokenNameFromHex <$> parseJSON @Text v --- using TokenName for hex conversion
+     in SecretHash . unTokenName <$> tn
 
 type Secret = BuiltinByteString
 
@@ -116,3 +131,16 @@ instance Show TicketStateData where
       ++ "\nRaffle ID                | "
       ++ show tRaffle
       ++ "\n"
+
+-- ssecrethash :: SecretHash = "marius"
+
+-- ssecret :: Secret = "marius"
+
+-- b = fromJSON @SecretHash $ toJSON ssecrethash
+
+-- c = fromJSON @SecretHash $ toJSON ssecret
+
+-- --- >>> show b
+-- --- >>> show c
+-- -- "Success \"marius\""
+-- -- "Success \"marius\""

@@ -12,6 +12,7 @@ import Brick.Widgets.Table
 import Control.Lens
 import Data.Maybe qualified
 import Data.Text qualified
+import Data.Text qualified as Text
 import Data.Vector qualified
 import GeniusYield.GYConfig
 import GeniusYield.Types
@@ -96,7 +97,7 @@ invalidFieldText t = case t of
   SendTicketAddressField -> "Enter a valid address or leave empty to receive the ticket to the current address !"
   ConstructedValueItemsList -> "Stake value must not be empty ! The stake value can contain maximum 2 asset classes"
   RevealedSecretField -> "The secret must hash must match with the onchain secret hash!"
-  SecretField -> "The secret must have maximum 32 characters !"
+  SecretField -> Text.pack $ "The secret must have maximum " <> show secretMaxLength <> " characters !"
   MnemonicField -> "Enter a valid recovery phrase !"
   _ -> ""
 
@@ -351,7 +352,7 @@ drawTicketInfo TicketInfo {..} =
             table
               [ [txt "Ticket Number: ", txt (showText (tNumber tiTsd))],
                 [txt "Ticket State: ", txt (showText tiStateLabel)],
-                [txt "Secret Hash: ", txt (fromBuiltin @BuiltinString $ PlutusTx.Show.show (tSecretHash tiTsd))],
+                [txt "Secret Hash: ", txt (fromBuiltin @BuiltinString $ PlutusTx.Show.show (unSecretHash $ tSecretHash tiTsd))],
                 [txt "Revealed Secret: ", txt (showText (tSecret tiTsd))]
               ]
 

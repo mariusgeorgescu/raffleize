@@ -6,12 +6,12 @@ import Data.Aeson hiding (Value)
 import Data.Aeson qualified (Value)
 import Data.Aeson.Types (Parser)
 import Data.String
+import Data.Text qualified as Text
 import GeniusYield.Types (unsafeTokenNameFromHex)
 import GeniusYield.Types.Value (tokenNameToPlutus)
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
 import PlutusLedgerApi.V2
 import PlutusTx
-import PlutusTx.Show qualified (show)
 
 unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
 unFlattenValue [] = mempty
@@ -93,11 +93,11 @@ instance FromJSON AssetClass where
 
 instance ToJSON BuiltinByteString where
   toJSON :: BuiltinByteString -> Data.Aeson.Value
-  toJSON bs = toJSON $ fromBuiltin @BuiltinString $ PlutusTx.Show.show bs
+  toJSON bs = toJSON $ Text.pack $ init $ tail $ show bs
 
 instance FromJSON BuiltinByteString where
   parseJSON :: Data.Aeson.Value -> Parser BuiltinByteString
-  parseJSON v = fromString @BuiltinByteString <$> parseJSON @String v
+  parseJSON v = fromString @BuiltinByteString . Text.unpack <$> parseJSON @Text v
 
 instance ToJSON ScriptHash where
   toJSON :: ScriptHash -> Data.Aeson.Value
@@ -108,3 +108,10 @@ instance FromJSON ScriptHash where
   parseJSON v =
     let s = parseJSON @BuiltinByteString v
      in ScriptHash <$> s
+
+-- -- | Decode hex-encoded string to ASCII string using external library
+-- unsafeHexToASCII :: String ->  String
+-- unsafeHexToASCII hexStr =
+--     case B.convertFromBase B.Base16 (BS.pack hexStr) :: Either String BStrict.ByteString of
+--         Left err -> error $ err <> " " <> show hexStr
+--         Right bs ->  BS.unpack bs

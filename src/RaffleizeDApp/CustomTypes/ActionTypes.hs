@@ -7,7 +7,7 @@ import PlutusLedgerApi.V1.Value (AssetClass)
 import PlutusTx (unstableMakeIsData)
 import PlutusTx.Builtins.HasOpaque (stringToBuiltinByteString)
 import RaffleizeDApp.CustomTypes.RaffleTypes (RaffleConfig)
-import RaffleizeDApp.CustomTypes.TicketTypes (Secret, SecretHash)
+import RaffleizeDApp.CustomTypes.TicketTypes (Secret, SecretHash (SecretHash))
 import Test.QuickCheck.Arbitrary.Generic
   ( Arbitrary (arbitrary),
     GenericArbitrary (GenericArbitrary),
@@ -22,6 +22,9 @@ import Test.QuickCheck.Arbitrary.Generic
 -- | Arbitraty insance for BuiltinByteString
 instance Arbitrary BuiltinByteString where
   arbitrary = stringToBuiltinByteString <$> arbitrary
+
+instance Arbitrary SecretHash where
+  arbitrary = SecretHash . stringToBuiltinByteString <$> arbitrary
 
 -- | Actions that can be peformed by any user.
 data UserAction

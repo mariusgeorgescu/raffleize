@@ -154,8 +154,8 @@ sampleTicketStateData :: TicketStateData
 sampleTicketStateData =
   TicketStateData
     { tNumber = 0,
-      tSecretHash = "cd819b13f67c73919753ec1a1d2b2f03bc525636edfac358404aad235cd5e316",
-      tSecret = Just "marius",
+      tSecretHash = SecretHash "fb0721e63e74fd787fe56b179824fb24e51ae0a7a10103a588b606f56f0ee2fc",
+      tSecret = Just "6D6172697573",
       tRaffle = sampleAssetClass,
       tRaffleValidator = "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013"
     }

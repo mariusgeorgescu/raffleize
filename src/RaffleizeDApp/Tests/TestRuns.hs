@@ -101,13 +101,13 @@ buyTicketToRaffleRun ri roc w secret = do
   soldTicketsBeforeBuy <- rSoldTickets . riRsd . Data.Maybe.fromMaybe (error "raffle not fund 1") <$> queryRaffleRun w raffleId
   x <- Data.Maybe.fromMaybe (error "raffle not fund X") <$> queryRaffleRun w raffleId
   logInfo (show x)
-  (_txId, ticketId) <- raffleizeTransactionRun w roc (RaffleizeDApp.CustomTypes.ActionTypes.User (BuyTicket secretHash)) (Just raffleId) Nothing
+  (_txId, ticketId) <- raffleizeTransactionRun w roc (RaffleizeDApp.CustomTypes.ActionTypes.User (BuyTicket (SecretHash secretHash))) (Just raffleId) Nothing
   ri2 <- Data.Maybe.fromMaybe (error "raffle not fund 2") <$> queryRaffleRun w raffleId
   unless (riStateLabel ri2 == "COMMITTING") $ logTestError "not in status COMMITTING"
   unless (soldTicketsBeforeBuy + 1 == rSoldTickets (riRsd ri2)) $ logTestError "no. of tickets sold was not updated"
   ti <- Data.Maybe.fromMaybe (error "raffle not fund") <$> queryTicketRun w ticketId
   unless (tiStateLabel ti == "COMMITTED") $ logTestError "not in status COMMITTED"
-  unless (tSecretHash (tiTsd ti) == secretHash) $ logTestError "invalid onchain secret hash"
+  unless (tSecretHash (tiTsd ti) == SecretHash secretHash) $ logTestError "invalid onchain secret hash"
   unless (Data.Maybe.isNothing (tSecret (tiTsd ti))) $ logTestError "secret must not be revealed"
   return ti
 

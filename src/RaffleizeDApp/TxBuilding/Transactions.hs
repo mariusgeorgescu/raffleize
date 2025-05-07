@@ -1,6 +1,7 @@
 module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
+import Data.Text qualified as Text
 import GeniusYield.Api.TestTokens (mintTestTokens)
 import GeniusYield.Imports (IsString (..))
 import GeniusYield.Types
@@ -27,7 +28,7 @@ import RaffleizeDApp.Utils
 mintTestTokensTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> String -> Integer -> m GYTxBody
 mintTestTokensTxBody userAddresses tn amount = do
   providerCtx <- ask
-  liftIO $ runTxI providerCtx userAddresses $ snd <$> mintTestTokens (fromString tn) (fromInteger amount)
+  liftIO $ runTxI providerCtx userAddresses $ snd <$> mintTestTokens (fromString (init . tail . show $ Text.pack tn)) (fromInteger amount)
 
 ------------------------------------------------------------------------------
 

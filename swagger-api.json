@@ -201,9 +201,9 @@
                                         "rMinRevealingWindow": 6000,
                                         "rMinTicketPrice": 3000000,
                                         "rRaffleCollateral": 30000000,
-                                        "rRaffleValidatorHash": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                        "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
                                         "rTicketCollateral": 3500000,
-                                        "rTicketValidatorHash": "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
+                                        "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
                                     },
                                     "rRaffleID": [
                                         "526166666c65697a6543757272656e637953796d626f6c",
@@ -392,9 +392,9 @@
                                             "rMinRevealingWindow": 6000,
                                             "rMinTicketPrice": 3000000,
                                             "rRaffleCollateral": 30000000,
-                                            "rRaffleValidatorHash": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                            "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
                                             "rTicketCollateral": 3500000,
-                                            "rTicketValidatorHash": "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
+                                            "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
                                         },
                                         "rRaffleID": [
                                             "526166666c65697a6543757272656e637953796d626f6c",
@@ -620,9 +620,9 @@
                                         "rMinRevealingWindow": 6000,
                                         "rMinTicketPrice": 3000000,
                                         "rRaffleCollateral": 30000000,
-                                        "rRaffleValidatorHash": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                        "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
                                         "rTicketCollateral": 3500000,
-                                        "rTicketValidatorHash": "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
+                                        "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
                                     },
                                     "rRaffleID": [
                                         "526166666c65697a6543757272656e637953796d626f6c",
@@ -827,9 +827,9 @@
                                             "rMinRevealingWindow": 6000,
                                             "rMinTicketPrice": 3000000,
                                             "rRaffleCollateral": 30000000,
-                                            "rRaffleValidatorHash": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                            "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
                                             "rTicketCollateral": 3500000,
-                                            "rTicketValidatorHash": "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
+                                            "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
                                         },
                                         "rRaffleID": [
                                             "526166666c65697a6543757272656e637953796d626f6c",
@@ -1021,9 +1021,9 @@
                                             "526166666c65697a6543757272656e637953796d626f6c",
                                             "RaffleizeTokenName"
                                         ],
-                                        "tRaffleValidator": "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
-                                        "tSecret": "6d6172697573",
-                                        "tSecretHash": "63643831396231336636376337333931393735336563316131643262326630336263353235363336656466616333353834303461616432333563643565333136"
+                                        "tRaffleValidator": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
+                                        "tSecret": "6D6172697573",
+                                        "tSecretHash": "fb0721e63e74fd787fe56b179824fb24e51ae0a7a10103a588b606f56f0ee2fc"
                                     },
                                     "tiValue": []
                                 },

@@ -393,7 +393,7 @@ handleBuyTicketScreenEvents s@RaffleizeUI {..} event | currentScreen == BuyTicke
             let contextNFT = rRaffleID . riRsd $ selectedActiveRaffle
             let secretHash = PlutusTx.Builtins.blake2b_256 $ fromString @BuiltinByteString secretString
             let isAllowedToBuy = ("User", "BuyTicket") `elem` riAvailableActions selectedActiveRaffle
-            raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (User (BuyTicket secretHash)) (Just contextNFT) mRecipient s isAllowedToBuy
+            raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (User (BuyTicket (SecretHash secretHash))) (Just contextNFT) mRecipient s isAllowedToBuy
         _ -> do
           (updated_form, ()) <- nestEventM btForm $ handleFormEvent event
           put $ s {buyTicketForm = updated_form}
@@ -414,7 +414,7 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
                   let revealedSecretBS = fromString @BuiltinByteString revealedTicketSecret
                   let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
                   let isAllowedToReveal = ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo
-                  if PlutusTx.Builtins.blake2b_256 revealedSecretBS #== tSecretHash (tiTsd selectedTicketInfo)
+                  if PlutusTx.Builtins.blake2b_256 revealedSecretBS #== unSecretHash (tSecretHash (tiTsd selectedTicketInfo))
                     then raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just contextNFT) Nothing s isAllowedToReveal
                     else put s
                 _ -> do
@@ -423,7 +423,7 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
                   let newRevealedSecretBS = fromString @BuiltinByteString newRevealedTicketSecret
                   let fieldValidations =
                         [ setFieldValid
-                            (PlutusTx.Builtins.blake2b_256 newRevealedSecretBS #== tSecretHash (tiTsd selectedTicketInfo))
+                            (PlutusTx.Builtins.blake2b_256 newRevealedSecretBS #== unSecretHash (tSecretHash (tiTsd selectedTicketInfo)))
                             RevealedSecretField
                         ]
                   let validatedForm = foldr' ($) newRevealSecretForm fieldValidations

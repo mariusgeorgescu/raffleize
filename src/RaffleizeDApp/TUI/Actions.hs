@@ -10,6 +10,7 @@ import PlutusLedgerApi.V1.Value
 import PlutusTx.Show qualified (show)
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.ActionTypes
+import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash (unSecretHash))
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
@@ -95,6 +96,7 @@ raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey rafflei
   let my_addr = addressFromSkey providerCtx skey
   let userAddrs = UserAddresses [my_addr] my_addr Nothing
   let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
+  print raffleizeInteraction
   putStrLn (yellowColorString "Building transaction...")
   raffleizeTxBody <- runReaderT (interactionToTxBody raffleizeInteraction) raffleizeContext
   let raffleizeTxSigned = signGYTxBody raffleizeTxBody [skey]
@@ -115,7 +117,7 @@ raffleizeActionToIntro ma ra =
               putStrLn $ blueColorString (show rconfig)
             (BuyTicket secretHashBS) -> do
               putStrLn $ yellowColorString "Buying ticket to raffle... \n\t "
-              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show secretHashBS)
+              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show (unSecretHash secretHashBS))
           RaffleOwner roa -> do
             putStrLn $ inContextOf ("raffle" :: String)
             case roa of

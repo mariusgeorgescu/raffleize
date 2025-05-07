@@ -16,7 +16,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
     RaffleStateId (..),
     raffleStateData,
   )
-import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketStateData (..), TicketStateId (..), ticketStateData)
+import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash (SecretHash), TicketStateData (..), TicketStateId (..), ticketStateData, unSecretHash)
 import RaffleizeDApp.OnChain.Utils
   ( AddressConstraint,
     adaValueFromLovelaces,
@@ -94,7 +94,10 @@ checkRaffleConfig
           rMinTickets #> 0,
         traceIfFalse "empty stake" $
           rStake #/= mempty,
-        traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked.
+        traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked.
+        -- to avoid double satisfaction when checking if stake is locked.
+        -- to avoid double satisfaction when checking if stake is locked.
+        -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked.
         -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
@@ -295,7 +298,7 @@ buyTicketToRaffle sh raffle@RaffleStateData {..} raffleValidator =
 
 revealTicketToRaffleRT :: BuiltinByteString -> TicketStateData -> RaffleStateData -> (RaffleStateData, TicketStateData)
 revealTicketToRaffleRT secret ticket@TicketStateData {tSecretHash, tRaffle} raffle@RaffleStateData {rRevealedTickets, rRandomSeed, rRaffleID, rSoldTickets} =
-  if tRaffle #== rRaffleID && blake2b_256 secret #== tSecretHash -- is correct ticket for the raffle and the secret matches the secret hash
+  if tRaffle #== rRaffleID && blake2b_256 secret #== unSecretHash tSecretHash -- is correct ticket for the raffle and the secret matches the secret hash
     then
       let updated_ticket = ticket {tSecret = Just secret}
           updated_raffle = raffle {rRevealedTickets = rRevealedTickets #+ 1, rRandomSeed = (rRandomSeed #+ bsToInteger secret) `modInteger` rSoldTickets}
@@ -391,10 +394,10 @@ validActionLabelsForRaffleState = fmap actionToLabel . validActionsForRaffleStat
   where
     validActionsForRaffleState :: RaffleStateId -> [RaffleizeAction]
     validActionsForRaffleState r = case r of
-      NEW -> [User (BuyTicket mempty), RaffleOwner Cancel, RaffleOwner (Update (RaffleConfig 0 0 0 0 mempty))]
+      NEW -> [User (BuyTicket (SecretHash mempty)), RaffleOwner Cancel, RaffleOwner (Update (RaffleConfig 0 0 0 0 mempty))]
       EXPIRED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
       EXPIRED_FINAL -> [Admin CloseRaffle]
-      COMMITTING -> [User (BuyTicket mempty)]
+      COMMITTING -> [User (BuyTicket (SecretHash mempty))]
       UNDERFUNDED_LOCKED_STAKE_AND_REFUNDS -> [RaffleOwner RecoverStake, TicketOwner RefundTicket]
       UNDERFUNDED_LOCKED_REFUNDS -> [TicketOwner RefundTicket]
       UNDERFUNDED_LOCKED_STAKE -> [RaffleOwner RecoverStake]
