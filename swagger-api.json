@@ -201,9 +201,9 @@
                                         "rMinRevealingWindow": 6000,
                                         "rMinTicketPrice": 3000000,
                                         "rRaffleCollateral": 30000000,
-                                        "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
+                                        "rRaffleValidatorHash": "0xef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
                                         "rTicketCollateral": 3500000,
-                                        "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
+                                        "rTicketValidatorHash": "0xba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
                                     },
                                     "rRaffleID": [
                                         "526166666c65697a6543757272656e637953796d626f6c",
@@ -392,9 +392,9 @@
                                             "rMinRevealingWindow": 6000,
                                             "rMinTicketPrice": 3000000,
                                             "rRaffleCollateral": 30000000,
-                                            "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
+                                            "rRaffleValidatorHash": "0xef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
                                             "rTicketCollateral": 3500000,
-                                            "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
+                                            "rTicketValidatorHash": "0xba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
                                         },
                                         "rRaffleID": [
                                             "526166666c65697a6543757272656e637953796d626f6c",
@@ -592,164 +592,75 @@
                         "description": "",
                         "schema": {
                             "example": {
-                                "riAvailableActions": [
-                                    [
-                                        "User",
-                                        "BuyTicket"
-                                    ],
-                                    [
-                                        "RaffleOwner",
-                                        "Cancel"
-                                    ],
-                                    [
-                                        "RaffleOwner",
-                                        "Update"
-                                    ]
+                                "tiAvailableActions": [],
+                                "tiImage": "ipfs://notarealurl",
+                                "tiStateLabel": "REVEALED",
+                                "tiTicketId": [
+                                    "526166666c65697a6543757272656e637953796d626f6c",
+                                    "000643b04ffdd5f1e998ef912da4baa81a5e518d5c3cec6106853a5745155f2a"
                                 ],
-                                "riImage": "ipfs://notarealurl",
-                                "riRsd": {
-                                    "rConfig": {
-                                        "rCommitDDL": 1718887778871,
-                                        "rMinTickets": 2,
-                                        "rRevealDDL": 1718889578871,
-                                        "rStake": [],
-                                        "rTicketPrice": 7000000
-                                    },
-                                    "rParam": {
-                                        "rMaxNoOfTickets": 20,
-                                        "rMinRevealingWindow": 6000,
-                                        "rMinTicketPrice": 3000000,
-                                        "rRaffleCollateral": 30000000,
-                                        "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
-                                        "rTicketCollateral": 3500000,
-                                        "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
-                                    },
-                                    "rRaffleID": [
+                                "tiTsd": {
+                                    "tNumber": 0,
+                                    "tRaffle": [
                                         "526166666c65697a6543757272656e637953796d626f6c",
                                         "RaffleizeTokenName"
                                     ],
-                                    "rRandomSeed": 0,
-                                    "rRefundedTickets": 0,
-                                    "rRevealedTickets": 0,
-                                    "rSoldTickets": 0
+                                    "tRaffleValidator": "0xef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
+                                    "tSecret": "6D6172697573",
+                                    "tSecretHash": "fb0721e63e74fd787fe56b179824fb24e51ae0a7a10103a588b606f56f0ee2fc"
                                 },
-                                "riStateLabel": "NEW",
-                                "riValue": []
+                                "tiValue": []
                             },
                             "properties": {
-                                "riAvailableActions": {
+                                "tiAvailableActions": {
+                                    "example": [],
+                                    "items": {},
+                                    "maxItems": 0,
+                                    "type": "array"
+                                },
+                                "tiImage": {
+                                    "type": "string"
+                                },
+                                "tiStateLabel": {
+                                    "type": "string"
+                                },
+                                "tiTicketId": {
                                     "items": {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
+                                        "type": "string"
                                     },
                                     "type": "array"
                                 },
-                                "riImage": {
-                                    "type": "string"
-                                },
-                                "riRsd": {
+                                "tiTsd": {
                                     "properties": {
-                                        "rConfig": {
-                                            "properties": {
-                                                "rCommitDDL": {
-                                                    "type": "number"
-                                                },
-                                                "rMinTickets": {
-                                                    "type": "number"
-                                                },
-                                                "rRevealDDL": {
-                                                    "type": "number"
-                                                },
-                                                "rStake": {
-                                                    "example": [],
-                                                    "items": {},
-                                                    "maxItems": 0,
-                                                    "type": "array"
-                                                },
-                                                "rTicketPrice": {
-                                                    "type": "number"
-                                                }
-                                            },
-                                            "required": [
-                                                "rStake",
-                                                "rTicketPrice",
-                                                "rRevealDDL",
-                                                "rMinTickets",
-                                                "rCommitDDL"
-                                            ],
-                                            "type": "object"
+                                        "tNumber": {
+                                            "type": "number"
                                         },
-                                        "rParam": {
-                                            "properties": {
-                                                "rMaxNoOfTickets": {
-                                                    "type": "number"
-                                                },
-                                                "rMinRevealingWindow": {
-                                                    "type": "number"
-                                                },
-                                                "rMinTicketPrice": {
-                                                    "type": "number"
-                                                },
-                                                "rRaffleCollateral": {
-                                                    "type": "number"
-                                                },
-                                                "rRaffleValidatorHash": {
-                                                    "type": "string"
-                                                },
-                                                "rTicketCollateral": {
-                                                    "type": "number"
-                                                },
-                                                "rTicketValidatorHash": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "rTicketValidatorHash",
-                                                "rMaxNoOfTickets",
-                                                "rMinTicketPrice",
-                                                "rRaffleCollateral",
-                                                "rTicketCollateral",
-                                                "rMinRevealingWindow",
-                                                "rRaffleValidatorHash"
-                                            ],
-                                            "type": "object"
-                                        },
-                                        "rRaffleID": {
+                                        "tRaffle": {
                                             "items": {
                                                 "type": "string"
                                             },
                                             "type": "array"
                                         },
-                                        "rRandomSeed": {
-                                            "type": "number"
+                                        "tRaffleValidator": {
+                                            "type": "string"
                                         },
-                                        "rRefundedTickets": {
-                                            "type": "number"
+                                        "tSecret": {
+                                            "type": "string"
                                         },
-                                        "rRevealedTickets": {
-                                            "type": "number"
-                                        },
-                                        "rSoldTickets": {
-                                            "type": "number"
+                                        "tSecretHash": {
+                                            "type": "string"
                                         }
                                     },
                                     "required": [
-                                        "rRandomSeed",
-                                        "rRevealedTickets",
-                                        "rRefundedTickets",
-                                        "rSoldTickets",
-                                        "rParam",
-                                        "rConfig",
-                                        "rRaffleID"
+                                        "tNumber",
+                                        "tRaffle",
+                                        "tSecret",
+                                        "tSecretHash",
+                                        "tRaffleValidator"
                                     ],
                                     "type": "object"
                                 },
-                                "riStateLabel": {
-                                    "type": "string"
-                                },
-                                "riValue": {
+                                "tiValue": {
                                     "example": [],
                                     "items": {},
                                     "maxItems": 0,
@@ -757,11 +668,12 @@
                                 }
                             },
                             "required": [
-                                "riRsd",
-                                "riStateLabel",
-                                "riImage",
-                                "riAvailableActions",
-                                "riValue"
+                                "tiStateLabel",
+                                "tiValue",
+                                "tiTsd",
+                                "tiTicketId",
+                                "tiImage",
+                                "tiAvailableActions"
                             ],
                             "type": "object"
                         }
@@ -827,9 +739,9 @@
                                             "rMinRevealingWindow": 6000,
                                             "rMinTicketPrice": 3000000,
                                             "rRaffleCollateral": 30000000,
-                                            "rRaffleValidatorHash": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
+                                            "rRaffleValidatorHash": "0xef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
                                             "rTicketCollateral": 3500000,
-                                            "rTicketValidatorHash": "\\186\\&3\\158\\132\\209;\\214ev}\\210#8\\SI\\aM\\DC3\\tx[\\148\\218\\139\\241?pR\\253"
+                                            "rTicketValidatorHash": "0xba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd"
                                         },
                                         "rRaffleID": [
                                             "526166666c65697a6543757272656e637953796d626f6c",
@@ -1021,7 +933,7 @@
                                             "526166666c65697a6543757272656e637953796d626f6c",
                                             "RaffleizeTokenName"
                                         ],
-                                        "tRaffleValidator": "\\239\\&7\\n\\152\\ETBM\\250\\214ODG\\131\\156x\\n\\241\\184\\134\\208!\\192d\\150\\189N\\140P\\DC3",
+                                        "tRaffleValidator": "0xef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
                                         "tSecret": "6D6172697573",
                                         "tSecretHash": "fb0721e63e74fd787fe56b179824fb24e51ae0a7a10103a588b606f56f0ee2fc"
                                     },

@@ -101,17 +101,10 @@ instance FromJSON BuiltinByteString where
 
 instance ToJSON ScriptHash where
   toJSON :: ScriptHash -> Data.Aeson.Value
-  toJSON (ScriptHash s) = toJSON s
+  toJSON (ScriptHash s) = toJSON $ toString (TokenName s) --- using TokenName for hex conversion
 
 instance FromJSON ScriptHash where
   parseJSON :: Data.Aeson.Value -> Parser ScriptHash
   parseJSON v =
-    let s = parseJSON @BuiltinByteString v
-     in ScriptHash <$> s
-
--- -- | Decode hex-encoded string to ASCII string using external library
--- unsafeHexToASCII :: String ->  String
--- unsafeHexToASCII hexStr =
---     case B.convertFromBase B.Base16 (BS.pack hexStr) :: Either String BStrict.ByteString of
---         Left err -> error $ err <> " " <> show hexStr
---         Right bs ->  BS.unpack bs
+    let tn = tokenNameToPlutus . unsafeTokenNameFromHex <$> parseJSON @Text v --- using TokenName for hex conversion
+     in ScriptHash . unTokenName <$> tn

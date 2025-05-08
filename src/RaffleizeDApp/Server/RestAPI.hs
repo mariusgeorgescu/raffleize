@@ -51,7 +51,7 @@ type RaffleizeREST =
     :<|> "raffle" :> Capture "raffleId" GYAssetClass :> Get '[JSON] (Maybe RaffleInfo)
     :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
     :<|> "user-tickets" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [TicketInfo]
-    :<|> "ticket" :> Capture "ticketId" GYAssetClass :> Get '[JSON] (Maybe RaffleInfo)
+    :<|> "ticket" :> Capture "ticketId" GYAssetClass :> Get '[JSON] (Maybe TicketInfo)
 
 type RaffleizeSSE = "submit-tx-sse" :> Capture "txid" String :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 
@@ -63,7 +63,7 @@ raffleizeServer roc@RaffleizeOffchainContext {..} =
       :<|> handleGetRaffleById providerCtx
       :<|> handleGetRafflesByAddresses providerCtx
       :<|> handleGeTicketsByAddresses providerCtx
-      :<|> handleGetRaffleById providerCtx
+      :<|> handleGetTicketById providerCtx
   )
     :<|> handleSubmitSSE providerCtx
 
