@@ -8,8 +8,11 @@ import Control.Monad.Reader (ReaderT (runReaderT))
 import Control.Monad.Trans.Except (ExceptT (ExceptT))
 import Data.ByteString.Lazy.UTF8 as LBSUTF8 (fromString)
 import Data.Conduit.Combinators ()
+import Data.List qualified
 import Data.Swagger (HasHost (host), HasInfo (info), HasLicense (license), Swagger (..), ToSchema, description, sketchSchema, title, version)
 import Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), plain)
+import Data.Text qualified
+import Data.Text.Encoding qualified
 import GeniusYield.Imports qualified as GeniusYield.Types.Tx
 import GeniusYield.Types
   ( GYAddress,
@@ -22,11 +25,10 @@ import GeniusYield.Types
     makeSignedTransaction,
   )
 import Network.HTTP.Types qualified as HttpTypes
+import Network.HTTP.Types.Header
+import Network.Wai
 import Network.Wai.Middleware.Cors
-  ( CorsResourcePolicy (corsRequestHeaders),
-    cors,
-    simpleCorsResourcePolicy,
-  )
+import Network.Wai.Middleware.Servant.Options (provideOptions)
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
@@ -41,53 +43,135 @@ import Servant.API.EventStream
   )
 import Servant.Conduit ()
 import Servant.Swagger
+import Servant.Swagger.UI
 
-type RaffleizeAPI = RaffleizeREST :<|> RaffleizeSSE
+newtype User = User
+  { user :: Data.Text.Text
+  }
+  deriving (Eq, Show)
 
-type RaffleizeREST =
-  "build-tx" :> ReqBody '[JSON] RaffleizeInteraction :> Post '[JSON] String
-    :<|> "submit-tx" :> ReqBody '[JSON] AddWitAndSubmitParams :> Post '[JSON] String
-    :<|> "raffles" :> Get '[JSON] [RaffleInfo]
-    :<|> "raffle" :> Capture "raffleId" GYAssetClass :> Get '[JSON] (Maybe RaffleInfo)
-    :<|> "user-raffles" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [RaffleInfo]
-    :<|> "user-tickets" :> ReqBody '[JSON] [GYAddress] :> Post '[JSON] [TicketInfo]
-    :<|> "ticket" :> Capture "ticketId" GYAssetClass :> Get '[JSON] (Maybe TicketInfo)
+type Transactions =
+  Summary "Build Raffleize Transaction"
+    :> Description "Builds Transaction for Raffleize Interaction"
+    :> "build-tx"
+    :> ReqBody '[JSON] RaffleizeInteraction
+    :> Post '[JSON] String
+    :<|> Summary "Submit tx"
+      :> Description "Submit transaction and returns transaction id"
+      :> "submit-tx"
+      :> ReqBody '[JSON] AddWitAndSubmitParams
+      :> Post '[JSON] String
 
-type RaffleizeSSE = "submit-tx-sse" :> Capture "txid" String :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
+type Lookups =
+  Summary "Get all raffles"
+    :> Description "Get all active raffles information"
+    :> "raffles"
+    :> Get '[JSON] [RaffleInfo]
+    :<|> Summary "Get raffle by id"
+      :> Description "Get raffle information with raffle id (AssetClass)"
+      :> "raffle"
+      :> Capture "raffleId" GYAssetClass
+      :> Get '[JSON] (Maybe RaffleInfo)
+    :<|> Summary "Get users's raffles"
+      :> Description "Checks addreesses for raffle user tokens and returns the corresponding raffles information"
+      :> "user-raffles"
+      :> ReqBody '[JSON] [GYAddress]
+      :> Post '[JSON] [RaffleInfo]
+    :<|> Summary "Get user's tickets"
+      :> Description "Checks addreesses for ticket user tokens and returns the corresponding tickets information"
+      :> "user-tickets"
+      :> ReqBody '[JSON] [GYAddress]
+      :> Post '[JSON] [TicketInfo]
+    :<|> Summary "Get ticket by id"
+      :> Description "Get ticket information with ticket id (AssetClass)"
+      :> "ticket"
+      :> Capture "ticketId" GYAssetClass
+      :> Get '[JSON] (Maybe TicketInfo)
 
-raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
+type RESTwoSwagger =
+  Transactions
+    :<|> Lookups
+
+type REST =
+  SwaggerSchemaUI "swagger-ui" "swagger-api.json"
+    :<|> Transactions
+    :<|> Lookups
+
+type SSE =
+  Summary "Submit Transaction with SSE"
+    :> Description "Submit transaction and wait for server sent event when confirmed"
+    :> "submit-tx-sse"
+    :> Capture "txid" String
+    :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
+
+type RaffleizeAPI = REST :<|> SSE
+
+type RaffleizePrivateAPI = BasicAuth "user-realm" User :> RaffleizeAPI
+
+--------
+
+transactionsServer :: RaffleizeOffchainContext -> ServerT Transactions IO
+transactionsServer roc@RaffleizeOffchainContext {..} = handleInteraction roc :<|> handleSubmit providerCtx
+
+lookupsServer :: RaffleizeOffchainContext -> ServerT Lookups IO
+lookupsServer RaffleizeOffchainContext {..} =
+  handleGetRaffles providerCtx
+    :<|> handleGetRaffleById providerCtx
+    :<|> handleGetRafflesByAddresses providerCtx
+    :<|> handleGeTicketsByAddresses providerCtx
+    :<|> handleGetTicketById providerCtx
+
+restServer :: RaffleizeOffchainContext -> ServerT REST IO
+restServer roc = swaggerSchemaUIServerT apiSwagger :<|> transactionsServer roc :<|> lookupsServer roc
+
+raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizePrivateAPI IO
 raffleizeServer roc@RaffleizeOffchainContext {..} =
-  ( handleInteraction roc
-      :<|> handleSubmit providerCtx
-      :<|> handleGetRaffles providerCtx
-      :<|> handleGetRaffleById providerCtx
-      :<|> handleGetRafflesByAddresses providerCtx
-      :<|> handleGeTicketsByAddresses providerCtx
-      :<|> handleGetTicketById providerCtx
-  )
-    :<|> handleSubmitSSE providerCtx
+  const -- usr
+    (restServer roc :<|> handleSubmitSSE providerCtx)
 
-raffleizeRest :: Proxy RaffleizeREST
-raffleizeRest = Proxy
+proxyRestwoSwagger :: Proxy RESTwoSwagger
+proxyRestwoSwagger = Proxy
 
-raffleizeApi :: Proxy RaffleizeAPI
-raffleizeApi = Proxy
+-- proxyRest :: Proxy REST
+-- proxyRest = Proxy
+
+proxyPrivateApi :: Proxy RaffleizePrivateAPI
+proxyPrivateApi = Proxy
 
 apiSwagger :: Swagger
 apiSwagger =
-  toSwagger raffleizeRest
+  toSwagger proxyRestwoSwagger
     & info . title .~ "Raffleize API"
     & info . version .~ "1.0"
     & info . description ?~ "This is an API for the Raffleize Cardano DApp"
     & info . license ?~ "GPL-3.0 license"
-    & host ?~ "http://raffleize.art"
+    -- & host ?~ "localhost"
 
-restAPIapp :: RaffleizeOffchainContext -> Application
-restAPIapp raffleizeContext =
-  cors (const $ Just simpleCorsResourcePolicy {corsRequestHeaders = [HttpTypes.hContentType]}) $
-    serve raffleizeApi $
-      hoistServer raffleizeApi (Handler . ExceptT . try) $
-        raffleizeServer raffleizeContext
+restAPIapp :: Text -> Text -> RaffleizeOffchainContext -> Application
+restAPIapp usr pass ctx =
+  cors
+    ( \req ->
+        let originHeader = Data.List.lookup hOrigin (requestHeaders req)
+         in case originHeader of
+              Just o ->
+                Just
+                  simpleCorsResourcePolicy
+                    { corsOrigins = Just ([o], True), -- Reflect request's Origin dynamically
+                      corsMethods = ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
+                      corsRequestHeaders = simpleHeaders <> [HttpTypes.hAuthorization],
+                      corsExposedHeaders = Just $ simpleHeaders <> [HttpTypes.hAuthorization],
+                      corsVaryOrigin = True,
+                      corsRequireOrigin = False,
+                      corsIgnoreFailures = False
+                    }
+              Nothing -> Nothing -- If no origin set skips cors headers
+    )
+    -- \$ provideOptions raffleizeRest
+    $ serveWithContext proxyPrivateApi basicCtx
+    $ hoistServerWithContext proxyPrivateApi (Proxy :: Proxy '[BasicAuthCheck User]) (Servant.Handler . ExceptT . try)
+    $ raffleizeServer ctx
+  where
+    basicCtx = basicAuthServerContext usr pass
 
 -------------
 
@@ -125,6 +209,10 @@ handleSubmit providerCtx AddWitAndSubmitParams {..} = do
   liftIO $ putStrLn $ "Submitted tx: " <> show txId
   return $ show txId
 
+----------
+----------
+----------
+
 handleSubmitSSE :: ProviderCtx -> String -> IO (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 handleSubmitSSE providerCtx txIdStr = do
   let txId = GeniusYield.Types.Tx.fromString txIdStr :: GYTxId
@@ -139,3 +227,21 @@ instance ToServerEvent Int where
 
 instance ToSchema (ConduitT () () IO ()) where
   declareNamedSchema _ = plain $ sketchSchema @() ()
+
+------
+
+-- | 'BasicAuthCheck' holds the handler we'll use to verify a username and password.
+authCheck :: Text -> Text -> BasicAuthCheck User
+authCheck usr pass =
+  let checkk (BasicAuthData username password) =
+        if Data.Text.Encoding.decodeUtf8 username == usr && Data.Text.Encoding.decodeUtf8 password == pass
+          then return (Authorized (User usr))
+          else return Unauthorized
+   in BasicAuthCheck checkk
+
+-- | We need to supply our handlers with the right Context. In this case,
+-- Basic Authentication requires a Context Entry with the 'BasicAuthCheck' value
+-- tagged with "foo-tag" This context is then supplied to 'server' and threaded
+-- to the BasicAuth HasServer handlers.
+basicAuthServerContext :: Text -> Text -> Context (BasicAuthCheck User ': '[])
+basicAuthServerContext usr pass = authCheck usr pass :. EmptyContext

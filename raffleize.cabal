@@ -136,8 +136,10 @@ executable server
     , mtl
     , servant-conduit
     , servant-event-stream
+    , servant-options
     , servant-server
     , servant-swagger
+    , servant-swagger-ui
     , swagger2
     , text
     , transformers          ^>=0.6.1

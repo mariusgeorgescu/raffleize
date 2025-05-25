@@ -32,7 +32,6 @@
             "type": "string"
         }
     },
-    "host": "http://raffleize.art",
     "info": {
         "description": "This is an API for the Raffleize Cardano DApp",
         "license": {
@@ -47,6 +46,7 @@
                 "consumes": [
                     "application/json;charset=utf-8"
                 ],
+                "description": "Builds Transaction for Raffleize Interaction",
                 "parameters": [
                     {
                         "in": "body",
@@ -152,11 +152,13 @@
                     "400": {
                         "description": "Invalid `body`"
                     }
-                }
+                },
+                "summary": "Build Raffleize Transaction"
             }
         },
         "/raffle/{raffleId}": {
             "get": {
+                "description": "Get raffle information with raffle id (AssetClass)",
                 "parameters": [
                     {
                         "in": "path",
@@ -350,11 +352,13 @@
                     "400": {
                         "description": "Invalid `raffleId`"
                     }
-                }
+                },
+                "summary": "Get raffle by id"
             }
         },
         "/raffles": {
             "get": {
+                "description": "Get all active raffles information",
                 "produces": [
                     "application/json;charset=utf-8"
                 ],
@@ -540,7 +544,8 @@
                             "type": "array"
                         }
                     }
-                }
+                },
+                "summary": "Get all raffles"
             }
         },
         "/submit-tx": {
@@ -548,6 +553,7 @@
                 "consumes": [
                     "application/json;charset=utf-8"
                 ],
+                "description": "Submit transaction and returns transaction id",
                 "parameters": [
                     {
                         "in": "body",
@@ -571,11 +577,13 @@
                     "400": {
                         "description": "Invalid `body`"
                     }
-                }
+                },
+                "summary": "Submit tx"
             }
         },
         "/ticket/{ticketId}": {
             "get": {
+                "description": "Get ticket information with ticket id (AssetClass)",
                 "parameters": [
                     {
                         "in": "path",
@@ -681,7 +689,8 @@
                     "400": {
                         "description": "Invalid `ticketId`"
                     }
-                }
+                },
+                "summary": "Get ticket by id"
             }
         },
         "/user-raffles": {
@@ -689,6 +698,7 @@
                 "consumes": [
                     "application/json;charset=utf-8"
                 ],
+                "description": "Checks addreesses for raffle user tokens and returns the corresponding raffles information",
                 "parameters": [
                     {
                         "in": "body",
@@ -890,7 +900,8 @@
                     "400": {
                         "description": "Invalid `body`"
                     }
-                }
+                },
+                "summary": "Get users's raffles"
             }
         },
         "/user-tickets": {
@@ -898,6 +909,7 @@
                 "consumes": [
                     "application/json;charset=utf-8"
                 ],
+                "description": "Checks addreesses for ticket user tokens and returns the corresponding tickets information",
                 "parameters": [
                     {
                         "in": "body",
@@ -1011,7 +1023,8 @@
                     "400": {
                         "description": "Invalid `body`"
                     }
-                }
+                },
+                "summary": "Get user's tickets"
             }
         }
     },
