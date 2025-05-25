@@ -104,10 +104,11 @@ type SSE =
     :> Capture "txid" String
     :> ServerSentEvents (RecommendedEventSourceHeaders (ConduitT () Int IO ()))
 
-type RaffleizeAPI = REST :<|> SSE
+type RaffleizeAPI = (BasicAuth "user-realm" User :> REST) :<|> SSE
 
-type RaffleizePrivateAPI = BasicAuth "user-realm" User :> RaffleizeAPI
-
+--------
+--------
+--------
 --------
 
 transactionsServer :: RaffleizeOffchainContext -> ServerT Transactions IO
@@ -124,19 +125,17 @@ lookupsServer RaffleizeOffchainContext {..} =
 restServer :: RaffleizeOffchainContext -> ServerT REST IO
 restServer roc = swaggerSchemaUIServerT apiSwagger :<|> transactionsServer roc :<|> lookupsServer roc
 
-raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizePrivateAPI IO
+raffleizeServer :: RaffleizeOffchainContext -> ServerT RaffleizeAPI IO
 raffleizeServer roc@RaffleizeOffchainContext {..} =
   const -- usr
-    (restServer roc :<|> handleSubmitSSE providerCtx)
+    (restServer roc)
+    :<|> handleSubmitSSE providerCtx
 
 proxyRestwoSwagger :: Proxy RESTwoSwagger
 proxyRestwoSwagger = Proxy
 
--- proxyRest :: Proxy REST
--- proxyRest = Proxy
-
-proxyPrivateApi :: Proxy RaffleizePrivateAPI
-proxyPrivateApi = Proxy
+proxyRaffleizeApi :: Proxy RaffleizeAPI
+proxyRaffleizeApi = Proxy
 
 apiSwagger :: Swagger
 apiSwagger =
@@ -145,7 +144,8 @@ apiSwagger =
     & info . version .~ "1.0"
     & info . description ?~ "This is an API for the Raffleize Cardano DApp"
     & info . license ?~ "GPL-3.0 license"
-    -- & host ?~ "localhost"
+
+-- & host ?~ "localhost"
 
 restAPIapp :: Text -> Text -> RaffleizeOffchainContext -> Application
 restAPIapp usr pass ctx =
@@ -166,13 +166,16 @@ restAPIapp usr pass ctx =
                     }
               Nothing -> Nothing -- If no origin set skips cors headers
     )
-    -- \$ provideOptions raffleizeRest
-    $ serveWithContext proxyPrivateApi basicCtx
-    $ hoistServerWithContext proxyPrivateApi (Proxy :: Proxy '[BasicAuthCheck User]) (Servant.Handler . ExceptT . try)
+    $ provideOptions proxyRestwoSwagger
+    $ serveWithContext proxyRaffleizeApi basicCtx
+    $ hoistServerWithContext proxyRaffleizeApi (Proxy :: Proxy '[BasicAuthCheck User]) (Servant.Handler . ExceptT . try)
     $ raffleizeServer ctx
   where
     basicCtx = basicAuthServerContext usr pass
 
+-------------
+-------------
+-------------
 -------------
 
 handleGetRaffles :: ProviderCtx -> IO [RaffleInfo]
