@@ -102,7 +102,7 @@ RUN cabal update
 # (unless the .cabal file changes!)
 RUN cabal build --only-dependencies -j10
 
-COPY . /raffleize
+COPY . /raffleize/
 
 RUN update-alternatives --install /usr/bin/ld ld /usr/bin/ld.bfd 100
 
