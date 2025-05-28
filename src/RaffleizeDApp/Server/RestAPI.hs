@@ -134,6 +134,9 @@ raffleizeServer roc@RaffleizeOffchainContext {..} =
 proxyRestwoSwagger :: Proxy RESTwoSwagger
 proxyRestwoSwagger = Proxy
 
+proxySSE :: Proxy SSE
+proxySSE = Proxy
+
 proxyRaffleizeApi :: Proxy RaffleizeAPI
 proxyRaffleizeApi = Proxy
 
@@ -167,6 +170,7 @@ restAPIapp usr pass ctx =
               Nothing -> Nothing -- If no origin set skips cors headers
     )
     $ provideOptions proxyRestwoSwagger
+    $ provideOptions proxySSE
     $ serveWithContext proxyRaffleizeApi basicCtx
     $ hoistServerWithContext proxyRaffleizeApi (Proxy :: Proxy '[BasicAuthCheck User]) (Servant.Handler . ExceptT . try)
     $ raffleizeServer ctx
