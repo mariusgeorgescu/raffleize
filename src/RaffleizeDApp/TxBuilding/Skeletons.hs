@@ -21,10 +21,21 @@ import RaffleizeDApp.TxBuilding.Validators
 txIsPayingValueToAddress :: (GYTxUserQueryMonad m) => GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
 txIsPayingValueToAddress recipient gyValue = do
   return $
-    mustHaveOutput -- pays raffle user token to the user receiving address
+    mustHaveOutput
       GYTxOut
         { gyTxOutAddress = recipient,
           gyTxOutDatum = Nothing,
+          gyTxOutValue = gyValue,
+          gyTxOutRefS = Nothing
+        }
+
+txIsPayingValueToAddressWithInlineDatum :: (GYTxUserQueryMonad m) => GYDatum -> GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
+txIsPayingValueToAddressWithInlineDatum gyDatum recipient gyValue = do
+  return $
+    mustHaveOutput
+      GYTxOut
+        { gyTxOutAddress = recipient,
+          gyTxOutDatum = Just (gyDatum, GYTxOutUseInlineDatum),
           gyTxOutValue = gyValue,
           gyTxOutRefS = Nothing
         }
@@ -36,12 +47,23 @@ isValidBetween s1 s2 =
       isInvalidAfter s2
     ]
 
+safeEraTime :: Natural
+safeEraTime = 25920 -- ~7h in seconds (era safe zone)
+
 txIsValidByDDL :: (GYTxQueryMonad m) => POSIXTime -> m (GYTxSkeleton 'PlutusV3)
 txIsValidByDDL ddl = do
   now <- slotOfCurrentBlock
-  after36hSlot <- advanceSlot' now 25920 -- ~7h in seconds (era safe zone)
-  after36hTime <- pPOSIXTimeFromGYSlot after36hSlot
-  validUntil <- gySlotFromPOSIXTime (min ddl after36hTime)
+  afterSafeEraSlot <- advanceSlot' now safeEraTime
+  afterSafeEraTime <- pPOSIXTimeFromGYSlot afterSafeEraSlot
+  validUntil <- gySlotFromPOSIXTime (min ddl afterSafeEraTime)
+  return $ isValidBetween now validUntil
+
+txIsValidForSafeEra :: (GYTxQueryMonad m) => m (GYTxSkeleton 'PlutusV3)
+txIsValidForSafeEra = do
+  now <- slotOfCurrentBlock
+  afterSafeEraSlot <- advanceSlot' now safeEraTime
+  afterSafeEraTime <- pPOSIXTimeFromGYSlot afterSafeEraSlot
+  validUntil <- gySlotFromPOSIXTime afterSafeEraTime
   return $ isValidBetween now validUntil
 
 txMustSpendStateFromRefScriptWithRedeemer :: (GYTxUserQueryMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYScript 'PlutusV3 -> m (GYTxSkeleton 'PlutusV3)

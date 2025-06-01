@@ -15,12 +15,8 @@ import RaffleizeDApp.OnChain.RaffleizeValidator
 
 ------------------------------------------------------------------------------------------------
 
-adminAddress :: PubKeyHash
-adminAddress = "a2c20c77887ace1cd986193e4e75babd8993cfd56995cd5cfce609c2"
-
-
 raffleizeValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinUnit)
-raffleizeValidatorPlutus = compileRaffleizeValidator adminAddress
+raffleizeValidatorPlutus = compileRaffleizeValidator adminPubKeyHash
 
 raffleizeValidatorGY :: GYScript 'PlutusV3
 raffleizeValidatorGY = validatorFromPlutus raffleizeValidatorPlutus
@@ -37,9 +33,8 @@ raffleizeValidatorHashPlutus = validatorHashToPlutus raffleizeValidatorHashGY
 
 ------------------------------------------------------------------------------------------------
 
-
 ticketValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinUnit)
-ticketValidatorPlutus = compileTicketValidator adminAddress
+ticketValidatorPlutus = compileTicketValidator
 
 ticketValidatorGY :: GYScript 'PlutusV3
 ticketValidatorGY = validatorFromPlutus ticketValidatorPlutus
@@ -59,15 +54,15 @@ ticketValidatorHashPlutus = validatorHashToPlutus ticketValidatorHashGY
 mockRaffleParam :: RaffleParam
 mockRaffleParam =
   RaffleParam
-    { rMaxNoOfTickets = 20
-    , rMinRevealingWindow = 6_000 --- ^ Miliseconds
-    , rMinTicketPrice = 3_000_000 --- ^ Lovelaces
-    , rRaffleValidatorHash = raffleizeValidatorHashPlutus
-    , rTicketValidatorHash = ticketValidatorHashPlutus
-    , rTicketCollateral = 3_500_000 --- ^ Lovelaces
-    , rRaffleCollateral = 30_000_000 --- ^ Lovelaces
+    { rMaxNoOfTickets = 20,
+      rMinRevealingWindow = 6_000, --- ^ Miliseconds
+      rMinNotClosingWindow = 2_592_000_000, --- ^ Miliseconds ± 30 days
+      rMinTicketPrice = 3_000_000, --- ^ Lovelaces
+      rRaffleValidatorHash = raffleizeValidatorHashPlutus,
+      rTicketValidatorHash = ticketValidatorHashPlutus,
+      rTicketCollateral = 3_500_000, --- ^ Lovelaces
+      rRaffleCollateral = 30_000_000 --- ^ Lovelaces
     }
-
 
 raffleizeMintingPolicyPlutus :: CompiledCode (BuiltinData -> BuiltinUnit)
 raffleizeMintingPolicyPlutus = compileRaffleizeMP mockRaffleParam

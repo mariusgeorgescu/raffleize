@@ -58,6 +58,7 @@ unstableMakeIsData ''RaffleConfig --- TODO must be changed with stable version
 data RaffleParam = RaffleParam
   { rMaxNoOfTickets :: Integer, --- ^ The maximum number of tickets that can be sold for the raffle.
     rMinRevealingWindow :: Integer, --- ^ The minimum no. of milliseconds that must pass between commit deadline and reveal deadline.
+    rMinNotClosingWindow :: Integer, --- ^ The minimum no. of milliseconds that must pass after reveal deadline for raffle to be closable.
     rMinTicketPrice :: Integer, --- ^ The minimum ticket price (expressed in lovelaces).
     rRaffleValidatorHash :: ScriptHash, --- ^ The validator hash of the validation logic for spending the raffle state UTxO.
     rTicketValidatorHash :: ScriptHash, --- ^ The validator hash of the validation logic for spending the ticket state UTxO.
@@ -142,6 +143,7 @@ data RaffleStateId
   | SUCCESS_LOCKED_STAKE_AND_AMOUNT
   | SUCCESS_LOCKED_AMOUNT
   | SUCCESS_LOCKED_STAKE
+  | SUCCESS
   | SUCCESS_FINAL
   | UNREVEALED_NO_REVEALS
   | UNREVEALED_LOCKED_STAKE_AND_REFUNDS
@@ -189,6 +191,8 @@ instance Show RaffleParam where
       ++ show rMinTicketPrice
       ++ "\nMin. Reveal Window       | "
       ++ show rMinRevealingWindow
+      ++ "\nMin. Closing Window      | "
+      ++ show rMinNotClosingWindow
       ++ "\nMax. no. of tickets      | "
       ++ show rMaxNoOfTickets
 

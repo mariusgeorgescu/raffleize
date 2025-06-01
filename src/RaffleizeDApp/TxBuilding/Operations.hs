@@ -12,7 +12,6 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleTicketPriceValue, redeemerToAction, revealTicketToRaffleRT, ticketCollateralValue, tokenNameFromTxOutRef, updateRaffleStateValue)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
-
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Skeletons
@@ -353,3 +352,32 @@ refundCollateralOfLosingTicketTX ownAddr ticketRefAC = do
 -- * Admin  Actions
 
 ------------------------------------------------------------------------------------------------
+
+-- | Refund Collateral of Losing Ticket Transaction
+adminCloseRaffleTX ::
+  (GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
+  AssetClass ->
+  GYAddress ->
+  m (GYTxSkeleton 'PlutusV3)
+adminCloseRaffleTX raffleRefAC adminAddr =
+  do
+    mpScriptRef <- asks mintingPolicyRef
+    isBurningRaffleRefNFT <- txNFTAction mpScriptRef Burn [raffleRefAC]
+    raffleScriptRef <- asks raffleValidatorRef
+    (_rsd, rValue) <- getRaffleStateDataAndValue raffleRefAC
+    let closeRedeemer = Admin CloseRaffle
+    spendsRaffleRefNFT <- txMustSpendStateFromRefScriptWithRedeemer raffleScriptRef raffleRefAC closeRedeemer raffleizeValidatorGY
+    diffValue <- valueFromPlutus' (rValue #- assetClassValue raffleRefAC 1)
+    paysToAdmin <-
+      txIsPayingValueToAddressWithInlineDatum
+        (datumFromPlutusData raffleRefAC) -- tagged output
+        adminAddr
+        diffValue
+    isValidForSafeEra <- txIsValidForSafeEra
+    return $
+      mconcat
+        [ isBurningRaffleRefNFT,
+          spendsRaffleRefNFT,
+          paysToAdmin,
+          isValidForSafeEra
+        ]

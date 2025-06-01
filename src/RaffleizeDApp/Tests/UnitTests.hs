@@ -22,12 +22,12 @@ unitTests :: (HasCallStack) => TestTree
 unitTests =
   testGroup
     "Raffleize Unit Tests"
-    [ createRaffleTests
-    , newStateTests
-    , expiredStateTests
-    , underfundedStateTests
-    , unrevealedStateTests
-    , successStateTests
+    [ createRaffleTests,
+      newStateTests,
+      expiredStateTests,
+      underfundedStateTests,
+      unrevealedStateTests,
+      successStateTests
     ]
 
 -- ------------------------------------------------------------------------------------------------
@@ -39,11 +39,11 @@ createRaffleTests :: (HasCallStack) => TestTree
 createRaffleTests =
   testGroup
     "CREATE RAFFLE TEST CASES"
-    [ mkTestFor "Test Case 1.1: Verify that a user can create a raffle with valid raffle configuration" createNewRaffleTC1
-    , mkTestFor " Test Case 1.2: Verify that a user cannot create a raffle with Commit Deadline in the past" createNewRaffleTC2
-    , mkTestFor " Test Case 1.3: Verify that a user cannot create a raffle with Reveal Deadline before Commit Deadline" createNewRaffleTC3
-    , mkTestFor " Test Case 1.4: Verify that a user cannot create a raffle with empty stake" createNewRaffleTC4
-    , mkTestFor " Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada" createNewRaffleTC5
+    [ mkTestFor "Test Case 1.1: Verify that a user can create a raffle with valid raffle configuration" createNewRaffleTC1,
+      mkTestFor " Test Case 1.2: Verify that a user cannot create a raffle with Commit Deadline in the past" createNewRaffleTC2,
+      mkTestFor " Test Case 1.3: Verify that a user cannot create a raffle with Reveal Deadline before Commit Deadline" createNewRaffleTC3,
+      mkTestFor " Test Case 1.4: Verify that a user cannot create a raffle with empty stake" createNewRaffleTC4,
+      mkTestFor " Test Case 1.5: Verify that a user cannot create a raffle with stake containing Ada" createNewRaffleTC5
     ]
   where
     createNewRaffleTC1 :: (HasCallStack) => TestInfo -> GYTxMonadClb ()
@@ -61,11 +61,11 @@ createRaffleTests =
       rddl <- pPOSIXTimeFromSlotInteger 200
       let config =
             RaffleConfig
-              { rCommitDDL = cddl
-              , rRevealDDL = rddl
-              , rTicketPrice = 5_000_000
-              , rMinTickets = 3
-              , rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
+              { rCommitDDL = cddl,
+                rRevealDDL = rddl,
+                rTicketPrice = 5_000_000,
+                rMinTickets = 3,
+                rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
 
@@ -78,11 +78,11 @@ createRaffleTests =
       rddl <- pPOSIXTimeFromSlotInteger 99 -- reveal ddl before commit ddl
       let config =
             RaffleConfig
-              { rCommitDDL = cddl
-              , rRevealDDL = rddl
-              , rTicketPrice = 5_000_000
-              , rMinTickets = 3
-              , rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
+              { rCommitDDL = cddl,
+                rRevealDDL = rddl,
+                rTicketPrice = 5_000_000,
+                rMinTickets = 3,
+                rStake = valueToPlutus (fakeValue fakeIron 9876) <> valueToPlutus (fakeValue fakeGold 9876)
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
 
@@ -95,11 +95,11 @@ createRaffleTests =
       rddl <- pPOSIXTimeFromSlotInteger 200
       let config =
             RaffleConfig
-              { rCommitDDL = cddl
-              , rRevealDDL = rddl
-              , rTicketPrice = 5_000_000
-              , rMinTickets = 3
-              , rStake = mempty -- Raffle stake is empty;
+              { rCommitDDL = cddl,
+                rRevealDDL = rddl,
+                rTicketPrice = 5_000_000,
+                rMinTickets = 3,
+                rStake = mempty -- Raffle stake is empty;
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
 
@@ -112,11 +112,11 @@ createRaffleTests =
       rddl <- pPOSIXTimeFromSlotInteger 200
       let config =
             RaffleConfig
-              { rCommitDDL = cddl
-              , rRevealDDL = rddl
-              , rTicketPrice = 5_000_000
-              , rMinTickets = 3
-              , rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeValue fakeIron 9876) -- Raffle stake contains Ada;
+              { rCommitDDL = cddl,
+                rRevealDDL = rddl,
+                rTicketPrice = 5_000_000,
+                rMinTickets = 3,
+                rStake = adaValueFromLovelaces 10 <> valueToPlutus (fakeValue fakeIron 9876) -- Raffle stake contains Ada;
               }
       raffleizeTransactionThatMustFailRun (w1 testWallets) roc (RaffleizeDApp.CustomTypes.ActionTypes.User (CreateRaffle config)) Nothing Nothing
 
@@ -129,9 +129,9 @@ newStateTests :: TestTree
 newStateTests =
   testGroup
     "Tests for raffles in status 'NEW'"
-    [ updateRaffleTests
-    , cancelRaffleTests
-    , buy1stTicketTest
+    [ updateRaffleTests,
+      cancelRaffleTests,
+      buy1stTicketTest
     ]
 
 -- ------------------------------------------------------------------------------------------------
@@ -144,11 +144,11 @@ updateRaffleTests :: TestTree
 updateRaffleTests =
   testGroup
     "UPDATE RAFFLE TEST CASES"
-    [ mkTestFor "Test Case 2.1: Verify that a user can update a raffle with valid raffle configuration" updateRaffleTC1
-    , mkTestFor " Test Case 2.2: Verify that a user cannot update a raffle with Commit Deadline in the past" updateRaffleTC2
-    , mkTestFor " Test Case 2.3: Verify that a user cannot update a raffle with Reveal Deadline before Commit Deadline" updateRaffleTC3
-    , mkTestFor " Test Case 2.4: Verify that a user cannot update a raffle with empty stake" updateRaffleTC4
-    , mkTestFor " Test Case 2.5: Verify that a user cannot update a raffle stake with a value containing Ada" updateRaffleTC5
+    [ mkTestFor "Test Case 2.1: Verify that a user can update a raffle with valid raffle configuration" updateRaffleTC1,
+      mkTestFor " Test Case 2.2: Verify that a user cannot update a raffle with Commit Deadline in the past" updateRaffleTC2,
+      mkTestFor " Test Case 2.3: Verify that a user cannot update a raffle with Reveal Deadline before Commit Deadline" updateRaffleTC3,
+      mkTestFor " Test Case 2.4: Verify that a user cannot update a raffle with empty stake" updateRaffleTC4,
+      mkTestFor " Test Case 2.5: Verify that a user cannot update a raffle stake with a value containing Ada" updateRaffleTC5
     ]
   where
     updateRaffleTC1 :: TestInfo -> GYTxMonadClb ()
@@ -159,11 +159,11 @@ updateRaffleTests =
       -- . Update the raffle
       let newRaffleConfig =
             raffleConfig
-              { rCommitDDL = rCommitDDL raffleConfig + 10
-              , rRevealDDL = rRevealDDL raffleConfig + 10
-              , rTicketPrice = 15_000_000
-              , rMinTickets = 20
-              , rStake = valueToPlutus (fakeValue fakeIron 100) <> valueToPlutus (fakeValue fakeGold 100)
+              { rCommitDDL = rCommitDDL raffleConfig + 10,
+                rRevealDDL = rRevealDDL raffleConfig + 10,
+                rTicketPrice = 15_000_000,
+                rMinTickets = 20,
+                rStake = valueToPlutus (fakeValue fakeIron 100) <> valueToPlutus (fakeValue fakeGold 100)
               }
       (_txId, raffleId2) <- raffleizeTransactionRun (w1 testWallets) roc (RaffleOwner (Update newRaffleConfig)) (Just raffleId) Nothing
       mri2 <- queryRaffleRun (w1 testWallets) raffleId2
@@ -292,6 +292,8 @@ expiredStateTests =
         Nothing -> logTestError $ "Raffle not found: " <> show raffleId
         Just ri2 -> when (riStateLabel ri2 /= "EXPIRED_FINAL") $ logTestError "not in status EXPIRED_FINAL"
 
+      closeRaffleRun roc (w1 testWallets) raffleId
+
 -- ------------------------------------------------------------------------------------------------
 
 -- -- ** Scenarios for raffle in status "UNDERFUNDED"
@@ -302,9 +304,9 @@ underfundedStateTests :: TestTree
 underfundedStateTests =
   testGroup
     "Tests for raffles in status 'Underfunded"
-    [ mkTestFor "Test Case 6.1: Recover Stake -> All Refunds" underfundedScenario
-    , mkTestFor "Test Case 6.2: Refund -> Recover Stake -> Rest of refunds" underfundedScenario2
-    , mkTestFor "Test Case 6.3: All Refunds -> Recover Stake" underfundedScenario3
+    [ mkTestFor "Test Case 6.1: Recover Stake -> All Refunds" underfundedScenario,
+      mkTestFor "Test Case 6.2: Refund -> Recover Stake -> Rest of refunds" underfundedScenario2,
+      mkTestFor "Test Case 6.3: All Refunds -> Recover Stake" underfundedScenario3
     ]
   where
     underfundedScenario :: TestInfo -> GYTxMonadClb ()
@@ -320,9 +322,9 @@ underfundedStateTests =
         buyNTicketsToRaffleRun
           ri
           roc
-          [ (w2 testWallets, secretHash)
-          , (w3 testWallets, secretHash)
-          , (w4 testWallets, secretHash)
+          [ (w2 testWallets, secretHash),
+            (w3 testWallets, secretHash),
+            (w4 testWallets, secretHash)
           ]
       waitNSlots_ 101 --- Commit DDL pass
       ri2 <- Data.Maybe.fromMaybe (error "raffle not found") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -336,13 +338,14 @@ underfundedStateTests =
           False
           ri3
           roc
-          [ (w2 testWallets, head ticketRefs)
-          , (w3 testWallets, ticketRefs !! 1)
-          , (w4 testWallets, ticketRefs !! 2)
+          [ (w2 testWallets, head ticketRefs),
+            (w3 testWallets, ticketRefs !! 1),
+            (w4 testWallets, ticketRefs !! 2)
           ]
       ri4 <- Data.Maybe.fromMaybe (error "raffle not found") <$> queryRaffleRun (w1 testWallets) raffleId2
       unless (riStateLabel ri4 == "UNDERFUNDED_FINAL") $ logTestError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri4
       unless (riValue ri4 `geq` raffleCollateralValue (riRsd ri4)) $ logTestError "Remained value lower tha raffle collateral"
+      closeRaffleRun roc (w1 testWallets) raffleId
 
     underfundedScenario2 :: TestInfo -> GYTxMonadClb ()
     underfundedScenario2 TestInfo {..} = do
@@ -357,9 +360,9 @@ underfundedStateTests =
         buyNTicketsToRaffleRun
           ri
           roc
-          [ (w2 testWallets, secretHash)
-          , (w3 testWallets, secretHash)
-          , (w4 testWallets, secretHash)
+          [ (w2 testWallets, secretHash),
+            (w3 testWallets, secretHash),
+            (w4 testWallets, secretHash)
           ]
 
       waitNSlots_ 101 --- Commit DDL pass
@@ -381,13 +384,14 @@ underfundedStateTests =
           False
           ri4
           roc
-          [ (w3 testWallets, ticketRefs !! 1)
-          , (w4 testWallets, ticketRefs !! 2)
+          [ (w3 testWallets, ticketRefs !! 1),
+            (w4 testWallets, ticketRefs !! 2)
           ]
 
       ri5 <- Data.Maybe.fromMaybe (error "raffle not found") <$> queryRaffleRun (w1 testWallets) raffleId2
       unless (riStateLabel ri5 == "UNDERFUNDED_FINAL") $ logTestError $ "not in status UNDERFUNDED_FINAL: " <> riStateLabel ri5
       unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logTestError "Remained value lower tha raffle collateral"
+      closeRaffleRun roc (w1 testWallets) raffleId
 
     underfundedScenario3 :: TestInfo -> GYTxMonadClb ()
     underfundedScenario3 TestInfo {..} = do
@@ -402,9 +406,9 @@ underfundedStateTests =
         buyNTicketsToRaffleRun
           ri
           roc
-          [ (w2 testWallets, secretHash)
-          , (w3 testWallets, secretHash)
-          , (w4 testWallets, secretHash)
+          [ (w2 testWallets, secretHash),
+            (w3 testWallets, secretHash),
+            (w4 testWallets, secretHash)
           ]
       waitNSlots_ 101 --- Commit DDL pass
       ri2 <- Data.Maybe.fromMaybe (error "raffle not found") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -415,9 +419,9 @@ underfundedStateTests =
           False
           ri2
           roc
-          [ (w2 testWallets, head ticketRefs)
-          , (w3 testWallets, ticketRefs !! 1)
-          , (w4 testWallets, ticketRefs !! 2)
+          [ (w2 testWallets, head ticketRefs),
+            (w3 testWallets, ticketRefs !! 1),
+            (w4 testWallets, ticketRefs !! 2)
           ]
       ri5 <- Data.Maybe.fromMaybe (error "raffle not found") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri5 == "UNDERFUNDED_LOCKED_STAKE") $ logTestError "not in status UNDERFUNDED_LOCKED_STAKE"
@@ -425,6 +429,7 @@ underfundedStateTests =
       ri6 <- Data.Maybe.fromMaybe (error "raffle not found") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri6 == "UNDERFUNDED_FINAL") $ logTestError "not in status UNDERFUNDED_FINAL"
       unless (riValue ri6 `geq` raffleCollateralValue (riRsd ri6)) $ logTestError "Remained value lower than raffle collateral"
+      closeRaffleRun roc (w1 testWallets) raffleId
 
 -- ------------------------------------------------------------------------------------------------
 
@@ -436,9 +441,9 @@ unrevealedStateTests :: TestTree
 unrevealedStateTests =
   testGroup
     "Tests for raffles in status 'UNREVEALED"
-    [ mkTestFor "Test Case 7.1: No reveales -> Raffle Owner RecoverStakeAndAmount" unrevealedScenarioTC1
-    , mkTestFor "Test Case 7.2: Raffle Owner RecoverStake-> Revealed Tickets Refund Extra" unrevealedScenarioTC2
-    , mkTestFor "Test Case 7.3:  Revealed Tickets Refund Extra -> Raffle Owner RecoverStake-> " unrevealedScenarioTC3
+    [ mkTestFor "Test Case 7.1: No reveales -> Raffle Owner RecoverStakeAndAmount" unrevealedScenarioTC1,
+      mkTestFor "Test Case 7.2: Raffle Owner RecoverStake-> Revealed Tickets Refund Extra" unrevealedScenarioTC2,
+      mkTestFor "Test Case 7.3:  Revealed Tickets Refund Extra -> Raffle Owner RecoverStake-> " unrevealedScenarioTC3
     ]
   where
     unrevealedScenarioTC1 :: TestInfo -> GYTxMonadClb ()
@@ -453,10 +458,10 @@ unrevealedStateTests =
         buyNTicketsToRaffleRun
           ri
           roc
-          [ (w2 testWallets, secret)
-          , (w3 testWallets, secret)
-          , (w4 testWallets, secret)
-          , (w5 testWallets, secret)
+          [ (w2 testWallets, secret),
+            (w3 testWallets, secret),
+            (w4 testWallets, secret),
+            (w5 testWallets, secret)
           ]
       waitNSlots_ 101 --- Commit DDL pass
       _ri2 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -467,6 +472,7 @@ unrevealedStateTests =
       ri4 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri4 == "UNREVEALED_FINAL") $ logTestError "not in status UNREVEALED_FINAL"
       unless (riValue ri4 `geq` raffleCollateralValue (riRsd ri4)) $ logTestError "Remained value lower tha raffle collateral"
+      closeRaffleRun roc (w1 testWallets) raffleId
 
     unrevealedScenarioTC2 :: TestInfo -> GYTxMonadClb ()
     unrevealedScenarioTC2 TestInfo {..} = do
@@ -480,10 +486,10 @@ unrevealedStateTests =
         buyNTicketsToRaffleRun
           ri
           roc
-          [ (w2 testWallets, secret)
-          , (w3 testWallets, secret)
-          , (w4 testWallets, secret)
-          , (w5 testWallets, secret)
+          [ (w2 testWallets, secret),
+            (w3 testWallets, secret),
+            (w4 testWallets, secret),
+            (w5 testWallets, secret)
           ]
       waitNSlots_ 101 --- Commit DDL pass
       ri2 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -492,8 +498,8 @@ unrevealedStateTests =
         reavealNTicketsRun
           ri2
           roc
-          [ (w2 testWallets, head ticketRefs, secret)
-          , (w3 testWallets, ticketRefs !! 1, secret)
+          [ (w2 testWallets, head ticketRefs, secret),
+            (w3 testWallets, ticketRefs !! 1, secret)
           ]
       waitNSlots_ 101 --- Reveal DDL pass
       ri3 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -506,12 +512,13 @@ unrevealedStateTests =
           True
           ri4
           roc
-          [ (w2 testWallets, head ticketRefs)
-          , (w3 testWallets, ticketRefs !! 1)
+          [ (w2 testWallets, head ticketRefs),
+            (w3 testWallets, ticketRefs !! 1)
           ]
       ri5 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri5 == "UNREVEALED_FINAL") $ logTestError "not in status UNREVEALED_FINAL"
       unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logTestError "Remained value lower tha raffle collateral"
+      closeRaffleRun roc (w1 testWallets) raffleId
 
     unrevealedScenarioTC3 :: TestInfo -> GYTxMonadClb ()
     unrevealedScenarioTC3 TestInfo {..} = do
@@ -525,10 +532,10 @@ unrevealedStateTests =
         buyNTicketsToRaffleRun
           ri
           roc
-          [ (w2 testWallets, secret)
-          , (w3 testWallets, secret)
-          , (w4 testWallets, secret)
-          , (w5 testWallets, secret)
+          [ (w2 testWallets, secret),
+            (w3 testWallets, secret),
+            (w4 testWallets, secret),
+            (w5 testWallets, secret)
           ]
       waitNSlots_ 101 --- Commit DDL pass
       ri2 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -537,8 +544,8 @@ unrevealedStateTests =
         reavealNTicketsRun
           ri2
           roc
-          [ (w2 testWallets, head ticketRefs, secret)
-          , (w3 testWallets, ticketRefs !! 1, secret)
+          [ (w2 testWallets, head ticketRefs, secret),
+            (w3 testWallets, ticketRefs !! 1, secret)
           ]
       waitNSlots_ 101 --- Reveal DDL pass
       ri3 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -548,8 +555,8 @@ unrevealedStateTests =
           True
           ri3
           roc
-          [ (w2 testWallets, head ticketRefs)
-          , (w3 testWallets, ticketRefs !! 1)
+          [ (w2 testWallets, head ticketRefs),
+            (w3 testWallets, ticketRefs !! 1)
           ]
       ri4 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri4 == "UNREVEALED_LOCKED_STAKE") $ logTestError "not in status UNREVEALED_LOCKED_STAKE"
@@ -557,6 +564,7 @@ unrevealedStateTests =
       ri5 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri5 == "UNREVEALED_FINAL") $ logTestError "not in status UNREVEALED_FINAL"
       unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logTestError "Remained value lower tha raffle collateral"
+      closeRaffleRun roc (w1 testWallets) raffleId
 
 -- ------------------------------------------------------------------------------------------------
 
@@ -568,8 +576,8 @@ successStateTests :: TestTree
 successStateTests =
   testGroup
     "Tests for raffles in status 'SUCCESS"
-    [ mkTestFor "Test Case 8.1: (Refund Losing) -> Winner Claims Prize -> (Refund Losing) -> Get collected amount -> (Refund Losing)" sucessScenarioTC1
-    , mkTestFor "Test Case 8.2: (Refund Losing) -> Get collected amount -> (Refund Losing) -> Winner Claims Prize -> (Refund Losing)" sucessScenarioTC2
+    [ mkTestFor "Test Case 8.1: (Refund Losing) -> Winner Claims Prize -> (Refund Losing) -> Get collected amount -> (Refund Losing)" sucessScenarioTC1,
+      mkTestFor "Test Case 8.2: (Refund Losing) -> Get collected amount -> (Refund Losing) -> Winner Claims Prize -> (Refund Losing)" sucessScenarioTC2
     ]
   where
     sucessScenarioTC1 :: TestInfo -> GYTxMonadClb ()
@@ -584,10 +592,10 @@ successStateTests =
         buyNTicketsToRaffleRun
           ri
           roc
-          [ (w2 testWallets, secret)
-          , (w3 testWallets, secret)
-          , (w4 testWallets, secret)
-          , (w5 testWallets, secret)
+          [ (w2 testWallets, secret),
+            (w3 testWallets, secret),
+            (w4 testWallets, secret),
+            (w5 testWallets, secret)
           ]
       waitNSlots_ 101 --- Commit DDL pass
       ri2 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -596,10 +604,10 @@ successStateTests =
         reavealNTicketsRun
           ri2
           roc
-          [ (w2 testWallets, head ticketRefs, secret)
-          , (w3 testWallets, ticketRefs !! 1, secret)
-          , (w4 testWallets, ticketRefs !! 2, secret)
-          , (w5 testWallets, ticketRefs !! 3, secret)
+          [ (w2 testWallets, head ticketRefs, secret),
+            (w3 testWallets, ticketRefs !! 1, secret),
+            (w4 testWallets, ticketRefs !! 2, secret),
+            (w5 testWallets, ticketRefs !! 3, secret)
           ]
       ri3 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
       unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logTestError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
@@ -618,12 +626,15 @@ successStateTests =
 
       (_txId, _raffleId) <- raffleizeTransactionRun (w2 testWallets) roc (TicketOwner CollectStake) (Just (head ticketRefs)) Nothing
       ri5 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
-      unless (riStateLabel ri5 == "SUCCESS_FINAL") $ logTestError "not in status SUCCESS_FINAL"
+      unless (riStateLabel ri5 == "SUCCESS") $ logTestError "not in status SUCCESS"
       unless (riValue ri5 `geq` raffleCollateralValue (riRsd ri5)) $ logTestError "Remained value lower tha raffle collateral"
 
       void $ raffleizeTransactionRun (w5 testWallets) roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
       mti3 <- queryTicketRun (w1 testWallets) (ticketRefs !! 3)
       unless (isNothing mti3) $ logTestError "Ticket must not exist !"
+
+      waitNSlots_ 2_592_000_000
+      closeRaffleRun roc (w1 testWallets) raffleId
 
 sucessScenarioTC2 :: TestInfo -> GYTxMonadClb ()
 sucessScenarioTC2 TestInfo {..} = do
@@ -641,10 +652,10 @@ sucessScenarioTC2 TestInfo {..} = do
     buyNTicketsToRaffleRun
       ri
       roc
-      [ (w2 testWallets, secret1)
-      , (w3 testWallets, secret2)
-      , (w4 testWallets, secret3)
-      , (w5 testWallets, secret4)
+      [ (w2 testWallets, secret1),
+        (w3 testWallets, secret2),
+        (w4 testWallets, secret3),
+        (w5 testWallets, secret4)
       ]
   waitNSlots_ 101 --- Commit DDL pass
   ri2 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
@@ -653,10 +664,10 @@ sucessScenarioTC2 TestInfo {..} = do
     reavealNTicketsRun
       ri2
       roc
-      [ (w2 testWallets, head ticketRefs, secret1)
-      , (w3 testWallets, ticketRefs !! 1, secret2)
-      , (w4 testWallets, ticketRefs !! 2, secret3)
-      , (w5 testWallets, ticketRefs !! 3, secret4)
+      [ (w2 testWallets, head ticketRefs, secret1),
+        (w3 testWallets, ticketRefs !! 1, secret2),
+        (w4 testWallets, ticketRefs !! 2, secret3),
+        (w5 testWallets, ticketRefs !! 3, secret4)
       ]
   ri3 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
   unless (riStateLabel ri3 == "SUCCESS_LOCKED_STAKE_AND_AMOUNT") $ logTestError "not in status SUCCESS_LOCKED_STAKE_AND_AMOUNT"
@@ -684,9 +695,13 @@ sucessScenarioTC2 TestInfo {..} = do
 
   (_txId, _raffleId) <- raffleizeTransactionRun (w1 testWallets) roc (RaffleOwner CollectAmount) (Just raffleId) Nothing
   ri6 <- Data.Maybe.fromMaybe (error "Raffle not fund") <$> queryRaffleRun (w1 testWallets) raffleId
-  unless (riStateLabel ri6 == "SUCCESS_FINAL") $ logTestError "not in status SUCCESS_FINAL"
+  unless (riStateLabel ri6 == "SUCCESS") $ logTestError "not in status SUCCESS"
   unless (riValue ri6 `geq` raffleCollateralValue (riRsd ri6)) $ logTestError "Remained value lower tha raffle collateral"
 
   void $ raffleizeTransactionRun (w5 testWallets) roc (TicketOwner RefundCollateralLosing) (Just (ticketRefs !! 3)) Nothing
   mti3 <- queryTicketRun (w1 testWallets) (ticketRefs !! 3)
   unless (isNothing mti3) $ logTestError "Ticket must not exist !"
+
+  logInfo $ show ri6
+  waitNSlots_ 2_592_000_000
+  closeRaffleRun roc (w1 testWallets) raffleId

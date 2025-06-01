@@ -8,6 +8,7 @@ import PlutusTx.Builtins
     modInteger,
     serialiseData,
   )
+import PlutusTx.Builtins.HasOpaque (stringToBuiltinString)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
   ( RaffleConfig (..),
@@ -94,11 +95,8 @@ checkRaffleConfig
           rMinTickets #> 0,
         traceIfFalse "empty stake" $
           rStake #/= mempty,
-        traceIfFalse "stake should not contain ADA" $ -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked.
-        -- to avoid double satisfaction when checking if stake is locked.
-        -- to avoid double satisfaction when checking if stake is locked.
-        -- to avoid double satisfaction when checking if stake is locked. -- to avoid double satisfaction when checking if stake is locked.
-        -- to avoid double satisfaction when checking if stake is locked.
+        traceIfFalse "stake should not contain ADA" $
+          -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
 {-# INLINEABLE checkRaffleConfig #-}
@@ -106,7 +104,7 @@ checkRaffleConfig
 -- | Check if an action is valid on a state.
 checkRaffleAction :: RaffleizeAction -> RaffleStateId -> Bool
 checkRaffleAction action currentStateLabel =
-  traceIfFalse "Action not permited in this raffle state" $
+  traceIfFalse "Action not allowed in this raffle state" $
     currentStateLabel `pelem` validRaffleStatesForRaffleizeAction action
   where
     validRaffleStatesForRaffleizeAction :: RaffleizeAction -> [RaffleStateId]
@@ -147,7 +145,7 @@ checkRaffleAction action currentStateLabel =
             UNREVEALED_LOCKED_REFUNDS
           ]
         RefundCollateralLosing -> [] -- ticket action, not on raffle state
-      Admin _ ->
+      Admin CloseRaffle ->
         [ EXPIRED_FINAL,
           UNDERFUNDED_FINAL,
           UNREVEALED_FINAL,
@@ -189,6 +187,7 @@ evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets,
       minNoOfTicketsSold = rSoldTickets #< rMinTickets rConfig
       anyTicketsRevealed = rRevealedTickets #> 0
       allTicketsRevealed = rSoldTickets #== rRevealedTickets
+      isNotClosingDDLpassed = (rRevealDDL rConfig #+ PlutusLedgerApi.V3.POSIXTime (rMinNotClosingWindow rParam)) `before` time_range
    in if isBeforeCommitDDL
         then
           if anyTicketsSold
@@ -215,7 +214,10 @@ evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets,
                         (True, True) -> SUCCESS_LOCKED_STAKE_AND_AMOUNT
                         (False, True) -> SUCCESS_LOCKED_AMOUNT
                         (True, False) -> SUCCESS_LOCKED_STAKE
-                        (False, False) -> SUCCESS_FINAL
+                        (False, False) ->
+                          if isNotClosingDDLpassed
+                            then SUCCESS_FINAL
+                            else SUCCESS
                     else
                       if isBetweenCommitAndRevealDDL
                         then REVEALING
@@ -238,6 +240,7 @@ evalTicketState TicketStateData {tNumber, tSecret} randomSeed raffleStateId =
     SUCCESS_LOCKED_STAKE_AND_AMOUNT -> if randomSeed #== tNumber then WINNING else LOSING
     SUCCESS_LOCKED_STAKE -> if randomSeed #== tNumber then WINNING else LOSING
     SUCCESS_LOCKED_AMOUNT -> LOSING -- in this state winning ticket is already burned
+    SUCCESS -> LOSING -- in this state winning ticket is already burned
     SUCCESS_FINAL -> LOSING -- in this state winning ticket is already burned
     UNREVEALED_NO_REVEALS -> UNREVEALED_EXPIRED
     UNREVEALED_LOCKED_STAKE_AND_REFUNDS -> if isJust tSecret then EXTRA_REFUNDABLE else UNREVEALED_EXPIRED
@@ -406,6 +409,7 @@ validActionLabelsForRaffleState = fmap actionToLabel . validActionsForRaffleStat
       SUCCESS_LOCKED_STAKE_AND_AMOUNT -> [RaffleOwner CollectAmount, TicketOwner CollectStake]
       SUCCESS_LOCKED_AMOUNT -> [RaffleOwner CollectAmount]
       SUCCESS_LOCKED_STAKE -> [TicketOwner CollectStake]
+      SUCCESS -> []
       SUCCESS_FINAL -> [Admin CloseRaffle]
       UNREVEALED_NO_REVEALS -> [RaffleOwner RecoverStakeAndAmount]
       UNREVEALED_LOCKED_STAKE_AND_REFUNDS -> [RaffleOwner RecoverStake, TicketOwner RefundTicketExtra]

@@ -83,7 +83,7 @@ raffleizePolicyLambda params@RaffleParam {rRaffleValidatorHash, rTicketValidator
                         checkRaffleConfig params txInfoValidRange config,
                       traceIfFalse "Tx must spend seed utxo used to generate RaffleID" $
                         hasTxInWithRef seedTxOutRef txInfoInputs,
-                      traceIfFalse "Tx must mint JUST raffle's ref and user NFTs" $
+                      traceIfFalse "Tx must mint JUST raffle's ref and user NFTs" $ -- protection against Other Token attack vector
                         txInfoMint #== (raffleRefNFT #+ raffleUserNFT),
                       traceIfFalse "Tx must lock new raffle state at RaffleValidator address (with correct value and datum)" $
                         hasTxOutWithInlineDatumAnd
@@ -106,7 +106,7 @@ raffleizePolicyLambda params@RaffleParam {rRaffleValidatorHash, rTicketValidator
                   locksNewTicketState (newStateData :: TicketStateData) newValue =
                     hasTxOutWithInlineDatumAnd (mkTicketDatum newStateData) newValue (#== ticketValidatorAddr) txInfoOutputs
                in pand
-                    [ --traceIfFalse "Not 256 hash" $ lengthOfByteString secretHash #== 32,
+                    [ -- traceIfFalse "Not 256 hash" $ lengthOfByteString secretHash #== 32,
                       traceIfFalse "Tx must spend a raffle  with valid state for minting tickets" $
                         evaluateRaffleState (txInfoValidRange, rsd, currentValue) `pelem` [NEW, COMMITTING],
                       traceIfFalse "Tx must update the raffle state" $
@@ -118,7 +118,7 @@ raffleizePolicyLambda params@RaffleParam {rRaffleValidatorHash, rTicketValidator
                       traceIfFalse "Tx must mint JUST ticket's ref and user NFTs" $
                         txInfoMint #== (ticketRefNFT #+ ticketUserNFT)
                     ]
-            Burn ->
+            Burn -> -- Anyone can burn 
               let mTokens = M.toList <$> M.lookup cs (getValue txInfoMint) -- All negative
                in case mTokens of
                     Nothing -> traceError "Impossible: current currency symbol not in txInfoMint"

@@ -2,8 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- Required for `makeLift`:
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.1.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeValidator where
@@ -50,7 +50,6 @@ import RaffleizeDApp.OnChain.Utils
   ( AScriptContext (..),
     ATxInfo (..),
     hasTxInWithToken,
-    hasTxOutWith,
     hasTxOutWithInlineDatumAnd,
     isBurningNFT,
     isMintingNFT,
@@ -160,13 +159,15 @@ raffleizeValidatorLamba adminPKH context@(AScriptContext ATxInfo {..} (Redeemer 
                              [ --- Must burn the raffle ref
                                isBurningNFT rRaffleID txInfoMint,
                                --- Must pay value  to admin
-                               hasTxOutWith (#== (ownValue #- assetClassValue rRaffleID 1)) (#== pubKeyHashAddress adminPKH) txInfoOutputs
+                               hasTxOutWithInlineDatumAnd
+                                 rRaffleID -- (tagged output) protection against Double Satisfaction attack vector
+                                 (#== (ownValue #- assetClassValue rRaffleID 1))
+                                 (#== pubKeyHashAddress adminPKH)
+                                 txInfoOutputs
                              ]
                )
         (Just _, Nothing) -> traceError "invalid redeemer"
-        (Nothing, _) ->
-          trace "Output with invalid datum" $ --  Spendable to admin only
-            hasTxOutWith (#== ownValue) (#== pubKeyHashAddress adminPKH) txInfoOutputs
+        (Nothing, _) -> trace "Output with invalid datum" True --  Free to go
 raffleizeValidatorLamba _ _ = False
 {-# INLINEABLE raffleizeValidatorLamba #-}
 

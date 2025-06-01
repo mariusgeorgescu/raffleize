@@ -12,6 +12,7 @@ import GeniusYield.Test.Utils
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value (AssetClass)
+import RaffleizeDApp.Constants qualified as Constants
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
@@ -143,6 +144,17 @@ refundTicketSecretRun isExtra ri roc w ticketId = do
 
 refundNTicketsRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => Bool -> RaffleInfo -> RaffleizeTxBuildingContext -> [(User, AssetClass)] -> m [TicketInfo]
 refundNTicketsRun isExtra ri roc = mapM (uncurry (refundTicketSecretRun isExtra ri roc))
+
+closeRaffleRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => RaffleizeTxBuildingContext -> User -> AssetClass -> m ()
+closeRaffleRun roc w raffleId = do
+  waitNSlots_ 1
+  nId <- networkId
+  adminPKH <- either (error . show) return $ paymentKeyHashFromPlutus Constants.adminPubKeyHash
+  void $ raffleizeTransactionRun w roc (Admin CloseRaffle) (Just raffleId) (Just $ addressFromPaymentKeyHash nId adminPKH)
+  mri <- queryRaffleRun w raffleId
+  case mri of
+    Nothing -> return ()
+    Just ri -> logTestError $ "Raffle still exists: " <> show ri
 
 -- ------------------------------------------------------------------------------------------------
 -- ------------------------------------------------------------------------------------------------

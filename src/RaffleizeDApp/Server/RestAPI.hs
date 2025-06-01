@@ -9,7 +9,7 @@ import Control.Monad.Trans.Except (ExceptT (ExceptT))
 import Data.ByteString.Lazy.UTF8 as LBSUTF8 (fromString)
 import Data.Conduit.Combinators ()
 import Data.List qualified
-import Data.Swagger (HasHost (host), HasInfo (info), HasLicense (license), Swagger (..), ToSchema, description, sketchSchema, title, version)
+import Data.Swagger (HasInfo (info), HasLicense (license), Swagger (..), ToSchema, description, sketchSchema, title, version)
 import Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), plain)
 import Data.Text qualified
 import Data.Text.Encoding qualified

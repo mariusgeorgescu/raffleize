@@ -44,4 +44,4 @@ interactionToTxSkeleton
             RecoverStakeAndAmount -> recoverStakeAndAmountTX receiveAddr contextNFT
             CollectAmount -> collectAmountTX receiveAddr contextNFT
             GetCollateralOfExpiredTicket -> getCollateralOfExpiredTicketTX usedAddrs receiveAddr contextNFT
-          Admin CloseRaffle -> undefined -- TODO
+          Admin CloseRaffle -> adminCloseRaffleTX contextNFT receiveAddr
