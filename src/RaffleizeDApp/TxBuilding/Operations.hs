@@ -4,12 +4,13 @@ import Control.Monad.Reader.Class
 import GeniusYield.Imports hiding (fromMaybe)
 import GeniusYield.TxBuilder hiding (User)
 import GeniusYield.Types
-import PlutusLedgerApi.Data.V3 (TxId (TxId), TxOutRef (TxOutRef))
+import PlutusLedgerApi.Data.V3 (ToData (toBuiltinData), TxId (TxId), TxOutRef (TxOutRef))
 import PlutusLedgerApi.V1.Tx qualified
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.OnChain.NFT (NFTAction (..), PolicyParam (PolicyParam), TokenData (TokenData, tdName), mkCIP68Datum)
 import RaffleizeDApp.OnChain.RaffleizeLogic (buyTicketToRaffle, deriveUserFromRefAC, generateRefAndUserTN, getNextTicketToMintAssetClasses, raffleTicketPriceValue, redeemerToAction, revealTicketToRaffleRT, ticketCollateralValue, tokenNameFromTxOutRef, updateRaffleStateValue)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.TxBuilding.Context
@@ -381,3 +382,48 @@ adminCloseRaffleTX raffleRefAC adminAddr =
           paysToAdmin,
           isValidForSafeEra
         ]
+
+------------------------------------------------------------------------------------------------
+
+-- * MINTING NFT
+
+------------------------------------------------------------------------------------------------
+
+-- |  Mint NFT Transaction
+mintNFTTX ::
+  (GYTxUserQueryMonad m) =>
+  GYAddress ->
+  TokenData ->
+  m (GYTxSkeleton 'PlutusV3, AssetClass)
+mintNFTTX recipient td@TokenData {..} = do
+  seedTxOutRef <- someUTxOWithoutRefScript
+  let (PlutusLedgerApi.V1.Tx.TxOutRef (PlutusLedgerApi.V1.Tx.TxId bs) i) = txOutRefToPlutus seedTxOutRef
+  let seedTxOutRefPlutus = TxOutRef (TxId bs) i
+  let tokenname = TokenName tdName
+  let policyParm = PolicyParam seedTxOutRefPlutus tokenname
+  let isSpendingSeedUTxO = mustHaveInput (GYTxIn seedTxOutRef GYTxInWitnessKey)
+  let cs = mintingPolicyCurrencySymbol (nftValidatorGY policyParm)
+  let (refTN, userTN) = generateRefAndUserTN tokenname
+  let (refAC, userAC) = (AssetClass (cs, refTN), AssetClass (cs, userTN))
+  gyRefTN <- tokenNameFromPlutus' refTN
+  gyUserTN <- tokenNameFromPlutus' userTN
+  isLockingRefNFT <-
+    txMustLockStateWithInlineDatumAndValue
+      (nftValidatorGY policyParm)
+      (mkCIP68Datum td)
+      (assetClassValue refAC 1)
+  let raffleUserNFTp = assetClassValue userAC 1
+  userNFT <- valueFromPlutus' raffleUserNFTp
+  isGettingUserNFT <- txIsPayingValueToAddress recipient userNFT
+  let mintsRef = mustMint (GYMintScript @'PlutusV3 (nftValidatorGY policyParm)) (redeemerFromPlutus' . toBuiltinData $ MintingNFT td) gyRefTN 1
+  let mintsUser = mustMint (GYMintScript @'PlutusV3 (nftValidatorGY policyParm)) (redeemerFromPlutus' . toBuiltinData $ MintingNFT td) gyUserTN 1
+  return
+    ( mconcat
+        [ isSpendingSeedUTxO,
+          mintsRef,
+          mintsUser,
+          isGettingUserNFT,
+          isLockingRefNFT
+        ],
+      refAC
+    )

@@ -8,7 +8,6 @@ import PlutusTx.Builtins
     modInteger,
     serialiseData,
   )
-import PlutusTx.Builtins.HasOpaque (stringToBuiltinString)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
   ( RaffleConfig (..),
@@ -96,6 +95,18 @@ checkRaffleConfig
         traceIfFalse "empty stake" $
           rStake #/= mempty,
         traceIfFalse "stake should not contain ADA" $
+          -- to avoid double satisfaction when checking if stake is locked.
+          -- to avoid double satisfaction when checking if stake is locked.
+          -- to avoid double satisfaction when checking if stake is locked.
+          -- to avoid double satisfaction when checking if stake is locked.
+
+          -- to avoid double satisfaction when checking if stake is locked.
+
+          -- to avoid double satisfaction when checking if stake is locked.
+
+          -- to avoid double satisfaction when checking if stake is locked.
+          -- to avoid double satisfaction when checking if stake is locked.
+
           -- to avoid double satisfaction when checking if stake is locked.
           assetClassValueOf rStake (assetClass adaSymbol adaToken) #== 0
       ]
@@ -187,7 +198,11 @@ evaluateRaffleState (time_range, RaffleStateData {rParam, rConfig, rSoldTickets,
       minNoOfTicketsSold = rSoldTickets #< rMinTickets rConfig
       anyTicketsRevealed = rRevealedTickets #> 0
       allTicketsRevealed = rSoldTickets #== rRevealedTickets
-      isNotClosingDDLpassed = (rRevealDDL rConfig #+ PlutusLedgerApi.V3.POSIXTime (rMinNotClosingWindow rParam)) `before` time_range
+      isNotClosingDDLpassed =
+        ( rRevealDDL rConfig
+            #+ PlutusLedgerApi.V3.POSIXTime (rMinNotClosingWindow rParam #* 86400000) -- miliseconds/day
+        )
+          `before` time_range
    in if isBeforeCommitDDL
         then
           if anyTicketsSold

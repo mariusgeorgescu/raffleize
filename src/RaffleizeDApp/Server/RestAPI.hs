@@ -54,7 +54,7 @@ type Transactions =
   Summary "Build Raffleize Transaction"
     :> Description "Builds Transaction for Raffleize Interaction"
     :> "build-tx"
-    :> ReqBody '[JSON] RaffleizeInteraction
+    :> ReqBody '[JSON] Interaction
     :> Post '[JSON] String
     :<|> Summary "Submit tx"
       :> Description "Submit transaction and returns transaction id"
@@ -204,7 +204,7 @@ handleGetTicketById pCtx gyTicketId = do
 handleGeTicketsByAddresses :: ProviderCtx -> [GYAddress] -> IO [TicketInfo]
 handleGeTicketsByAddresses pCtx addr = runQuery pCtx (lookupTicketsOfAddresses addr)
 
-handleInteraction :: RaffleizeOffchainContext -> RaffleizeInteraction -> IO String
+handleInteraction :: RaffleizeOffchainContext -> Interaction -> IO String
 handleInteraction roc i = do
   print i
   runReaderT (interactionToHexEncodedCBOR i) roc

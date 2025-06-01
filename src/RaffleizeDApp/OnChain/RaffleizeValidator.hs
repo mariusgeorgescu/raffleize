@@ -32,6 +32,7 @@ import RaffleizeDApp.CustomTypes.TicketTypes
   ( TicketStateData,
     mkTicketDatum,
   )
+import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.RaffleizeLogic
   ( checkRaffleAction,
     checkRaffleConfig,
@@ -47,9 +48,7 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     updateRaffleStateValue,
   )
 import RaffleizeDApp.OnChain.Utils
-  ( AScriptContext (..),
-    ATxInfo (..),
-    hasTxInWithToken,
+  ( hasTxInWithToken,
     hasTxOutWithInlineDatumAnd,
     isBurningNFT,
     isMintingNFT,

@@ -9,20 +9,21 @@ import GeniusYield.Types
 import PlutusLedgerApi.V1.Value
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
+import RaffleizeDApp.OnChain.NFT
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Operations
 
 interactionToTxSkeleton ::
   (HasCallStack, GYTxUserQueryMonad m, MonadReader RaffleizeTxBuildingContext m) =>
-  RaffleizeInteraction ->
+  Interaction ->
   m (GYTxSkeleton 'PlutusV3, AssetClass)
-interactionToTxSkeleton
-  RaffleizeInteraction {..} = do
-    let changeAddr = changeAddress userAddresses
-    let usedAddrs = usedAddresses userAddresses
-    let receiveAddr = fromMaybe changeAddr recipient
-    case raffleizeAction of
+interactionToTxSkeleton Interaction {..} = do
+  let changeAddr = changeAddress userAddresses
+  let usedAddrs = usedAddresses userAddresses
+  let receiveAddr = fromMaybe changeAddr recipient
+  case action of
+    RaffleizeInteraction raffleizeAction -> case raffleizeAction of
       User userAction -> case userAction of
         CreateRaffle raffleConfig -> createRaffleTX receiveAddr raffleConfig
         BuyTicket secretHash -> do
@@ -45,3 +46,6 @@ interactionToTxSkeleton
             CollectAmount -> collectAmountTX receiveAddr contextNFT
             GetCollateralOfExpiredTicket -> getCollateralOfExpiredTicketTX usedAddrs receiveAddr contextNFT
           Admin CloseRaffle -> adminCloseRaffleTX contextNFT receiveAddr
+    NFTInteraction nftAction -> case nftAction of
+      MintingNFT td -> mintNFTTX changeAddr td
+      BurningNFT -> undefined

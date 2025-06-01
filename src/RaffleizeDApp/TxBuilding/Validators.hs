@@ -3,8 +3,9 @@ module RaffleizeDApp.TxBuilding.Validators where
 import GeniusYield.Types
 import PlutusLedgerApi.V3
 import PlutusTx
-import RaffleizeDApp.Constants
+import RaffleizeDApp.Constants qualified
 import RaffleizeDApp.CustomTypes.RaffleTypes
+import RaffleizeDApp.OnChain.NFT (PolicyParam, nftCompile)
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
 import RaffleizeDApp.OnChain.RaffleizeTicketValidator
 import RaffleizeDApp.OnChain.RaffleizeValidator
@@ -16,7 +17,7 @@ import RaffleizeDApp.OnChain.RaffleizeValidator
 ------------------------------------------------------------------------------------------------
 
 raffleizeValidatorPlutus :: CompiledCode (BuiltinData -> BuiltinUnit)
-raffleizeValidatorPlutus = compileRaffleizeValidator adminPubKeyHash
+raffleizeValidatorPlutus = compileRaffleizeValidator RaffleizeDApp.Constants.adminPubKeyHash
 
 raffleizeValidatorGY :: GYScript 'PlutusV3
 raffleizeValidatorGY = validatorFromPlutus raffleizeValidatorPlutus
@@ -26,6 +27,9 @@ raffleizeValidatorHashGY = validatorHash raffleizeValidatorGY
 
 raffleizeValidatorHashPlutus :: ScriptHash
 raffleizeValidatorHashPlutus = validatorHashToPlutus raffleizeValidatorHashGY
+
+nftValidatorGY :: PolicyParam -> GYScript 'PlutusV3
+nftValidatorGY policyParm = validatorFromPlutus $ nftCompile policyParm
 
 ------------------------------------------------------------------------------------------------
 
@@ -56,7 +60,7 @@ mockRaffleParam =
   RaffleParam
     { rMaxNoOfTickets = 20,
       rMinRevealingWindow = 6_000, --- ^ Miliseconds
-      rMinNotClosingWindow = 2_592_000_000, --- ^ Miliseconds ± 30 days
+      rMinNotClosingWindow = 30, --- ^ Days
       rMinTicketPrice = 3_000_000, --- ^ Lovelaces
       rRaffleValidatorHash = raffleizeValidatorHashPlutus,
       rTicketValidatorHash = ticketValidatorHashPlutus,
@@ -71,10 +75,10 @@ raffleizeMintingPolicyGY :: GYScript 'PlutusV3
 raffleizeMintingPolicyGY = mintingPolicyFromPlutus raffleizeMintingPolicyPlutus
 
 exportRaffleScript :: IO ()
-exportRaffleScript = writeScript @'PlutusV3 raffleizeValidatorFile $ validatorToScript raffleizeValidatorGY
+exportRaffleScript = writeScript @'PlutusV3 RaffleizeDApp.Constants.raffleizeValidatorFile $ validatorToScript raffleizeValidatorGY
 
 exportTicketScript :: IO ()
-exportTicketScript = writeScript @'PlutusV3 ticketValidatorFile $ validatorToScript ticketValidatorGY
+exportTicketScript = writeScript @'PlutusV3 RaffleizeDApp.Constants.ticketValidatorFile $ validatorToScript ticketValidatorGY
 
 exportMintingPolicy :: IO ()
-exportMintingPolicy = writeScript @'PlutusV3 mintingPolicyFile $ mintingPolicyToScript raffleizeMintingPolicyGY
+exportMintingPolicy = writeScript @'PlutusV3 RaffleizeDApp.Constants.mintingPolicyFile $ mintingPolicyToScript raffleizeMintingPolicyGY

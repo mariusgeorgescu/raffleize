@@ -38,6 +38,7 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
     mkRaffleDatum,
   )
 import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash, TicketStateData, mkTicketDatum)
+import RaffleizeDApp.CustomTypes.Types (AScriptContext (..), ATxInfo (..))
 import RaffleizeDApp.OnChain.RaffleizeLogic
   ( buyTicketToRaffle,
     checkRaffleConfig,
@@ -50,9 +51,7 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     updateRaffleStateValue,
   )
 import RaffleizeDApp.OnChain.Utils
-  ( AScriptContext (AScriptContext),
-    ATxInfo (..),
-    adaValueFromLovelaces,
+  ( adaValueFromLovelaces,
     hasTxInWithRef,
     hasTxOutWithInlineDatumAnd,
     mkUntypedLambda,
@@ -118,7 +117,8 @@ raffleizePolicyLambda params@RaffleParam {rRaffleValidatorHash, rTicketValidator
                       traceIfFalse "Tx must mint JUST ticket's ref and user NFTs" $
                         txInfoMint #== (ticketRefNFT #+ ticketUserNFT)
                     ]
-            Burn -> -- Anyone can burn 
+            Burn ->
+              -- Anyone can burn
               let mTokens = M.toList <$> M.lookup cs (getValue txInfoMint) -- All negative
                in case mTokens of
                     Nothing -> traceError "Impossible: current currency symbol not in txInfoMint"

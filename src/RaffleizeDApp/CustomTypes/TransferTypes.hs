@@ -10,6 +10,7 @@ import PlutusLedgerApi.V3 (POSIXTimeRange, to)
 import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
+import RaffleizeDApp.OnChain.NFT (NFTAction)
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import Prelude
 
@@ -58,11 +59,15 @@ mkTicketInfo raffleStateId currentRandom (tsd, tVal, tImg) =
       actions = validActionLabelsForTicketState ticketStateId
    in TicketInfo tsd tVal tImg ticketStateLabel actions (fst $ generateTicketACFromTicket tsd)
 
-data RaffleizeInteraction = RaffleizeInteraction
+data InteractionAction = NFTInteraction NFTAction | RaffleizeInteraction RaffleizeAction
+  deriving (Show, Generic, FromJSON, ToJSON)
+
+data Interaction
+  = Interaction
   { -- | The @AssetClass@ of the Raffle or Ticket the ticket which are in scope of the interaction (if set).
     interactionContextNFT :: Maybe AssetClass,
     -- | The @RaffleizeAction@ is the intented action to perfrom.
-    raffleizeAction :: RaffleizeAction,
+    action :: InteractionAction,
     -- | The user addresses to be used as input for transaction building.
     userAddresses :: UserAddresses,
     -- | If the interaction unlocks some funds, the funds will be sent to this address (if set, otherwise to the change address).
@@ -89,8 +94,8 @@ instance ToSchema RaffleInfo where
 instance ToSchema TicketInfo where
   declareNamedSchema _ = plain $ sketchSchema @TicketInfo sampleTicketInfo
 
-instance ToSchema RaffleizeInteraction where
-  declareNamedSchema _ = plain $ sketchSchema @RaffleizeInteraction $ RaffleizeInteraction (Just sampleAssetClass) (RaffleOwner Cancel) (UserAddresses [sampleAddr] sampleAddr (Just sampleGYTxOutRefCbor)) (Just sampleAddr)
+instance ToSchema Interaction where
+  declareNamedSchema _ = plain $ sketchSchema @Interaction $ Interaction (Just sampleAssetClass) (RaffleizeInteraction $ RaffleOwner Cancel) (UserAddresses [sampleAddr] sampleAddr (Just sampleGYTxOutRefCbor)) (Just sampleAddr)
 
 -------------------------------------------------------------------------------
 
@@ -132,7 +137,7 @@ sampleRaffleParam =
     { rMaxNoOfTickets = 20,
       rMinRevealingWindow = 6_000, --- ^ Milliseconds
       rMinTicketPrice = 3_000_000, --- ^ Lovelaces
-      rMinNotClosingWindow = 2_592_000_000, --- ^ Miliseconds ± 30 days
+      rMinNotClosingWindow = 30, --- ^ Days
       rRaffleValidatorHash = "ef370a98174dfad64f4447839c780af1b886d021c06496bd4e8c5013",
       rTicketValidatorHash = "ba339e84d13bd665767dd223380f074d1309785b94da8bf13f7052fd",
       rTicketCollateral = 3_500_000, --- ^ Lovelaces

@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-remove-trace #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:target-version=1.1.0 #-}
 
 module RaffleizeDApp.OnChain.RaffleizeTicketValidator where
@@ -18,6 +18,7 @@ import RaffleizeDApp.CustomTypes.TicketTypes
     TicketStateData (..),
     TicketStateId (..),
   )
+import RaffleizeDApp.CustomTypes.Types
 import RaffleizeDApp.OnChain.RaffleizeLogic
   ( checkTicketAction,
     deriveUserFromRefAC,
@@ -29,9 +30,7 @@ import RaffleizeDApp.OnChain.RaffleizeLogic
     unsafeGetRaffleStateDatumAndValue,
   )
 import RaffleizeDApp.OnChain.Utils
-  ( AScriptContext (AScriptContext),
-    ATxInfo (..),
-    hasTxInWithToken,
+  ( hasTxInWithToken,
     isBurningNFT,
     mkUntypedLambda,
     ownInputHasToken,

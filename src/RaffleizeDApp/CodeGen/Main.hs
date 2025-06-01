@@ -25,11 +25,13 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
 import RaffleizeDApp.CustomTypes.TransferTypes
   ( AddWitAndSubmitParams,
+    Interaction,
+    InteractionAction,
     RaffleInfo,
-    RaffleizeInteraction,
     TicketInfo,
     UserAddresses,
   )
+import RaffleizeDApp.OnChain.NFT
 import TypeBridges (raffleizeBridge)
 
 myTypes :: [SumType 'Haskell]
@@ -45,8 +47,11 @@ myTypes =
     let p = (Proxy :: Proxy AdminAction) in equal p (mkSumType p),
     let p = (Proxy :: Proxy RaffleInfo) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TicketInfo) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy NFTAction) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TokenData) in equal p (mkSumType p),
+    mkSumType (Proxy :: Proxy InteractionAction),
     mkSumType (Proxy :: Proxy UserAddresses),
-    mkSumType (Proxy :: Proxy RaffleizeInteraction),
+    mkSumType (Proxy :: Proxy Interaction),
     mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
   ]
 

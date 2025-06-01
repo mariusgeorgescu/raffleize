@@ -47,16 +47,16 @@ deployReferenceScriptTxBody script userAddresses = do
 
 -----------------
 
-interactionToTxBody :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m GYTxBody
-interactionToTxBody interaction@RaffleizeInteraction {userAddresses} = do
+interactionToTxBody :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => Interaction -> m GYTxBody
+interactionToTxBody interaction@Interaction {userAddresses} = do
   roc <- ask
   let skeleton = runReaderT (interactionToTxSkeleton interaction) (raffleizeTxBuildingCtx roc)
   liftIO $ runTxI (providerCtx roc) userAddresses (fst <$> skeleton)
 
-interactionToUnsignedTx :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m GYTx
+interactionToUnsignedTx :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => Interaction -> m GYTx
 interactionToUnsignedTx = (unsignedTx <$>) . interactionToTxBody
 
-interactionToHexEncodedCBOR :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m String
+interactionToHexEncodedCBOR :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => Interaction -> m String
 interactionToHexEncodedCBOR = (txToHex <$>) . interactionToUnsignedTx
 
 ------------------------------------------------------------------------------------------------

@@ -54,16 +54,19 @@
                         "required": true,
                         "schema": {
                             "example": {
+                                "action": {
+                                    "contents": {
+                                        "contents": {
+                                            "tag": "Cancel"
+                                        },
+                                        "tag": "RaffleOwner"
+                                    },
+                                    "tag": "RaffleizeInteraction"
+                                },
                                 "interactionContextNFT": [
                                     "526166666c65697a6543757272656e637953796d626f6c",
                                     "RaffleizeTokenName"
                                 ],
-                                "raffleizeAction": {
-                                    "contents": {
-                                        "tag": "Cancel"
-                                    },
-                                    "tag": "RaffleOwner"
-                                },
                                 "recipient": "00e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d1b930e9f7add78a174a21000e989ff551366dcd127028cb2aa39f616",
                                 "userAddresses": {
                                     "changeAddress": "00e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d1b930e9f7add78a174a21000e989ff551366dcd127028cb2aa39f616",
@@ -74,22 +77,28 @@
                                 }
                             },
                             "properties": {
-                                "interactionContextNFT": {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                "raffleizeAction": {
+                                "action": {
                                     "properties": {
                                         "contents": {
                                             "properties": {
+                                                "contents": {
+                                                    "properties": {
+                                                        "tag": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "tag"
+                                                    ],
+                                                    "type": "object"
+                                                },
                                                 "tag": {
                                                     "type": "string"
                                                 }
                                             },
                                             "required": [
-                                                "tag"
+                                                "tag",
+                                                "contents"
                                             ],
                                             "type": "object"
                                         },
@@ -102,6 +111,12 @@
                                         "contents"
                                     ],
                                     "type": "object"
+                                },
+                                "interactionContextNFT": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "recipient": {
                                     "type": "string"
@@ -130,7 +145,7 @@
                                 }
                             },
                             "required": [
-                                "raffleizeAction",
+                                "action",
                                 "recipient",
                                 "interactionContextNFT",
                                 "userAddresses"
@@ -200,6 +215,7 @@
                                     },
                                     "rParam": {
                                         "rMaxNoOfTickets": 20,
+                                        "rMinNotClosingWindow": 30,
                                         "rMinRevealingWindow": 6000,
                                         "rMinTicketPrice": 3000000,
                                         "rRaffleCollateral": 30000000,
@@ -269,6 +285,9 @@
                                                 "rMaxNoOfTickets": {
                                                     "type": "number"
                                                 },
+                                                "rMinNotClosingWindow": {
+                                                    "type": "number"
+                                                },
                                                 "rMinRevealingWindow": {
                                                     "type": "number"
                                                 },
@@ -289,6 +308,7 @@
                                                 }
                                             },
                                             "required": [
+                                                "rMinNotClosingWindow",
                                                 "rTicketValidatorHash",
                                                 "rMaxNoOfTickets",
                                                 "rMinTicketPrice",
@@ -393,6 +413,7 @@
                                         },
                                         "rParam": {
                                             "rMaxNoOfTickets": 20,
+                                            "rMinNotClosingWindow": 30,
                                             "rMinRevealingWindow": 6000,
                                             "rMinTicketPrice": 3000000,
                                             "rRaffleCollateral": 30000000,
@@ -462,6 +483,9 @@
                                                     "rMaxNoOfTickets": {
                                                         "type": "number"
                                                     },
+                                                    "rMinNotClosingWindow": {
+                                                        "type": "number"
+                                                    },
                                                     "rMinRevealingWindow": {
                                                         "type": "number"
                                                     },
@@ -482,6 +506,7 @@
                                                     }
                                                 },
                                                 "required": [
+                                                    "rMinNotClosingWindow",
                                                     "rTicketValidatorHash",
                                                     "rMaxNoOfTickets",
                                                     "rMinTicketPrice",
@@ -746,6 +771,7 @@
                                         },
                                         "rParam": {
                                             "rMaxNoOfTickets": 20,
+                                            "rMinNotClosingWindow": 30,
                                             "rMinRevealingWindow": 6000,
                                             "rMinTicketPrice": 3000000,
                                             "rRaffleCollateral": 30000000,
@@ -815,6 +841,9 @@
                                                     "rMaxNoOfTickets": {
                                                         "type": "number"
                                                     },
+                                                    "rMinNotClosingWindow": {
+                                                        "type": "number"
+                                                    },
                                                     "rMinRevealingWindow": {
                                                         "type": "number"
                                                     },
@@ -835,6 +864,7 @@
                                                     }
                                                 },
                                                 "required": [
+                                                    "rMinNotClosingWindow",
                                                     "rTicketValidatorHash",
                                                     "rMaxNoOfTickets",
                                                     "rMinTicketPrice",

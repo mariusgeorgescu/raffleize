@@ -77,6 +77,7 @@ library
     RaffleizeDApp.CustomTypes.TicketTypes
     RaffleizeDApp.CustomTypes.TransferTypes
     RaffleizeDApp.CustomTypes.Types
+    RaffleizeDApp.OnChain.NFT
     RaffleizeDApp.OnChain.RaffleizeLogic
     RaffleizeDApp.OnChain.RaffleizeMintingPolicy
     RaffleizeDApp.OnChain.RaffleizeTicketValidator

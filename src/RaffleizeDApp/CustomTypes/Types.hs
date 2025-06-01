@@ -10,12 +10,8 @@ import Data.Text qualified as Text
 import GeniusYield.Types (unsafeTokenNameFromHex)
 import GeniusYield.Types.Value (tokenNameToPlutus)
 import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
-import PlutusLedgerApi.V2
-import PlutusTx
-
-unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
-unFlattenValue [] = mempty
-unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
+import PlutusLedgerApi.V3
+import PlutusTx (unstableMakeIsData)
 
 -------------------------------------------------------------------------------
 
@@ -25,25 +21,46 @@ unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> 
 
 type Metadata = Map BuiltinByteString BuiltinByteString
 
+------------------------
+
+-- * Custom Types For ScriptContext
+
+------------------------
+
 data ATxInfo = ATxInfo
   { txInfoInputs :: [TxInInfo],
     txInfoReferenceInputs :: [TxInInfo],
     txInfoOutputs :: [TxOut],
     txInfoFee :: BuiltinData,
     txInfoMint :: Value,
-    txInfoDCert :: BuiltinData,
+    txInfoTxCerts :: BuiltinData,
     txInfoWdrl :: BuiltinData,
     txInfoValidRange :: POSIXTimeRange,
     txInfoSignatories :: BuiltinData,
+    txInfoRedeemers :: BuiltinData,
     txInfoData :: BuiltinData,
-    txInfoId :: BuiltinData
+    txInfoId :: BuiltinData,
+    txInfoVotes :: BuiltinData,
+    txInfoProposalProcedures :: BuiltinData,
+    txInfoCurrentTreasuryAmount :: BuiltinData,
+    txInfoTreasuryDonation :: BuiltinData
   }
 
 unstableMakeIsData ''ATxInfo
 
-data AScriptContext = AScriptContext {scriptContextTxInfo :: ATxInfo, scriptContextPurpose :: ScriptPurpose}
+data AScriptContext = AScriptContext
+  { scriptContextTxInfo :: ATxInfo,
+    scriptContextRedeemer :: Redeemer,
+    scriptContextScriptInfo :: ScriptInfo
+  }
 
 unstableMakeIsData ''AScriptContext
+
+---
+---
+-- ORPHAN INSTANCES
+---
+---
 
 instance ToJSON POSIXTime where
   toJSON :: POSIXTime -> Data.Aeson.Value
@@ -62,6 +79,10 @@ instance FromJSON Value where
   parseJSON v =
     let flattenedValue = parseJSON @[(CurrencySymbol, TokenName, Integer)] v
      in unFlattenValue <$> flattenedValue
+    where
+      unFlattenValue :: [(PlutusLedgerApi.V3.CurrencySymbol, PlutusLedgerApi.V3.TokenName, Integer)] -> PlutusLedgerApi.V3.Value
+      unFlattenValue [] = mempty
+      unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
 
 instance ToJSON TokenName where
   toJSON :: TokenName -> Data.Aeson.Value

@@ -9,25 +9,8 @@ import PlutusLedgerApi.V1.Value
     geq,
   )
 import PlutusLedgerApi.V3
-  ( Address,
-    CurrencySymbol,
-    Datum (getDatum),
-    OutputDatum (OutputDatum),
-    POSIXTimeRange,
-    Redeemer,
-    ScriptInfo (SpendingScript),
-    ToData (..),
-    TokenName (..),
-    TxInInfo (..),
-    TxOut (TxOut, txOutAddress, txOutDatum, txOutValue),
-    TxOutRef,
-    Value,
-    adaSymbol,
-    adaToken,
-    singleton,
-  )
-import PlutusTx (fromBuiltinData, unstableMakeIsData)
 import PlutusTx.Builtins (serialiseData)
+import RaffleizeDApp.CustomTypes.Types
 
 wrapTitle :: String -> String
 wrapTitle s =
@@ -37,41 +20,6 @@ wrapTitle s =
 
 encodeUtf8KV :: (BuiltinString, BuiltinString) -> (BuiltinByteString, BuiltinByteString)
 encodeUtf8KV (k, v) = (encodeUtf8 k, encodeUtf8 v)
-
-------------------------
-
--- * Custom Types For ScriptContext
-
-------------------------
-
-data ATxInfo = ATxInfo
-  { txInfoInputs :: [TxInInfo],
-    txInfoReferenceInputs :: [TxInInfo],
-    txInfoOutputs :: [TxOut],
-    txInfoFee :: BuiltinData,
-    txInfoMint :: Value,
-    txInfoTxCerts :: BuiltinData,
-    txInfoWdrl :: BuiltinData,
-    txInfoValidRange :: POSIXTimeRange,
-    txInfoSignatories :: BuiltinData,
-    txInfoRedeemers :: BuiltinData,
-    txInfoData :: BuiltinData,
-    txInfoId :: BuiltinData,
-    txInfoVotes :: BuiltinData,
-    txInfoProposalProcedures :: BuiltinData,
-    txInfoCurrentTreasuryAmount :: BuiltinData,
-    txInfoTreasuryDonation :: BuiltinData
-  }
-
-unstableMakeIsData ''ATxInfo
-
-data AScriptContext = AScriptContext
-  { scriptContextTxInfo :: ATxInfo,
-    scriptContextRedeemer :: Redeemer,
-    scriptContextScriptInfo :: ScriptInfo
-  }
-
-unstableMakeIsData ''AScriptContext
 
 ------------------------
 
@@ -90,16 +38,16 @@ ownInputHasToken proofToken sc =
 
 -- | Function to get the spending input
 --  Fails if is not a SpendingScript
-unsafeGetOwnInput :: AScriptContext -> TxOut
+unsafeGetOwnInput :: AScriptContext -> PlutusLedgerApi.V3.TxOut
 unsafeGetOwnInput context = case findOwnInputA context of
   Nothing -> traceError "Own input not found"
-  Just (TxInInfo _inOutRef inOut) -> inOut
+  Just (PlutusLedgerApi.V3.TxInInfo _inOutRef inOut) -> inOut
 {-# INLINEABLE unsafeGetOwnInput #-}
 
 -- | Find the input currently being validated.
-findOwnInputA :: AScriptContext -> Maybe TxInInfo
-findOwnInputA AScriptContext {scriptContextTxInfo = ATxInfo {txInfoInputs}, scriptContextScriptInfo = SpendingScript txOutRef _} =
-  find (\TxInInfo {txInInfoOutRef} -> txInInfoOutRef #== txOutRef) txInfoInputs
+findOwnInputA :: AScriptContext -> Maybe PlutusLedgerApi.V3.TxInInfo
+findOwnInputA AScriptContext {scriptContextTxInfo = ATxInfo {txInfoInputs}, scriptContextScriptInfo = PlutusLedgerApi.V3.SpendingScript txOutRef _} =
+  find (\PlutusLedgerApi.V3.TxInInfo {txInInfoOutRef} -> txInInfoOutRef #== txOutRef) txInfoInputs
 findOwnInputA _ = Nothing
 {-# INLINEABLE findOwnInputA #-}
 
@@ -120,9 +68,9 @@ mkUntypedLambda f c = check $ f (parseData c "Invalid context")
 
 ------------------------
 
-type ValueConstraint = Value -> Bool
+type ValueConstraint = PlutusLedgerApi.V3.Value -> Bool
 
-type AddressConstraint = Address -> Bool
+type AddressConstraint = PlutusLedgerApi.V3.Address -> Bool
 
 noConstraint :: b -> Bool
 noConstraint = const True
@@ -134,17 +82,17 @@ noConstraint = const True
 
 ------------------------
 
-isTxOutWith :: ValueConstraint -> AddressConstraint -> TxOut -> Bool
-isTxOutWith !toValue !toAddress TxOut {txOutValue, txOutAddress} = toValue txOutValue && toAddress txOutAddress
+isTxOutWith :: ValueConstraint -> AddressConstraint -> PlutusLedgerApi.V3.TxOut -> Bool
+isTxOutWith !toValue !toAddress PlutusLedgerApi.V3.TxOut {txOutValue, txOutAddress} = toValue txOutValue && toAddress txOutAddress
 {-# INLINEABLE isTxOutWith #-}
 
-isTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstraint -> TxOut -> Bool
-isTxOutWithInlineDatumAnd datum !toValue !toAddress TxOut {txOutValue, txOutAddress, txOutDatum} = toValue txOutValue && toAddress txOutAddress && isGivenInlineDatum datum txOutDatum
+isTxOutWithInlineDatumAnd :: (PlutusLedgerApi.V3.ToData a) => a -> ValueConstraint -> AddressConstraint -> PlutusLedgerApi.V3.TxOut -> Bool
+isTxOutWithInlineDatumAnd datum !toValue !toAddress PlutusLedgerApi.V3.TxOut {txOutValue, txOutAddress, txOutDatum} = toValue txOutValue && toAddress txOutAddress && isGivenInlineDatum datum txOutDatum
 {-# INLINEABLE isTxOutWithInlineDatumAnd #-}
 
-unsafeGetInlineDatum :: TxOut -> BuiltinData
+unsafeGetInlineDatum :: PlutusLedgerApi.V3.TxOut -> BuiltinData
 unsafeGetInlineDatum out = case txOutDatum out of
-  OutputDatum da -> getDatum da
+  PlutusLedgerApi.V3.OutputDatum da -> getDatum da
   _ -> traceError "No inline datum"
 {-# INLINEABLE unsafeGetInlineDatum #-}
 
@@ -153,15 +101,15 @@ unsafeGetInlineDatum out = case txOutDatum out of
 -- ** TxOuts Helper Functions
 
 ------------------------
-outHas1of :: TxOut -> AssetClass -> Bool
-outHas1of (TxOut _ value _ _) ac = assetClassValueOf value ac #== 1
+outHas1of :: PlutusLedgerApi.V3.TxOut -> AssetClass -> Bool
+outHas1of (PlutusLedgerApi.V3.TxOut _ value _ _) ac = assetClassValueOf value ac #== 1
 {-# INLINEABLE outHas1of #-}
 
-hasTxOutWith :: ValueConstraint -> AddressConstraint -> [TxOut] -> Bool
+hasTxOutWith :: ValueConstraint -> AddressConstraint -> [PlutusLedgerApi.V3.TxOut] -> Bool
 hasTxOutWith !toValue !toAddress = pany (isTxOutWith toValue toAddress)
 {-# INLINEABLE hasTxOutWith #-}
 
-hasTxOutWithInlineDatumAnd :: (ToData a) => a -> ValueConstraint -> AddressConstraint -> [TxOut] -> Bool
+hasTxOutWithInlineDatumAnd :: (PlutusLedgerApi.V3.ToData a) => a -> ValueConstraint -> AddressConstraint -> [PlutusLedgerApi.V3.TxOut] -> Bool
 hasTxOutWithInlineDatumAnd !datum !toValue !toAddress =
   traceIfFalse "not found tx out with datum" . pany (isTxOutWithInlineDatumAnd datum toValue toAddress)
 {-# INLINEABLE hasTxOutWithInlineDatumAnd #-}
@@ -172,8 +120,8 @@ hasTxOutWithInlineDatumAnd !datum !toValue !toAddress =
 
 ------------------------
 
--- | Helper function to check if a 'TxInInfo' contains exactly 1 quantity of an AssetClass
-inputHas1of :: TxInInfo -> AssetClass -> Bool
+-- | Helper function to check if a 'PlutusLedgerApi.V3.PlutusLedgerApi.V3.TxInInfo' contains exactly 1 quantity of an AssetClass
+inputHas1of :: PlutusLedgerApi.V3.TxInInfo -> AssetClass -> Bool
 inputHas1of = outHas1of . txInInfoResolved
 {-# INLINEABLE inputHas1of #-}
 
@@ -182,22 +130,22 @@ inputHas1of = outHas1of . txInInfoResolved
 -- ** TxIns Helper Functions
 
 ------------------------
-hasTxInWithToken :: AssetClass -> [TxInInfo] -> Bool
+hasTxInWithToken :: AssetClass -> [PlutusLedgerApi.V3.TxInInfo] -> Bool
 hasTxInWithToken tokenId = hasTxInWith ((#== 1) . (`assetClassValueOf` tokenId)) noConstraint
 {-# INLINEABLE hasTxInWithToken #-}
 
 -- | Helper function to check that a UTxO is being spent in the transaction.
-hasTxInWithRef :: TxOutRef -> [TxInInfo] -> Bool
-hasTxInWithRef oref = pany (\(TxInInfo oref' _) -> oref' #== oref)
+hasTxInWithRef :: PlutusLedgerApi.V3.TxOutRef -> [PlutusLedgerApi.V3.TxInInfo] -> Bool
+hasTxInWithRef oref = pany (\(PlutusLedgerApi.V3.TxInInfo oref' _) -> oref' #== oref)
 {-# INLINEABLE hasTxInWithRef #-}
 
-hasTxInWith :: ValueConstraint -> AddressConstraint -> [TxInInfo] -> Bool
+hasTxInWith :: ValueConstraint -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> Bool
 hasTxInWith !toValue !toAddress = hasTxOutWith toValue toAddress . (txInInfoResolved #<$>)
 {-# INLINEABLE hasTxInWith #-}
 
-unsafeGetCurrentStateDatumAndValue :: AssetClass -> AddressConstraint -> [TxInInfo] -> (Value, BuiltinData)
+unsafeGetCurrentStateDatumAndValue :: AssetClass -> AddressConstraint -> [PlutusLedgerApi.V3.TxInInfo] -> (PlutusLedgerApi.V3.Value, BuiltinData)
 unsafeGetCurrentStateDatumAndValue stateToken !toAddress outs = case filter (isTxOutWith (`geq` assetClassValue stateToken 1) toAddress . txInInfoResolved) outs of
-  [TxInInfo _ out] -> (txOutValue out, unsafeGetInlineDatum out)
+  [PlutusLedgerApi.V3.TxInInfo _ out] -> (txOutValue out, unsafeGetInlineDatum out)
   _ -> traceError "state nft not found"
 {-# INLINEABLE unsafeGetCurrentStateDatumAndValue #-}
 
@@ -207,23 +155,23 @@ unsafeGetCurrentStateDatumAndValue stateToken !toAddress outs = case filter (isT
 
 ------------------------
 
-isMintingNFT :: AssetClass -> Value -> Bool
+isMintingNFT :: AssetClass -> PlutusLedgerApi.V3.Value -> Bool
 isMintingNFT ac txInfoMint = traceIfFalse "NFT not minted" $ assetClassValueOf txInfoMint ac #== 1
 {-# INLINEABLE isMintingNFT #-}
 
-isBurningNFT :: AssetClass -> Value -> Bool
+isBurningNFT :: AssetClass -> PlutusLedgerApi.V3.Value -> Bool
 isBurningNFT ac txInfoMint = traceIfFalse "NFT not burned" $ assetClassValueOf txInfoMint ac #== pnegate 1
 {-# INLINEABLE isBurningNFT #-}
 
-unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
+unFlattenValue :: [(PlutusLedgerApi.V3.CurrencySymbol, PlutusLedgerApi.V3.TokenName, Integer)] -> PlutusLedgerApi.V3.Value
 unFlattenValue [] = mempty
 unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
 
-adaValueFromLovelaces :: Integer -> Value
-adaValueFromLovelaces = singleton adaSymbol adaToken
+adaValueFromLovelaces :: Integer -> PlutusLedgerApi.V3.Value
+adaValueFromLovelaces = PlutusLedgerApi.V3.singleton PlutusLedgerApi.V3.adaSymbol PlutusLedgerApi.V3.adaToken
 {-# INLINEABLE adaValueFromLovelaces #-}
 
-showValue :: String -> Value -> String
+showValue :: String -> PlutusLedgerApi.V3.Value -> String
 showValue s v = wrapTitle s ++ intercalate "\n" (show <$> PlutusLedgerApi.V1.Value.flattenValue v)
 
 ------------------------
@@ -237,7 +185,7 @@ showValue s v = wrapTitle s ++ intercalate "\n" (show <$> PlutusLedgerApi.V1.Val
 -- {-# INLINEABLE bsToInteger' #-}
 
 integerToBs24 :: Integer -> BuiltinByteString --- cheaper than integerToByteString
-integerToBs24 = dropByteString 1 . serialiseData . toBuiltinData -- Removing First Byte  (works for value > 24)
+integerToBs24 = dropByteString 1 . serialiseData . PlutusLedgerApi.V3.toBuiltinData -- Removing First Byte  (works for value > 24)
 {-# INLINEABLE integerToBs24 #-}
 
 -- Convert a BuiltinByteString to an Integer, optimizing for memory usage
@@ -269,8 +217,8 @@ bsToIntegerDirect bs !acc !index =
 
 ------------------------
 
-isGivenInlineDatum :: (ToData a) => a -> OutputDatum -> Bool
+isGivenInlineDatum :: (PlutusLedgerApi.V3.ToData a) => a -> PlutusLedgerApi.V3.OutputDatum -> Bool
 isGivenInlineDatum datum outdat = case outdat of
-  OutputDatum da -> toBuiltinData datum #== getDatum da
+  PlutusLedgerApi.V3.OutputDatum da -> PlutusLedgerApi.V3.toBuiltinData datum #== getDatum da
   _ -> trace "Datum must exsist and must be inlined" False
 {-# INLINEABLE isGivenInlineDatum #-}

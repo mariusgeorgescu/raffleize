@@ -92,10 +92,10 @@ mintTestTokens pCtx skey tn amount = do
   return $ showTxOutRef txOutRef
 
 raffleizeTransaction :: RaffleizeOffchainContext -> GYExtendedPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> IO Text
-raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey raffleizeActon interactionContextNFT optionalRecipient = do
+raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey raffleizeAction interactionContextNFT optionalRecipient = do
   let my_addr = addressFromSkey providerCtx skey
   let userAddrs = UserAddresses [my_addr] my_addr Nothing
-  let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
+  let raffleizeInteraction = Interaction interactionContextNFT (RaffleizeInteraction raffleizeAction) userAddrs optionalRecipient
   print raffleizeInteraction
   putStrLn (yellowColorString "Building transaction...")
   raffleizeTxBody <- runReaderT (interactionToTxBody raffleizeInteraction) raffleizeContext

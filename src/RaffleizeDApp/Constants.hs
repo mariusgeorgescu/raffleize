@@ -5,8 +5,6 @@ import PlutusLedgerApi.Data.V3 (PubKeyHash)
 adminPubKeyHash :: PubKeyHash
 adminPubKeyHash = "7ee37a8916c68d31a62e347c7512d922ce999025c50b644ca2f6426b"
 
-
-
 ----------------
 -- NFTs METADATA
 ----------------
@@ -77,3 +75,5 @@ secretMaxLength = 64
 
 purescriptProjectSrcPath :: FilePath
 purescriptProjectSrcPath = "../raffleize-frontend-purescript/src/"
+
+-----

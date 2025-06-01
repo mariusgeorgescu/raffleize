@@ -31,7 +31,7 @@ import RaffleizeDApp.Utils
 raffleizeTransactionRun :: (GYTxGameMonad m, GYTxUserQueryMonad m, HasCallStack) => User -> RaffleizeTxBuildingContext -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> m (GYTxId, AssetClass)
 raffleizeTransactionRun w rtxbc raffleizeActon interactionContextNFT optionalRecipient = do
   let userAddrs = UserAddresses (toList $ GeniusYield.TxBuilder.userAddresses w) (userChangeAddress w) Nothing
-  let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
+  let raffleizeInteraction = Interaction interactionContextNFT (RaffleizeInteraction raffleizeActon) userAddrs optionalRecipient
   (skeleton, ac) <- runReaderT (interactionToTxSkeleton raffleizeInteraction) rtxbc
   (_, txId) <- withWalletBalancesCheck [] $ asUser w $ sendSkeleton' skeleton
   return (txId, ac)
