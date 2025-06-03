@@ -20,5 +20,5 @@ websocketsServerApp pendingConn = do
         -- Once done, send a message to the client
         WS.sendTextData conn (T.pack $ "Done counting to " <> show limit)
 
-        (msg :: T.Text) <- WS.receiveData conn
-        print $ "Second msg " <> msg
+        (msg2 :: T.Text) <- WS.receiveData conn
+        print $ "Second msg " <> msg2

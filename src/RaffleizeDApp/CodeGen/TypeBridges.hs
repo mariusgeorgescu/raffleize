@@ -1,17 +1,17 @@
 module TypeBridges where
 
-import Language.PureScript.Bridge (
-  BridgePart,
-  defaultBridge,
-  typeName,
-  (^==),
- )
-import Language.PureScript.Bridge.PSTypes (
-  psArray,
-  psInt,
-  psNumber,
-  psString,
- )
+import Language.PureScript.Bridge
+  ( BridgePart,
+    defaultBridge,
+    typeName,
+    (^==),
+  )
+import Language.PureScript.Bridge.PSTypes
+  ( psArray,
+    psInt,
+    psNumber,
+    psString,
+  )
 import PSTypes (psClientType)
 
 ------------------------------------------------------------------------------------------------
@@ -48,6 +48,12 @@ plutusAssetClassBridge = do
 plutusBuiltinByteStringBridge :: BridgePart
 plutusBuiltinByteStringBridge = do
   typeName ^== "BuiltinByteString"
+  return psString
+
+-- | Mapping haskell 'SecretHash' to purescript 'String'
+plutusSecretHashBridge :: BridgePart
+plutusSecretHashBridge = do
+  typeName ^== "SecretHash"
   return psString
 
 -- | Mapping haskell 'ScriptHash' to purescript 'String'
@@ -95,6 +101,7 @@ raffleizeBridge =
     <|> plutusValueBridge
     <|> plutusBuiltinByteStringBridge
     <|> plutusScriptHashBridge
+    <|> plutusSecretHashBridge
     <|> plutusAssetClassBridge
     <|> plutusGYAddressBridge
     <|> plutusGYTxOutRefCborBridge

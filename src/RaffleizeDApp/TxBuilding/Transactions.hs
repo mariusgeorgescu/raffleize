@@ -1,6 +1,7 @@
 module RaffleizeDApp.TxBuilding.Transactions where
 
 import Control.Monad.Reader
+import Data.Text qualified as Text
 import GeniusYield.Api.TestTokens (mintTestTokens)
 import GeniusYield.Imports (IsString (..))
 import GeniusYield.Types
@@ -8,7 +9,6 @@ import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Interactions
 import RaffleizeDApp.TxBuilding.Skeletons (addRefScriptSkeleton)
-import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
 
 ------------------------------------------------------------------------------------------------
@@ -23,13 +23,12 @@ import RaffleizeDApp.Utils
 
 ------------------------------------------------------------------------------------------------
 
-{- | This function  'UserAddresses', 'String' representing the token name and an 'Integer' representing the amount,
-| and returns the 'GYTxBody' of a transaction minting the test tokens.
--}
+-- | This function  'UserAddresses', 'String' representing the token name and an 'Integer' representing the amount,
+-- | and returns the 'GYTxBody' of a transaction minting the test tokens.
 mintTestTokensTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> String -> Integer -> m GYTxBody
 mintTestTokensTxBody userAddresses tn amount = do
   providerCtx <- ask
-  liftIO $ runTxI providerCtx userAddresses $ snd <$> mintTestTokens (fromString tn) (fromInteger amount)
+  liftIO $ runTxI providerCtx userAddresses $ snd <$> mintTestTokens (fromString (init . tail . show $ Text.pack tn)) (fromInteger amount)
 
 ------------------------------------------------------------------------------
 
@@ -37,16 +36,10 @@ mintTestTokensTxBody userAddresses tn amount = do
 
 ------------------------------------------------------------------------------------------------
 
-deployReferenceScriptTxBody :: (MonadIO m, MonadReader ProviderCtx m) => GYScript 'PlutusV2 -> UserAddresses -> m GYTxBody
+deployReferenceScriptTxBody :: (MonadIO m, MonadReader ProviderCtx m) => GYScript 'PlutusV3 -> UserAddresses -> m GYTxBody
 deployReferenceScriptTxBody script userAddresses = do
   providerCtx <- ask
   liftIO $ runTxI providerCtx userAddresses (addRefScriptSkeleton script)
-
-deployRaffleizeValidatortTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> m GYTxBody
-deployRaffleizeValidatortTxBody = deployReferenceScriptTxBody (validatorToScript raffleizeValidatorGY)
-
-deployTicketValidatortTxBody :: (MonadIO m, MonadReader ProviderCtx m) => UserAddresses -> m GYTxBody
-deployTicketValidatortTxBody = deployReferenceScriptTxBody (validatorToScript ticketValidatorGY)
 
 -----------------
 
@@ -54,16 +47,16 @@ deployTicketValidatortTxBody = deployReferenceScriptTxBody (validatorToScript ti
 
 -----------------
 
-interactionToTxBody :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m GYTxBody
-interactionToTxBody interaction@RaffleizeInteraction {userAddresses} = do
+interactionToTxBody :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => Interaction -> m GYTxBody
+interactionToTxBody interaction@Interaction {userAddresses} = do
   roc <- ask
-  let skeleton = runReader (interactionToTxSkeleton interaction) (raffleizeTxBuildingCtx roc)
+  let skeleton = runReaderT (interactionToTxSkeleton interaction) (raffleizeTxBuildingCtx roc)
   liftIO $ runTxI (providerCtx roc) userAddresses (fst <$> skeleton)
 
-interactionToUnsignedTx :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m GYTx
+interactionToUnsignedTx :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => Interaction -> m GYTx
 interactionToUnsignedTx = (unsignedTx <$>) . interactionToTxBody
 
-interactionToHexEncodedCBOR :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => RaffleizeInteraction -> m String
+interactionToHexEncodedCBOR :: (MonadReader RaffleizeOffchainContext m, MonadIO m) => Interaction -> m String
 interactionToHexEncodedCBOR = (txToHex <$>) . interactionToUnsignedTx
 
 ------------------------------------------------------------------------------------------------

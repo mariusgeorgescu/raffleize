@@ -27,13 +27,13 @@ import GHC.Real (Integral (div))
 import GeniusYield.GYConfig
 import GeniusYield.Types
 import Graphics.Vty
-import PlutusLedgerApi.V1.Value (
-  AssetClass,
-  CurrencySymbol,
-  TokenName,
-  Value,
-  flattenValue,
- )
+import PlutusLedgerApi.V1.Value
+  ( AssetClass,
+    CurrencySymbol,
+    TokenName,
+    Value,
+    flattenValue,
+  )
 import PlutusPrelude (showText)
 import PlutusTx.Builtins qualified
 import RaffleizeDApp.Constants
@@ -41,10 +41,10 @@ import RaffleizeDApp.CustomTypes.ActionTypes
 import RaffleizeDApp.CustomTypes.RaffleTypes
 import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.CustomTypes.TransferTypes
-import RaffleizeDApp.OnChain.RaffleizeLogic (
-  actionToLabel,
-  generateTicketACFromTicket,
- )
+import RaffleizeDApp.OnChain.RaffleizeLogic
+  ( actionToLabel,
+    generateTicketACFromTicket,
+  )
 import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Utils
@@ -62,24 +62,24 @@ import Types
 ------------------------------------------------------------------------------------------------
 
 data RaffleizeUI = RaffleizeUI
-  { providersCtx :: ProviderCtx
-  , validatorsConfig :: Maybe RaffleizeTxBuildingContext
-  , maybeSecretKey :: Maybe GYExtendedPaymentSigningKey
-  , balance :: Value
-  , balanceList :: GenericList NameResources [] (CurrencySymbol, TokenName, Integer)
-  , logo :: String
-  , message :: Text
-  , mnemonicForm :: Form MnemonicFormState RaffleizeEvent NameResources
-  , mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources
-  , raffleConfigForm :: Form RaffleConfigFormState RaffleizeEvent NameResources
-  , activeRafflesForm :: Form ActiveRafflesFormState RaffleizeEvent NameResources
-  , updatingRaffle :: Maybe RaffleInfo
-  , myRafflesForm :: Form MyRafflesFormState RaffleizeEvent NameResources
-  , buyTicketForm :: Form BuyTicketFormState RaffleizeEvent NameResources
-  , myTicketsForm :: Form MyTicketsFormState RaffleizeEvent NameResources
-  , revealSecretForm :: Form RevealSecretFormState RaffleizeEvent NameResources
-  , myConstrctValueState :: ConstructValueState
-  , currentScreen :: Screen
+  { providersCtx :: ProviderCtx,
+    validatorsConfig :: Maybe RaffleizeTxBuildingContext,
+    maybeSecretKey :: Maybe GYExtendedPaymentSigningKey,
+    balance :: Value,
+    balanceList :: GenericList NameResources [] (CurrencySymbol, TokenName, Integer),
+    logo :: String,
+    message :: Text,
+    mnemonicForm :: Form MnemonicFormState RaffleizeEvent NameResources,
+    mintTokenForm :: Form MintTokenFormState RaffleizeEvent NameResources,
+    raffleConfigForm :: Form RaffleConfigFormState RaffleizeEvent NameResources,
+    activeRafflesForm :: Form ActiveRafflesFormState RaffleizeEvent NameResources,
+    updatingRaffle :: Maybe RaffleInfo,
+    myRafflesForm :: Form MyRafflesFormState RaffleizeEvent NameResources,
+    buyTicketForm :: Form BuyTicketFormState RaffleizeEvent NameResources,
+    myTicketsForm :: Form MyTicketsFormState RaffleizeEvent NameResources,
+    revealSecretForm :: Form RevealSecretFormState RaffleizeEvent NameResources,
+    myConstrctValueState :: ConstructValueState,
+    currentScreen :: Screen
   }
 
 ------------------------------------------------------------------------------------------------
@@ -91,11 +91,11 @@ data RaffleizeUI = RaffleizeUI
 app :: App RaffleizeUI RaffleizeEvent NameResources
 app =
   App
-    { appDraw = drawUI
-    , appChooseCursor = showFirstCursor
-    , appHandleEvent = handleEvent
-    , appStartEvent = return ()
-    , appAttrMap = const theMap
+    { appDraw = drawUI,
+      appChooseCursor = showFirstCursor,
+      appHandleEvent = handleEvent,
+      appStartEvent = return (),
+      appAttrMap = const theMap
     }
 
 readRaffleizeLogo :: IO String
@@ -321,11 +321,11 @@ raffleFormToConfig RaffleConfigFormState {..} stake = do
   rddl <- timeToPlutus <$> gyIso8601ParseM @Maybe (Data.Text.unpack _revealDdl)
   return $
     RaffleConfig
-      { rCommitDDL = cddl
-      , rRevealDDL = rddl
-      , rTicketPrice = toLovelace $ fromIntegral _ticketPrice
-      , rMinTickets = fromIntegral _minNoTickets
-      , rStake = stake
+      { rCommitDDL = cddl,
+        rRevealDDL = rddl,
+        rTicketPrice = toLovelace $ fromIntegral _ticketPrice,
+        rMinTickets = fromIntegral _minNoTickets,
+        rStake = stake
       }
 
 -- | Handle events Create Raffle Screen
@@ -352,10 +352,10 @@ handleCreateUpdateRaffleEvents s@RaffleizeUI {..} event | currentScreen == Creat
               (newFormState, ()) <- nestEventM crForm $ handleFormEvent event
               let crFormState = formState newFormState
               let fieldValidations =
-                    [ setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState ^. commitDdl))) CommitDdlField
-                    , setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState ^. revealDdl))) RevealDdlField
-                    , setFieldValid (crFormState ^. ticketPrice > (fromIntegral (rMinTicketPrice mockRaffleParam) `div` 1000000)) TicketPriceField
-                    , setFieldValid (liftA2 (&&) (> 0) (< fromIntegral (rMaxNoOfTickets mockRaffleParam)) $ crFormState ^. minNoTickets) MinNoTokensField
+                    [ setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState ^. commitDdl))) CommitDdlField,
+                      setFieldValid (isJust $ gyIso8601ParseM @Maybe (Data.Text.unpack (crFormState ^. revealDdl))) RevealDdlField,
+                      setFieldValid (crFormState ^. ticketPrice > (fromIntegral (rMinTicketPrice mockRaffleParam) `div` 1000000)) TicketPriceField,
+                      setFieldValid (liftA2 (&&) (> 0) (< fromIntegral (rMaxNoOfTickets mockRaffleParam)) $ crFormState ^. minNoTickets) MinNoTokensField
                     ]
               let validatedForm = foldr' ($) newFormState fieldValidations
               put $ s {raffleConfigForm = validatedForm}
@@ -393,7 +393,7 @@ handleBuyTicketScreenEvents s@RaffleizeUI {..} event | currentScreen == BuyTicke
             let contextNFT = rRaffleID . riRsd $ selectedActiveRaffle
             let secretHash = PlutusTx.Builtins.blake2b_256 $ fromString @BuiltinByteString secretString
             let isAllowedToBuy = ("User", "BuyTicket") `elem` riAvailableActions selectedActiveRaffle
-            raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (User (BuyTicket secretHash)) (Just contextNFT) mRecipient s isAllowedToBuy
+            raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (User (BuyTicket (SecretHash secretHash))) (Just contextNFT) mRecipient s isAllowedToBuy
         _ -> do
           (updated_form, ()) <- nestEventM btForm $ handleFormEvent event
           put $ s {buyTicketForm = updated_form}
@@ -414,7 +414,7 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
                   let revealedSecretBS = fromString @BuiltinByteString revealedTicketSecret
                   let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
                   let isAllowedToReveal = ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo
-                  if PlutusTx.Builtins.blake2b_256 revealedSecretBS #== tSecretHash (tiTsd selectedTicketInfo)
+                  if PlutusTx.Builtins.blake2b_256 revealedSecretBS #== unSecretHash (tSecretHash (tiTsd selectedTicketInfo))
                     then raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey (TicketOwner (RevealTicketSecret revealedSecretBS)) (Just contextNFT) Nothing s isAllowedToReveal
                     else put s
                 _ -> do
@@ -423,7 +423,7 @@ handleRevealSecretEvents s@RaffleizeUI {..} event
                   let newRevealedSecretBS = fromString @BuiltinByteString newRevealedTicketSecret
                   let fieldValidations =
                         [ setFieldValid
-                            (PlutusTx.Builtins.blake2b_256 newRevealedSecretBS #== tSecretHash (tiTsd selectedTicketInfo))
+                            (PlutusTx.Builtins.blake2b_256 newRevealedSecretBS #== unSecretHash (tSecretHash (tiTsd selectedTicketInfo)))
                             RevealedSecretField
                         ]
                   let validatedForm = foldr' ($) newRevealSecretForm fieldValidations
@@ -442,8 +442,7 @@ handleMyTicketsEvents s@RaffleizeUI {..} event
         (VtyEvent (EvKey key _modifiers), Just secretKey, Just validatorsTxOutRefs) ->
           case mySelectedTicket of
             Just selectedTicketInfo -> do
-              let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
-                  contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
+              let contextNFT = fst $ generateTicketACFromTicket (tiTsd selectedTicketInfo)
                   actionHandler action = raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` tiAvailableActions selectedTicketInfo)
               case key of
                 (KChar 's') -> if ("TicketOwner", "RevealTicketSecret") `elem` tiAvailableActions selectedTicketInfo then put $ s {currentScreen = RevealTicketSecretScreen} else put s
@@ -478,7 +477,6 @@ handleMyRafflesEvents s@RaffleizeUI {..} event
             (VtyEvent (EvKey key _modifiers), Just secretKey, Just validatorsTxOutRefs) ->
               case maybeSelectedRaffle of
                 Just selectedRaffleInfo -> do
-                  let nid = cfgNetworkId . ctxCoreCfg $ providersCtx
                   let contextNFT = rRaffleID $ riRsd selectedRaffleInfo
                       actionHandler action = raffleizeTransactionHandler (RaffleizeOffchainContext validatorsTxOutRefs providersCtx) secretKey action (Just contextNFT) Nothing s (actionToLabel action `elem` riAvailableActions selectedRaffleInfo)
                   case key of
@@ -533,8 +531,8 @@ handleMintTokensEvents s@RaffleizeUI {currentScreen, maybeSecretKey, mintTokenFo
               (newMtForm, ()) <- nestEventM mintTokenForm $ handleFormEvent event
               let newMtFormState = formState newMtForm
               let fieldValidations =
-                    [ setFieldValid (Data.Text.length (newMtFormState ^. tokenNameField) <= tokenNameMaxLength) TokenNameField
-                    , setFieldValid (newMtFormState ^. mintAmount > 0) MintAmountField
+                    [ setFieldValid (Data.Text.length (newMtFormState ^. tokenNameField) <= tokenNameMaxLength) TokenNameField,
+                      setFieldValid (newMtFormState ^. mintAmount > 0) MintAmountField
                     ]
               let validatedForm = foldr' ($) newMtForm fieldValidations
               put $ s {mintTokenForm = validatedForm}
@@ -577,18 +575,18 @@ drawUI s =
       maybeUpdatingRaffleId = rRaffleID . riRsd <$> updatingRaffle s
       maybeSelectedTicket = liftA2 (,) tRaffle tNumber . tiTsd <$> formState (myTicketsForm s) ^. selectedTicket
    in joinBorders . withBorderStyle unicode . borderWithLabel (txt " RAFFLEIZE - C.A.R.D.A.N.A ")
-        <$> [ if Data.Text.null (message s) then emptyWidget else center (withAttr (attrName "highlight") $ txt (message s)) <=> txt "[ESC] - Close"
-            , if currentScreen s == MintTokenScreen then drawMintTestTokensForm (mintTokenForm s) else emptyWidget
-            , if currentScreen s == CreateRaffleScreen then drawCreateRaffleForm (raffleConfigForm s) (myConstrctValueState s) else emptyWidget
-            , if currentScreen s == UpdateRaffleScreen then drawCreateUpdateRaffleForm maybeUpdatingRaffleId (raffleConfigForm s) (myConstrctValueState s) else emptyWidget
-            , if currentScreen s == BuyTicketScreen then drawBuyTicketForm maybeSelectedRaffleId (buyTicketForm s) else emptyWidget
-            , if currentScreen s == ActiveRafflesScreen then drawActiveRafflesForm (activeRafflesForm s) else emptyWidget
-            , if currentScreen s == MyRafflesScreen then drawMyRafflesForm (myRafflesForm s) else emptyWidget
-            , if currentScreen s == MyTicketsScreen then drawMyTicketsScreen (myTicketsForm s) else emptyWidget
-            , if currentScreen s == ConstructValueScreen then drawConstructValueWidget (myConstrctValueState s) else emptyWidget
-            , if currentScreen s == RevealTicketSecretScreen then drawRevealTicketSecretScreen maybeSelectedTicket (revealSecretForm s) else emptyWidget
-            , if currentScreen s == ImportWalletFromMnemonic then drawMnemonicForm (mnemonicForm s) else emptyWidget
-            , mainScreen s
+        <$> [ if Data.Text.null (message s) then emptyWidget else center (withAttr (attrName "highlight") $ txt (message s)) <=> txt "[ESC] - Close",
+              if currentScreen s == MintTokenScreen then drawMintTestTokensForm (mintTokenForm s) else emptyWidget,
+              if currentScreen s == CreateRaffleScreen then drawCreateRaffleForm (raffleConfigForm s) (myConstrctValueState s) else emptyWidget,
+              if currentScreen s == UpdateRaffleScreen then drawCreateUpdateRaffleForm maybeUpdatingRaffleId (raffleConfigForm s) (myConstrctValueState s) else emptyWidget,
+              if currentScreen s == BuyTicketScreen then drawBuyTicketForm maybeSelectedRaffleId (buyTicketForm s) else emptyWidget,
+              if currentScreen s == ActiveRafflesScreen then drawActiveRafflesForm (activeRafflesForm s) else emptyWidget,
+              if currentScreen s == MyRafflesScreen then drawMyRafflesForm (myRafflesForm s) else emptyWidget,
+              if currentScreen s == MyTicketsScreen then drawMyTicketsScreen (myTicketsForm s) else emptyWidget,
+              if currentScreen s == ConstructValueScreen then drawConstructValueWidget (myConstrctValueState s) else emptyWidget,
+              if currentScreen s == RevealTicketSecretScreen then drawRevealTicketSecretScreen maybeSelectedTicket (revealSecretForm s) else emptyWidget,
+              if currentScreen s == ImportWalletFromMnemonic then drawMnemonicForm (mnemonicForm s) else emptyWidget,
+              mainScreen s
             ]
 
 ------------------------------------------------------------------------------------------------
@@ -600,28 +598,28 @@ drawUI s =
 mainScreen :: RaffleizeUI -> Widget NameResources
 mainScreen s =
   vBox
-    [ hCenter $ withAttr (attrName "highlight") $ str (logo s)
-    , hBorder
-    , center bodyWidget
+    [ hCenter $ withAttr (attrName "highlight") $ str (logo s),
+      hBorder,
+      center bodyWidget
     ]
   where
     bodyWidget :: Widget NameResources
     bodyWidget =
       vBox $
         padLeftRight 1
-          <$> [ summaryWidget
-              , hBorder
-              , assetsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (maybeSecretKey s) (balanceList s)
+          <$> [ summaryWidget,
+                hBorder,
+                assetsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (maybeSecretKey s) (balanceList s)
               ]
       where
         summaryWidget :: Widget NameResources
         summaryWidget =
           hCenter $
             hBox
-              [ availableActionsWidget
-              , providersWidget ((ctxCoreCfg . providersCtx) s)
-              , validatorsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (validatorsConfig s)
-              , walletFlagWidget (maybeSecretKey s)
+              [ availableActionsWidget,
+                providersWidget ((ctxCoreCfg . providersCtx) s),
+                validatorsWidget (cfgNetworkId ((ctxCoreCfg . providersCtx) s)) (validatorsConfig s),
+                walletFlagWidget (maybeSecretKey s)
               ]
           where
             validatorsWidget :: GYNetworkId -> Maybe RaffleizeTxBuildingContext -> Widget n
@@ -631,8 +629,9 @@ mainScreen s =
                   table $
                     [txt "Deployed: ", symbolWidget (isJust mv)] : case mv of
                       (Just (RaffleizeTxBuildingContext {..})) ->
-                        [ [txt "Raffle Validator", txOutRefWidget nid raffleValidatorRef]
-                        , [txt "Ticket Validator", txOutRefWidget nid ticketValidatorRef]
+                        [ [txt "Raffle Validator", txOutRefWidget nid raffleValidatorRef],
+                          [txt "Ticket Validator", txOutRefWidget nid ticketValidatorRef],
+                          [txt "Minting Policy", txOutRefWidget nid mintingPolicyRef]
                         ]
                       _ -> []
             walletFlagWidget :: Maybe a -> Widget NameResources
@@ -646,9 +645,9 @@ mainScreen s =
               borderWithLabel (txt "BLOCKCHAIN PROVIDER") $
                 renderTable $
                   table
-                    [ [txt "Loaded: ", symbolWidget True]
-                    , [txt "Provider: ", printProvider cfg]
-                    , [txt "Network: ", printNetwork cfg]
+                    [ [txt "Loaded: ", symbolWidget True],
+                      [txt "Provider: ", printProvider cfg],
+                      [txt "Network: ", printNetwork cfg]
                     ]
             availableActionsWidget :: Widget n
             availableActionsWidget =
@@ -660,17 +659,17 @@ mainScreen s =
                         ( ( if isNothing (maybeSecretKey s)
                               then ["[I] - Import wallet from mnemonic"]
                               else
-                                [ "[V] - View all active raffles"
-                                , "[R] - View my raffles"
-                                , "[T] - View my tickets"
-                                , "[C] - Create raffle" -- TODO : CHECK ADA BALANCE
-                                , "[M] - Mint some test tokens"
-                                , "[D] - Deploy Raffleize Validators"
-                                , "[L] - Refresh wallet balance"
+                                [ "[V] - View all active raffles",
+                                  "[R] - View my raffles",
+                                  "[T] - View my tickets",
+                                  "[C] - Create raffle", -- TODO : CHECK ADA BALANCE
+                                  "[M] - Mint some test tokens",
+                                  "[D] - Deploy Raffleize Validators",
+                                  "[L] - Refresh wallet balance"
                                 ]
                           )
-                            ++ [ "[E] - Export validators"
-                               , "[Q] - Quit"
+                            ++ [ "[E] - Export validators",
+                                 "[Q] - Quit"
                                ]
                         )
                   )
@@ -680,17 +679,17 @@ mainScreen s =
           val = unFlattenValue $ listElements valList
        in borderWithLabel (txt "WALLET") $
             hBox
-              [ assetsAdaWidget addr val
-              , vBorder
-              , assetsBalanceWidget valList
+              [ assetsAdaWidget addr val,
+                vBorder,
+                assetsBalanceWidget valList
               ]
       where
         assetsAdaWidget :: GYAddress -> Value -> Widget NameResources
         assetsAdaWidget addr val =
           renderTable $
             table
-              [ [txt "Address: ", addressWidget]
-              , [txt "Ada | ₳ |:", adaBalanceWidget]
+              [ [txt "Address: ", addressWidget],
+                [txt "Ada | ₳ |:", adaBalanceWidget]
               ]
           where
             addressWidget :: Widget n
@@ -717,13 +716,13 @@ theMap :: AttrMap
 theMap =
   attrMap
     (white `on` black)
-    [ (attrName "highlight", fg magenta)
-    , (attrName "warning", fg red)
-    , (attrName "good", fg green)
-    , (attrName "action", fg yellow)
-    , (attrName "selected", bg blue)
-    , (focusedFormInputAttr, fg brightBlue)
-    , (invalidFormInputAttr, white `on` red)
+    [ (attrName "highlight", fg magenta),
+      (attrName "warning", fg red),
+      (attrName "good", fg green),
+      (attrName "action", fg yellow),
+      (attrName "selected", bg blue),
+      (focusedFormInputAttr, fg brightBlue),
+      (invalidFormInputAttr, white `on` red)
     ]
 
 ---------

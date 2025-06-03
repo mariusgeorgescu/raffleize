@@ -1,14 +1,12 @@
 module RaffleizeDApp.TxBuilding.Skeletons where
 
-import GHC.Stack
 import GeniusYield.Examples.Limbo
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusLedgerApi.V1.Value
-import PlutusLedgerApi.V2
+import PlutusLedgerApi.V3
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import RaffleizeDApp.OnChain.RaffleizeMintingPolicy
-import RaffleizeDApp.OnChain.Utils
 import RaffleizeDApp.TxBuilding.Exceptions
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Utils
@@ -20,33 +18,55 @@ import RaffleizeDApp.TxBuilding.Validators
 
 ------------------------------------------------------------------------------------------------
 
-txIsPayingValueToAddress :: (HasCallStack, GYTxUserQueryMonad m) => GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV2)
+txIsPayingValueToAddress :: (GYTxUserQueryMonad m) => GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
 txIsPayingValueToAddress recipient gyValue = do
   return $
-    mustHaveOutput -- pays raffle user token to the user receiving address
+    mustHaveOutput
       GYTxOut
-        { gyTxOutAddress = recipient
-        , gyTxOutDatum = Nothing
-        , gyTxOutValue = gyValue
-        , gyTxOutRefS = Nothing
+        { gyTxOutAddress = recipient,
+          gyTxOutDatum = Nothing,
+          gyTxOutValue = gyValue,
+          gyTxOutRefS = Nothing
         }
 
-isValidBetween :: GYSlot -> GYSlot -> GYTxSkeleton 'PlutusV2
+txIsPayingValueToAddressWithInlineDatum :: (GYTxUserQueryMonad m) => GYDatum -> GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
+txIsPayingValueToAddressWithInlineDatum gyDatum recipient gyValue = do
+  return $
+    mustHaveOutput
+      GYTxOut
+        { gyTxOutAddress = recipient,
+          gyTxOutDatum = Just (gyDatum, GYTxOutUseInlineDatum),
+          gyTxOutValue = gyValue,
+          gyTxOutRefS = Nothing
+        }
+
+isValidBetween :: GYSlot -> GYSlot -> GYTxSkeleton 'PlutusV3
 isValidBetween s1 s2 =
   mconcat
-    [ isInvalidBefore s1
-    , isInvalidAfter s2
+    [ isInvalidBefore s1,
+      isInvalidAfter s2
     ]
 
-txIsValidByDDL :: (HasCallStack, GYTxQueryMonad m) => POSIXTime -> m (GYTxSkeleton 'PlutusV2)
+safeEraTime :: Natural
+safeEraTime = 25920 -- ~7h in seconds (era safe zone)
+
+txIsValidByDDL :: (GYTxQueryMonad m) => POSIXTime -> m (GYTxSkeleton 'PlutusV3)
 txIsValidByDDL ddl = do
   now <- slotOfCurrentBlock
-  after36hSlot <- advanceSlot' now 25920 -- ~7h in seconds (era safe zone)
-  after36hTime <- pPOSIXTimeFromGYSlot after36hSlot
-  validUntil <- gySlotFromPOSIXTime (min ddl after36hTime)
+  afterSafeEraSlot <- advanceSlot' now safeEraTime
+  afterSafeEraTime <- pPOSIXTimeFromGYSlot afterSafeEraSlot
+  validUntil <- gySlotFromPOSIXTime (min ddl afterSafeEraTime)
   return $ isValidBetween now validUntil
 
-txMustSpendStateFromRefScriptWithRedeemer :: (HasCallStack, GYTxUserQueryMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYValidator 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
+txIsValidForSafeEra :: (GYTxQueryMonad m) => m (GYTxSkeleton 'PlutusV3)
+txIsValidForSafeEra = do
+  now <- slotOfCurrentBlock
+  afterSafeEraSlot <- advanceSlot' now safeEraTime
+  afterSafeEraTime <- pPOSIXTimeFromGYSlot afterSafeEraSlot
+  validUntil <- gySlotFromPOSIXTime afterSafeEraTime
+  return $ isValidBetween now validUntil
+
+txMustSpendStateFromRefScriptWithRedeemer :: (GYTxUserQueryMonad m, ToData a) => GYTxOutRef -> AssetClass -> a -> GYScript 'PlutusV3 -> m (GYTxSkeleton 'PlutusV3)
 txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyValidator =
   do
     let gyRedeemer = redeemerFromPlutusData redeemer
@@ -56,31 +76,31 @@ txMustSpendStateFromRefScriptWithRedeemer refScript stateTokenId redeemer gyVali
     return $
       mustHaveInput
         GYTxIn
-          { gyTxInTxOutRef = utxoRef stateUTxO
-          , gyTxInWitness = GYTxInWitnessScript (GYInReference refScript $ validatorToScript gyValidator) gyDatum gyRedeemer
+          { gyTxInTxOutRef = utxoRef stateUTxO,
+            gyTxInWitness = GYTxInWitnessScript (GYInReference refScript $ validatorToScript gyValidator) (Just gyDatum) gyRedeemer
           }
   where
     gyGetInlineDatumAndValue' :: (MonadError GYTxMonadException m) => GYUTxO -> m (GYDatum, GYValue)
     gyGetInlineDatumAndValue' utxo = maybe (throwError (GYApplicationException InlineDatumNotFound)) return $ getInlineDatumAndValue utxo
 
-txMustHaveStateAsRefInput :: (HasCallStack, GYTxUserQueryMonad m) => AssetClass -> GYValidator 'PlutusV2 -> m (GYTxSkeleton 'PlutusV2)
+txMustHaveStateAsRefInput :: (GYTxUserQueryMonad m) => AssetClass -> GYScript 'PlutusV3 -> m (GYTxSkeleton 'PlutusV3)
 txMustHaveStateAsRefInput stateTokenId gyValidator = do
   validatorAddr <- scriptAddress gyValidator
   stateUTxO <- getUTxOWithStateToken stateTokenId validatorAddr
   return $ mustHaveRefInput (utxoRef stateUTxO)
 
-txMustSpendFromAddress :: (HasCallStack, GYTxUserQueryMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV2)
+txMustSpendFromAddress :: (GYTxUserQueryMonad m) => AssetClass -> [GYAddress] -> m (GYTxSkeleton 'PlutusV3)
 txMustSpendFromAddress tokenId addrs = do
   do
     tokenUtxo <- getUTxOWithStateTokenAtAddresses tokenId addrs
     return $
       mustHaveInput
         GYTxIn
-          { gyTxInTxOutRef = utxoRef tokenUtxo
-          , gyTxInWitness = GYTxInWitnessKey
+          { gyTxInTxOutRef = utxoRef tokenUtxo,
+            gyTxInWitness = GYTxInWitnessKey
           }
 
-txMustLockStateWithInlineDatumAndValue :: (HasCallStack, GYTxUserQueryMonad m, ToData a) => GYValidator 'PlutusV2 -> a -> Value -> m (GYTxSkeleton 'PlutusV2)
+txMustLockStateWithInlineDatumAndValue :: (GYTxUserQueryMonad m, ToData a) => GYScript 'PlutusV3 -> a -> Value -> m (GYTxSkeleton 'PlutusV3)
 txMustLockStateWithInlineDatumAndValue validator todata pValue = do
   raffleizeValidatorAddressGY <- scriptAddress validator
   gyValue <- valueFromPlutus' pValue
@@ -88,15 +108,16 @@ txMustLockStateWithInlineDatumAndValue validator todata pValue = do
   return $
     mustHaveOutput -- pays raffle ref token to validator address with valid datum
       GYTxOut
-        { gyTxOutAddress = raffleizeValidatorAddressGY
-        , gyTxOutDatum = Just (gyDatum, GYTxOutUseInlineDatum)
-        , gyTxOutValue = gyValue
-        , gyTxOutRefS = Nothing
+        { gyTxOutAddress = raffleizeValidatorAddressGY,
+          gyTxOutDatum = Just (gyDatum, GYTxOutUseInlineDatum),
+          gyTxOutValue = gyValue,
+          gyTxOutRefS = Nothing
         }
 
-txNFTAction :: (HasCallStack, GYTxUserQueryMonad m) => RaffleizeMintingReedemer -> m (GYTxSkeleton 'PlutusV2)
-txNFTAction redeemer = do
+txNFTAction :: (GYTxUserQueryMonad m) => GYTxOutRef -> RaffleizeMintingReedemer -> [AssetClass] -> m (GYTxSkeleton 'PlutusV3)
+txNFTAction mpRefScript redeemer burnACs = do
   let gyRedeemer = redeemerFromPlutus' . toBuiltinData $ redeemer
+      raffleizeMP = GYMintReference @'PlutusV3 mpRefScript raffleizeMintingPolicyGY
   case redeemer of
     MintRaffle _ tor -> do
       let (raffleRefTN, raffleUserTN) = generateRefAndUserTN $ tokenNameFromTxOutRef tor
@@ -106,28 +127,28 @@ txNFTAction redeemer = do
       gyRaffleUserTN <- tokenNameFromPlutus' (snd . unAssetClass $ raffleUserAC)
       return $ --
         mconcat
-          [ mustMint (GYMintScript raffleizeMintingPolicyGY) gyRedeemer gyRaffleRefTN 1
-          , mustMint (GYMintScript raffleizeMintingPolicyGY) gyRedeemer gyRaffleUserTN 1
+          [ mustMint raffleizeMP gyRedeemer gyRaffleRefTN 1,
+            mustMint raffleizeMP gyRedeemer gyRaffleUserTN 1
           ]
-    MintTicket raffleRefAC -> do
+    MintTicket raffleRefAC _ -> do
       (raffle, _) <- getRaffleStateDataAndValue raffleRefAC
       let (ticketRefAC, ticketUserAC) = getNextTicketToMintAssetClasses raffle -- Generate ticket tokens based on no. of tickets sold.
       gyTicketRefTN <- tokenNameFromPlutus' (snd . unAssetClass $ ticketRefAC)
       gyTicketUserTN <- tokenNameFromPlutus' (snd . unAssetClass $ ticketUserAC)
       return $
         mconcat
-          [ mustMint (GYMintScript raffleizeMintingPolicyGY) gyRedeemer gyTicketRefTN 1
-          , mustMint (GYMintScript raffleizeMintingPolicyGY) gyRedeemer gyTicketUserTN 1
+          [ mustMint raffleizeMP gyRedeemer gyTicketRefTN 1,
+            mustMint raffleizeMP gyRedeemer gyTicketUserTN 1
           ]
-    Burn ac -> do
-      gyTN <- tokenNameFromPlutus' (snd . unAssetClass $ ac)
-      return $ mustMint (GYMintScript raffleizeMintingPolicyGY) gyRedeemer gyTN (negate 1)
+    Burn -> do
+      gyTN <- mapM (tokenNameFromPlutus' . snd . unAssetClass) burnACs
+      return $ mconcat $ (\tn -> mustMint raffleizeMP gyRedeemer tn (negate 1)) <$> gyTN
 
-addRefScriptSkeleton :: (GYTxQueryMonad m) => GYScript 'PlutusV2 -> m (GYTxSkeleton v)
+addRefScriptSkeleton :: (GYTxQueryMonad m) => GYScript 'PlutusV3 -> m (GYTxSkeleton v)
 addRefScriptSkeleton sc = do
   addr <- scriptAddress limboValidatorV2
   addRefScriptToAddressSkeleton addr sc
 
-addRefScriptToAddressSkeleton :: (GYTxQueryMonad m) => GYAddress -> GYScript 'PlutusV2 -> m (GYTxSkeleton v)
+addRefScriptToAddressSkeleton :: (GYTxQueryMonad m) => GYAddress -> GYScript 'PlutusV3 -> m (GYTxSkeleton v)
 addRefScriptToAddressSkeleton addr sc = do
   return $ mustHaveOutput (mkGYTxOut addr mempty (datumFromPlutusData ())) {gyTxOutRefS = Just $ GYPlutusScript sc}

@@ -10,11 +10,13 @@ import PlutusLedgerApi.V1.Value
 import PlutusTx.Show qualified (show)
 import RaffleizeDApp.Constants
 import RaffleizeDApp.CustomTypes.ActionTypes
+import RaffleizeDApp.CustomTypes.TicketTypes (SecretHash (unSecretHash))
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
 import RaffleizeDApp.TxBuilding.Utils
+import RaffleizeDApp.TxBuilding.Validators
 import RaffleizeDApp.Utils
 
 addressFromSkey :: ProviderCtx -> GYExtendedPaymentSigningKey -> GYAddress
@@ -43,13 +45,13 @@ getMyTickets :: ProviderCtx -> GYAddress -> IO [TicketInfo]
 getMyTickets pCtx addr = do
   let msg = "Getting tickets of: \n\t" <> Data.Text.unpack (addressToText addr)
   putStrLn $ yellowColorString msg
-  runQuery pCtx (lookupTicketsOfAddress addr)
+  runQuery pCtx (lookupTicketsOfAddresses [addr])
 
 getMyRaffles :: ProviderCtx -> GYAddress -> IO [RaffleInfo]
 getMyRaffles pCtx addr = do
   let msg = "Getting raffles of: \n\t " <> Data.Text.unpack (addressToText addr)
   putStrLn $ yellowColorString msg
-  runQuery pCtx (lookupRafflesOfAddress addr)
+  runQuery pCtx (lookupRafflesOfAddresses [addr])
 
 ----------------
 ----------------
@@ -61,15 +63,19 @@ deployValidators pCtx skey = do
   let nid = (cfgNetworkId . ctxCoreCfg) pCtx
   let my_addr = addressFromPaymentSigningKey nid skey
   let userAddresses = UserAddresses [my_addr] my_addr Nothing
-  rTxBody <- runReaderT (deployRaffleizeValidatortTxBody userAddresses) pCtx
+  rTxBody <- runReaderT ((deployReferenceScriptTxBody . validatorToScript $ raffleizeValidatorGY) userAddresses) pCtx
   let rSigned = signGYTxBody rTxBody [skey]
   rTxOutRef <- runReaderT (submitTxAndWaitForConfirmation rSigned) pCtx
-  putStrLn $ yellowColorString ("1/2 deployed ..." :: String)
-  tTxBody <- runReaderT (deployTicketValidatortTxBody userAddresses) pCtx
+  putStrLn $ yellowColorString ("1/3 deployed ..." :: String)
+  tTxBody <- runReaderT ((deployReferenceScriptTxBody . validatorToScript $ ticketValidatorGY) userAddresses) pCtx
   let tSigned = signGYTxBody tTxBody [skey]
   tTxOutRef <- runReaderT (submitTxAndWaitForConfirmation tSigned) pCtx
-  putStrLn $ yellowColorString ("2/2 deployed ..." :: String)
-  let validators = RaffleizeTxBuildingContext {raffleValidatorRef = rTxOutRef, ticketValidatorRef = tTxOutRef}
+  putStrLn $ yellowColorString ("2/3 deployed ..." :: String)
+  mpTxBody <- runReaderT ((deployReferenceScriptTxBody . validatorToScript $ raffleizeMintingPolicyGY) userAddresses) pCtx
+  let mpSigned = signGYTxBody mpTxBody [skey]
+  mpTxOutRef <- runReaderT (submitTxAndWaitForConfirmation mpSigned) pCtx
+  putStrLn $ yellowColorString ("2/3 deployed ..." :: String)
+  let validators = RaffleizeTxBuildingContext {raffleValidatorRef = rTxOutRef, ticketValidatorRef = tTxOutRef, mintingPolicyRef = mpTxOutRef}
   B.writeFile raffleizeValidatorsConfig (encode . toJSON $ validators)
   putStrLn $ greenColorString ("exported to " <> raffleizeValidatorsConfig)
 
@@ -86,10 +92,11 @@ mintTestTokens pCtx skey tn amount = do
   return $ showTxOutRef txOutRef
 
 raffleizeTransaction :: RaffleizeOffchainContext -> GYExtendedPaymentSigningKey -> RaffleizeAction -> Maybe AssetClass -> Maybe GYAddress -> IO Text
-raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey raffleizeActon interactionContextNFT optionalRecipient = do
+raffleizeTransaction raffleizeContext@RaffleizeOffchainContext {..} skey raffleizeAction interactionContextNFT optionalRecipient = do
   let my_addr = addressFromSkey providerCtx skey
   let userAddrs = UserAddresses [my_addr] my_addr Nothing
-  let raffleizeInteraction = RaffleizeInteraction interactionContextNFT raffleizeActon userAddrs optionalRecipient
+  let raffleizeInteraction = Interaction interactionContextNFT (RaffleizeInteraction raffleizeAction) userAddrs optionalRecipient
+  print raffleizeInteraction
   putStrLn (yellowColorString "Building transaction...")
   raffleizeTxBody <- runReaderT (interactionToTxBody raffleizeInteraction) raffleizeContext
   let raffleizeTxSigned = signGYTxBody raffleizeTxBody [skey]
@@ -110,7 +117,7 @@ raffleizeActionToIntro ma ra =
               putStrLn $ blueColorString (show rconfig)
             (BuyTicket secretHashBS) -> do
               putStrLn $ yellowColorString "Buying ticket to raffle... \n\t "
-              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show secretHashBS)
+              putStrLn $ blueColorString $ "onchain secret hash: " <> Data.Text.unpack (fromBuiltin @BuiltinString $ PlutusTx.Show.show (unSecretHash secretHashBS))
           RaffleOwner roa -> do
             putStrLn $ inContextOf ("raffle" :: String)
             case roa of

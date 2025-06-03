@@ -1,46 +1,53 @@
-cabal-version: 3.8
+cabal-version: 3.0
 name:          raffleize
-version:       2.0.0.0
-
--- A short (one-line) description of the package.
--- synopsis:
-
--- A longer description of the package.
--- description:
-
--- license:       MIT
--- license-file:  LICENSE
+version:       3.0.0.0
 author:        Marius Georgescu
 maintainer:    georgescumarius@live.com
 
-flag defer-plugin-errors
-  description:
-    Defer errors from the plugin, useful for things like Haddock that can't handle it.
-
-  default:     False
-  manual:      True
-
 common common
-  -- default-language:   GHC2021
+  ghc-options:        -Wall
+  default-language:   GHC2021
   build-depends:      base >=4.18.2.0 && <5
   mixins:             base hiding (Prelude)
+  default-extensions:
+    DataKinds
+    LambdaCase
+    OverloadedStrings
+    RecordWildCards
+
+common plinth-ghc-options
   ghc-options:
-    -Wall -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
-    -fno-specialise -Wno-orphans -Wno-unused-local-binds
+    -Wall -Wcompat -Widentities -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
+
+  default-language:   Haskell2010
+
+  -- all Plinth modules should use the following GHC flags
+  ghc-options:
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
+    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
     -fconstraint-solver-iterations=0
 
-  if flag(defer-plugin-errors)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+  -- 
+  ghc-options:        -fobject-code -fplugin-opt PlutusTx.Plugin:defer-errors
 
+  -- set target plutus-core version
+  ghc-options:        -fplugin-opt PlutusTx.Plugin:target-version=1.1.0
+
+  -- Compiler flags (defaults)
+  ghc-options:        -fplugin-opt PlutusTx.Plugin:no-remove-trace
+  ghc-options:        -fplugin-opt PlutusTx.Plugin:no-optimize
   default-extensions:
     BangPatterns
     BlockArguments
     DataKinds
     DeriveAnyClass
     DeriveGeneric
+    DerivingStrategies
     FlexibleContexts
     FlexibleInstances
+    GeneralizedNewtypeDeriving
     ImportQualifiedPost
     InstanceSigs
     LambdaCase
@@ -48,35 +55,20 @@ common common
     NamedFieldPuns
     NumericUnderscores
     OverloadedStrings
+    PatternSynonyms
     RecordWildCards
     ScopedTypeVariables
+    StandaloneDeriving
     TemplateHaskell
     TupleSections
     TypeApplications
     TypeFamilies
     TypeOperators
+    UndecidableInstances
     ViewPatterns
 
-common plutus-ghc-options
-  -- so unfoldings are present even when compiled without optmizations
-  ghc-options:
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -Wno-partial-type-signatures
-
-  -- expose all unfoldings, so plutustx compiler can do its job
-  ghc-options:
-    -fexpose-all-unfoldings -fobject-code -fplugin-opt
-    PlutusTx.Plugin:defer-errors
-
-  -- set target plutus-core version
-  ghc-options: -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
-
-  -- Compiler flags
-  ghc-options: -fplugin-opt PlutusTx.Plugin:no-remove-trace
-  ghc-options: -fplugin-opt PlutusTx.Plugin:no-optimize
-
 library
-  import:          common, plutus-ghc-options
+  import:          common,   plinth-ghc-options
   exposed-modules:
     Prelude
     RaffleizeDApp.Constants
@@ -85,6 +77,7 @@ library
     RaffleizeDApp.CustomTypes.TicketTypes
     RaffleizeDApp.CustomTypes.TransferTypes
     RaffleizeDApp.CustomTypes.Types
+    RaffleizeDApp.OnChain.NFT
     RaffleizeDApp.OnChain.RaffleizeLogic
     RaffleizeDApp.OnChain.RaffleizeMintingPolicy
     RaffleizeDApp.OnChain.RaffleizeTicketValidator
@@ -103,6 +96,9 @@ library
 
   other-modules:
   hs-source-dirs:  src
+
+  if !(impl(ghcjs) || os(ghcjs))
+    build-depends: plutus-tx-plugin
 
   --- Cardano specific dependencies
   build-depends:
@@ -131,30 +127,29 @@ executable server
     RestAPI
     WebsocketsAPI
 
-
   build-depends:  raffleize
   build-depends:
     , aeson-pretty
-    , bytestring       ^>=0.11.5
-    , utf8-string
-    , http-types       ^>=0.12.4
-    , lens             ^>=5.2.3
+    , bytestring            ^>=0.11.5
+    , conduit
+    , http-types            ^>=0.12.4
+    , lens                  ^>=5.2.3
     , mtl
+    , servant-conduit
+    , servant-event-stream
+    , servant-options
     , servant-server
     , servant-swagger
+    , servant-swagger-ui
     , swagger2
-    , transformers     ^>=0.6.1
+    , text
+    , transformers          ^>=0.6.1
+    , utf8-string
     , wai
     , wai-cors
     , wai-websockets
     , warp
     , websockets
-    , text
-    , servant-conduit
-    , conduit
-    , servant-event-stream
-
-
 
   --- Cardano specific dependencies
   build-depends:  atlas-cardano

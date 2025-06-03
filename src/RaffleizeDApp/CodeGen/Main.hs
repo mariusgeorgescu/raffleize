@@ -1,51 +1,58 @@
 module Main where
 
 import Data.Proxy (Proxy (..))
-import Language.PureScript.Bridge (
-  Language (Haskell),
-  SumType,
-  buildBridge,
-  equal,
-  mkSumType,
-  writePSTypes,
- )
+import Language.PureScript.Bridge
+  ( Language (Haskell),
+    SumType,
+    buildBridge,
+    equal,
+    mkSumType,
+    writePSTypes,
+  )
 import RaffleizeDApp.Constants (purescriptProjectSrcPath)
-import RaffleizeDApp.CustomTypes.ActionTypes (
-  AdminAction,
-  RaffleOwnerAction,
-  RaffleizeAction,
-  TicketOwnerAction,
-  UserAction,
- )
-import RaffleizeDApp.CustomTypes.RaffleTypes (
-  RaffleConfig,
-  RaffleParam,
-  RaffleStateData,
- )
+import RaffleizeDApp.CustomTypes.ActionTypes
+  ( AdminAction,
+    RaffleOwnerAction,
+    RaffleizeAction,
+    TicketOwnerAction,
+    UserAction,
+  )
+import RaffleizeDApp.CustomTypes.RaffleTypes
+  ( RaffleConfig,
+    RaffleParam,
+    RaffleStateData,
+  )
 import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
-import RaffleizeDApp.CustomTypes.TransferTypes (
-  AddWitAndSubmitParams,
-  RaffleInfo,
-  RaffleizeInteraction,
-  UserAddresses,
- )
+import RaffleizeDApp.CustomTypes.TransferTypes
+  ( AddWitAndSubmitParams,
+    Interaction,
+    InteractionAction,
+    RaffleInfo,
+    TicketInfo,
+    UserAddresses,
+  )
+import RaffleizeDApp.OnChain.NFT
 import TypeBridges (raffleizeBridge)
 
 myTypes :: [SumType 'Haskell]
 myTypes =
-  [ let p = (Proxy :: Proxy RaffleConfig) in equal p (mkSumType p)
-  , mkSumType (Proxy :: Proxy RaffleParam)
-  , mkSumType (Proxy :: Proxy RaffleStateData)
-  , mkSumType (Proxy :: Proxy TicketStateData)
-  , mkSumType (Proxy :: Proxy UserAction)
-  , mkSumType (Proxy :: Proxy TicketOwnerAction)
-  , mkSumType (Proxy :: Proxy RaffleOwnerAction)
-  , mkSumType (Proxy :: Proxy AdminAction)
-  , mkSumType (Proxy :: Proxy RaffleizeAction)
-  , mkSumType (Proxy :: Proxy UserAddresses)
-  , mkSumType (Proxy :: Proxy RaffleizeInteraction)
-  , mkSumType (Proxy :: Proxy RaffleInfo)
-  , mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
+  [ let p = (Proxy :: Proxy RaffleConfig) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleParam) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleStateData) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TicketStateData) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy UserAction) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TicketOwnerAction) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleOwnerAction) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleizeAction) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy AdminAction) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleInfo) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TicketInfo) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy NFTAction) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TokenData) in equal p (mkSumType p),
+    mkSumType (Proxy :: Proxy InteractionAction),
+    mkSumType (Proxy :: Proxy UserAddresses),
+    mkSumType (Proxy :: Proxy Interaction),
+    mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
   ]
 
 main :: IO ()

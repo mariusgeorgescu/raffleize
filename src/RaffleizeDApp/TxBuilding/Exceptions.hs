@@ -22,3 +22,7 @@ instance IsGYApiError InlineDatumNotFound
 data TooManyUTxOs = TooManyUTxOs deriving (Show, Typeable)
 instance Exception TooManyUTxOs
 instance IsGYApiError TooManyUTxOs
+
+data InvalidRaffleState = InvalidRaffleState deriving (Show, Typeable)
+instance Exception InvalidRaffleState
+instance IsGYApiError InvalidRaffleState

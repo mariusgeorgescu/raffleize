@@ -1,19 +1,17 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module RaffleizeDApp.CustomTypes.Types where
 
 import Data.Aeson hiding (Value)
 import Data.Aeson qualified (Value)
 import Data.Aeson.Types (Parser)
 import Data.String
-import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
-import PlutusLedgerApi.V2
-import PlutusTx
-import PlutusTx.Show qualified (show)
+import Data.Text qualified as Text
 import GeniusYield.Types (unsafeTokenNameFromHex)
 import GeniusYield.Types.Value (tokenNameToPlutus)
-
-unFlattenValue :: [(CurrencySymbol, TokenName, Integer)] -> Value
-unFlattenValue [] = mempty
-unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
+import PlutusLedgerApi.V1.Value (AssetClass (..), assetClassValue, flattenValue, toString)
+import PlutusLedgerApi.V3
+import PlutusTx (unstableMakeIsData)
 
 -------------------------------------------------------------------------------
 
@@ -23,24 +21,46 @@ unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> 
 
 type Metadata = Map BuiltinByteString BuiltinByteString
 
+------------------------
+
+-- * Custom Types For ScriptContext
+
+------------------------
+
 data ATxInfo = ATxInfo
-  { txInfoInputs :: [TxInInfo]
-  , txInfoReferenceInputs :: [TxInInfo]
-  , txInfoOutputs :: [TxOut]
-  , txInfoFee :: BuiltinData
-  , txInfoMint :: Value
-  , txInfoDCert :: BuiltinData
-  , txInfoWdrl :: BuiltinData
-  , txInfoValidRange :: POSIXTimeRange
-  , txInfoSignatories :: BuiltinData
-  , txInfoData :: BuiltinData
-  , txInfoId :: BuiltinData
+  { txInfoInputs :: [TxInInfo],
+    txInfoReferenceInputs :: [TxInInfo],
+    txInfoOutputs :: [TxOut],
+    txInfoFee :: BuiltinData,
+    txInfoMint :: Value,
+    txInfoTxCerts :: BuiltinData,
+    txInfoWdrl :: BuiltinData,
+    txInfoValidRange :: POSIXTimeRange,
+    txInfoSignatories :: BuiltinData,
+    txInfoRedeemers :: BuiltinData,
+    txInfoData :: BuiltinData,
+    txInfoId :: BuiltinData,
+    txInfoVotes :: BuiltinData,
+    txInfoProposalProcedures :: BuiltinData,
+    txInfoCurrentTreasuryAmount :: BuiltinData,
+    txInfoTreasuryDonation :: BuiltinData
   }
 
 unstableMakeIsData ''ATxInfo
 
-data AScriptContext = AScriptContext {scriptContextTxInfo :: ATxInfo, scriptContextPurpose :: ScriptPurpose}
+data AScriptContext = AScriptContext
+  { scriptContextTxInfo :: ATxInfo,
+    scriptContextRedeemer :: Redeemer,
+    scriptContextScriptInfo :: ScriptInfo
+  }
+
 unstableMakeIsData ''AScriptContext
+
+---
+---
+-- ORPHAN INSTANCES
+---
+---
 
 instance ToJSON POSIXTime where
   toJSON :: POSIXTime -> Data.Aeson.Value
@@ -59,16 +79,20 @@ instance FromJSON Value where
   parseJSON v =
     let flattenedValue = parseJSON @[(CurrencySymbol, TokenName, Integer)] v
      in unFlattenValue <$> flattenedValue
+    where
+      unFlattenValue :: [(PlutusLedgerApi.V3.CurrencySymbol, PlutusLedgerApi.V3.TokenName, Integer)] -> PlutusLedgerApi.V3.Value
+      unFlattenValue [] = mempty
+      unFlattenValue ((cs, tn, i) : vls) = assetClassValue (AssetClass (cs, tn)) i <> unFlattenValue vls
 
 instance ToJSON TokenName where
   toJSON :: TokenName -> Data.Aeson.Value
-  toJSON tn = toJSON $ drop 2 . toString $ tn
+  toJSON tn =
+    let tnStr = toString tn
+     in if take 2 tnStr == "0x" then toJSON (drop 2 tnStr) else toJSON tnStr
 
 instance FromJSON TokenName where
   parseJSON :: Data.Aeson.Value -> Parser TokenName
   parseJSON v = tokenNameToPlutus . unsafeTokenNameFromHex <$> parseJSON @Text v
-
-
 
 instance ToJSON CurrencySymbol where
   toJSON :: CurrencySymbol -> Data.Aeson.Value
@@ -90,18 +114,18 @@ instance FromJSON AssetClass where
 
 instance ToJSON BuiltinByteString where
   toJSON :: BuiltinByteString -> Data.Aeson.Value
-  toJSON bs = toJSON $ fromBuiltin @BuiltinString $ PlutusTx.Show.show bs
+  toJSON bs = toJSON $ Text.pack $ init $ tail $ show bs
 
 instance FromJSON BuiltinByteString where
   parseJSON :: Data.Aeson.Value -> Parser BuiltinByteString
-  parseJSON v = fromString @BuiltinByteString <$> parseJSON @String v
+  parseJSON v = fromString @BuiltinByteString . Text.unpack <$> parseJSON @Text v
 
 instance ToJSON ScriptHash where
   toJSON :: ScriptHash -> Data.Aeson.Value
-  toJSON (ScriptHash s) = toJSON s
+  toJSON (ScriptHash s) = toJSON $ toString (TokenName s) --- using TokenName for hex conversion
 
 instance FromJSON ScriptHash where
   parseJSON :: Data.Aeson.Value -> Parser ScriptHash
   parseJSON v =
-    let s = parseJSON @BuiltinByteString v
-     in ScriptHash <$> s
+    let tn = tokenNameToPlutus . unsafeTokenNameFromHex <$> parseJSON @Text v --- using TokenName for hex conversion
+     in ScriptHash . unTokenName <$> tn
