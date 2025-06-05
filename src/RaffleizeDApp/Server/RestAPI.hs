@@ -161,7 +161,7 @@ restAPIapp usr pass ctx =
                   simpleCorsResourcePolicy
                     { corsOrigins = Just ([o], True), -- Reflect request's Origin dynamically
                       corsMethods = ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
-                      corsRequestHeaders = simpleHeaders <> [HttpTypes.hAuthorization, HttpTypes.hCacheControl],
+                      corsRequestHeaders = simpleHeaders <> [HttpTypes.hAuthorization],
                       corsExposedHeaders = Just $ simpleHeaders <> [HttpTypes.hAuthorization],
                       corsVaryOrigin = True,
                       corsRequireOrigin = False,
