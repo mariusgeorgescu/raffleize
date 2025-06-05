@@ -161,11 +161,12 @@ restAPIapp usr pass ctx =
                   simpleCorsResourcePolicy
                     { corsOrigins = Just ([o], True), -- Reflect request's Origin dynamically
                       corsMethods = ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
-                      corsRequestHeaders = simpleHeaders <> [HttpTypes.hAuthorization],
+                      corsRequestHeaders = simpleHeaders <> [HttpTypes.hAuthorization, HttpTypes.hCacheControl],
                       corsExposedHeaders = Just $ simpleHeaders <> [HttpTypes.hAuthorization],
                       corsVaryOrigin = True,
                       corsRequireOrigin = False,
-                      corsIgnoreFailures = False
+                      corsIgnoreFailures = False,
+                      corsMaxAge = Just 600
                     }
               Nothing -> Nothing -- If no origin set skips cors headers
     )
