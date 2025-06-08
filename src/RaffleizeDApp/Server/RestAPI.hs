@@ -165,7 +165,8 @@ restAPIapp usr pass ctx =
                       corsExposedHeaders = Just $ simpleHeaders <> [HttpTypes.hAuthorization],
                       corsVaryOrigin = True,
                       corsRequireOrigin = False,
-                      corsIgnoreFailures = False
+                      corsIgnoreFailures = False,
+                      corsMaxAge = Just 600
                     }
               Nothing -> Nothing -- If no origin set skips cors headers
     )
