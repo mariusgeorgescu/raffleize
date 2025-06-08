@@ -27,13 +27,16 @@
   cabal repl
 
 
-hls-bin := `which haskell-language-server`
-
 # create HLS symlink
+# Find haskell-language-server and link it into .vscode
 @link-hls:
-  if [ -n "{{ hls-bin }}" ]; then \
-    ln -s -f "{{ hls-bin }}" .vscode/haskell-language-server.link; \
-  else echo "haskell-language-server not found!"; \
+  hls_bin=$(which haskell-language-server); \
+  if [ -n "$hls_bin" ]; then \
+  mkdir -p .vscode; \
+  ln -sf "$hls_bin" .vscode/haskell-language-server.link; \
+  echo "Linked $hls_bin to .vscode/haskell-language-server.link"; \
+  else \
+  echo "haskell-language-server not found!"; \
   fi
 
 
