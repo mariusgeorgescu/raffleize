@@ -51,6 +51,9 @@ gySlotFromPOSIXTime :: (GYTxQueryMonad m) => POSIXTime -> m GYSlot
 gySlotFromPOSIXTime ptime = do
   enclosingSlotFromTime' (timeFromPlutus ptime)
 
+veryFarPosixDate :: POSIXTime
+veryFarPosixDate = POSIXTime 999999999999999999
+
 showLink :: GYNetworkId -> Text -> Text -> Text
 showLink nid s content = case nid of
   GYMainnet -> cexplorerMainnet <> s <> "/" <> content <> " "

@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module RestAPI where
 
 import Conduit (ConduitT, yieldM)
@@ -6,10 +9,13 @@ import Control.Lens ((&), (.~), (?~))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Control.Monad.Trans.Except (ExceptT (ExceptT))
-import Data.ByteString.Lazy.UTF8 as LBSUTF8 (fromString)
+import Data.ByteString.Lazy.UTF8 qualified as LBSUTF8 (fromString)
 import Data.Conduit.Combinators ()
+import Data.Function (on)
+import Data.List (isSuffixOf, sortBy)
 import Data.List qualified
 import Data.Swagger (HasInfo (info), HasLicense (license), Swagger (..), ToSchema, description, sketchSchema, title, version)
+import Data.Swagger.Internal.ParamSchema (ToParamSchema)
 import Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), plain)
 import Data.Text qualified
 import Data.Text.Encoding qualified
@@ -29,10 +35,12 @@ import Network.HTTP.Types.Header
 import Network.Wai
 import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.Servant.Options (provideOptions)
+import RaffleizeDApp.CustomTypes.RaffleTypes hiding (version)
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
 import RaffleizeDApp.TxBuilding.Transactions
+import RaffleizeDApp.TxBuilding.Utils (veryFarPosixDate)
 import Servant
 import Servant.API.EventStream
   ( RecommendedEventSourceHeaders,
@@ -50,6 +58,26 @@ newtype User = User
   }
   deriving (Eq, Show)
 
+data RaffleSortBy = CommitDeadline | RevealDeadline | NextDeadline | State
+  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
+
+data SortOrder = Asc | Desc
+  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
+
+instance FromHttpApiData RaffleSortBy where
+  parseQueryParam :: Text -> Either Text RaffleSortBy
+  parseQueryParam "CommitDeadline" = Right CommitDeadline
+  parseQueryParam "RevealDeadline" = Right RevealDeadline
+  parseQueryParam "NextDeadline" = Right NextDeadline
+  parseQueryParam "State" = Right State
+  parseQueryParam _ = Left "Invalid sort order"
+
+instance FromHttpApiData SortOrder where
+  parseQueryParam :: Text -> Either Text SortOrder
+  parseQueryParam "Asc" = Right Asc
+  parseQueryParam "Desc" = Right Desc
+  parseQueryParam _ = Left "Invalid sort order"
+
 type Transactions =
   Summary "Build Raffleize Transaction"
     :> Description "Builds Transaction for Raffleize Interaction"
@@ -66,6 +94,10 @@ type Lookups =
   Summary "Get all raffles"
     :> Description "Get all active raffles information"
     :> "raffles"
+    :> QueryParams "state" String
+    :> QueryParam "isFinal" Bool
+    :> QueryParam "sortBy" RaffleSortBy
+    :> QueryParam "sortOrder" SortOrder
     :> Get '[JSON] [RaffleInfo]
     :<|> Summary "Get raffle by id"
       :> Description "Get raffle information with raffle id (AssetClass)"
@@ -183,8 +215,39 @@ restAPIapp usr pass ctx =
 -------------
 -------------
 
-handleGetRaffles :: ProviderCtx -> IO [RaffleInfo]
-handleGetRaffles pCtx = runQuery pCtx lookupActiveRaffles
+handleGetRaffles :: ProviderCtx -> [String] -> Maybe Bool -> Maybe RaffleSortBy -> Maybe SortOrder -> IO [RaffleInfo]
+handleGetRaffles pCtx states mIsFinal mSortBy mSortOrder = do
+  raffles <- runQuery pCtx lookupActiveRaffles
+  let filteredWithFinal = case mIsFinal of
+        (Just isFinal) ->
+          let filterFunc = if isFinal then (`isSuffixOf` "FINAL") else not . (`isSuffixOf` "FINAL")
+           in filter (filterFunc . riStateLabel) raffles
+        Nothing -> raffles
+      filteredWithStates = if null states then filteredWithFinal else filter ((`elem` states) . riStateLabel) filteredWithFinal
+
+      sorted =
+        case mSortBy of
+          Just CommitDeadline -> sortByAttr (rCommitDDL . rConfig . riRsd)
+          Just RevealDeadline -> sortByAttr (rRevealDDL . rConfig . riRsd)
+          Just NextDeadline -> sortByAttr getNextDeadline
+          Just State -> sortByAttr riStateLabel
+          _ -> filteredWithStates
+        where
+          sortByAttr f =
+            let cmp = compare `on` f
+                sorter = if mSortOrder == Just Desc then flip cmp else cmp
+             in Data.List.sortBy sorter filteredWithStates
+          getNextDeadline ri =
+            let commitDeadline = rCommitDDL (rConfig (riRsd ri))
+                revealDeadline = rRevealDDL (rConfig (riRsd ri))
+                state = riStateLabel ri
+             in case state of
+                  "NEW" -> commitDeadline
+                  "COMMITTING" -> commitDeadline
+                  "REVEALING" -> revealDeadline
+                  _ -> veryFarPosixDate
+
+  return sorted
 
 handleGetRaffleById :: ProviderCtx -> GYAssetClass -> IO (Maybe RaffleInfo)
 handleGetRaffleById pCtx gyRaffleId = do
@@ -229,14 +292,11 @@ handleSubmitSSE providerCtx txIdStr = do
   return $ recommendedEventSourceHeaders (yieldM (gyAwaitTxConfirmed ctxProv (GYAwaitTxParameters 30 10000000 1) txId >> putStrLn "Confirmed" >> return 1))
 
 -- TODO - FIX THIS
-
 instance ToServerEvent Int where
   toServerEvent i = ServerEvent Nothing Nothing (LBSUTF8.fromString $ show i)
 
 instance ToSchema (ConduitT () () IO ()) where
   declareNamedSchema _ = plain $ sketchSchema @() ()
-
-------
 
 -- | 'BasicAuthCheck' holds the handler we'll use to verify a username and password.
 authCheck :: Text -> Text -> BasicAuthCheck User

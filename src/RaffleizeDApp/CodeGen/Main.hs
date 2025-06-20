@@ -21,8 +21,9 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
   ( RaffleConfig,
     RaffleParam,
     RaffleStateData,
+    RaffleStateId,
   )
-import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
+import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData, TicketStateId)
 import RaffleizeDApp.CustomTypes.TransferTypes
   ( AddWitAndSubmitParams,
     Interaction,
@@ -39,6 +40,8 @@ myTypes =
   [ let p = (Proxy :: Proxy RaffleConfig) in equal p (mkSumType p),
     let p = (Proxy :: Proxy RaffleParam) in equal p (mkSumType p),
     let p = (Proxy :: Proxy RaffleStateData) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleStateId) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TicketStateId) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TicketStateData) in equal p (mkSumType p),
     let p = (Proxy :: Proxy UserAction) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TicketOwnerAction) in equal p (mkSumType p),
