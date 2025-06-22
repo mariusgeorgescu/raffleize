@@ -1,0 +1,649 @@
+# RAFFLEIZE C-A-R-D-A-N-A Functional Specification
+### (Commit-And-Reveal-Decentralized-Application-for-Native-Assets)
+
+**Version 2 approved**  
+Prepared by Marius Georgescu
+
+This document describes the functional and non-functional requirements and specifications for a decentralized application (DApp) focused on digital assets raffles, based on a commit and reveal scheme (CRS) as source of randomness for electing the winner.
+
+## Table of Contents
+- [RAFFLEIZE C-A-R-D-A-N-A Functional Specification](#raffleize-c-a-r-d-a-n-a-functional-specification)
+    - [(Commit-And-Reveal-Decentralized-Application-for-Native-Assets)](#commit-and-reveal-decentralized-application-for-native-assets)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Purpose](#purpose)
+  - [Intended Audience and Reading Suggestions](#intended-audience-and-reading-suggestions)
+  - [Scope](#scope)
+    - [Objectives and Benefits](#objectives-and-benefits)
+    - [Differentiators](#differentiators)
+  - [References](#references)
+  - [Description](#description)
+  - [Perspective](#perspective)
+  - [Context and Origin](#context-and-origin)
+  - [Relation to Larger Systems](#relation-to-larger-systems)
+  - [System Overview and Interfaces](#system-overview-and-interfaces)
+      - [User Interface Component](#user-interface-component)
+      - [Wallet Component](#wallet-component)
+      - [DApp Service Provider](#dapp-service-provider)
+      - [Blockchain Network](#blockchain-network)
+  - [High Level Architecture](#high-level-architecture)
+    - [Version 1: Centralized Hosting and Backend Transaction Handling](#version-1-centralized-hosting-and-backend-transaction-handling)
+    - [Version 2: Centralized Hosting with Partial Decentralized Transaction Handling](#version-2-centralized-hosting-with-partial-decentralized-transaction-handling)
+    - [Version 3: Decentralized Hosting and Transaction Handling](#version-3-decentralized-hosting-and-transaction-handling)
+  - [Functionality](#functionality)
+    - [Use-cases](#use-cases)
+      - [NonAuthenticated User](#nonauthenticated-user)
+      - [Authenticated User](#authenticated-user)
+        - [Ticket Owner](#ticket-owner)
+        - [Organizer](#organizer)
+  - [Model](#model)
+  - [States](#states)
+      - [Ticket Token State Transitions](#ticket-token-state-transitions)
+      - [Raffle Token State Transitions](#raffle-token-state-transitions)
+      - [Raffle State Transitions](#raffle-state-transitions)
+  - [Transactions](#transactions)
+      - [Create Raffle](#create-raffle)
+      - [Buy tickets to raffle](#buy-tickets-to-raffle)
+      - [Update raffle configuration](#update-raffle-configuration)
+      - [Cancel](#cancel)
+      - [Collect Accumulated Amount](#collect-accumulated-amount)
+      - [Recover Stake](#recover-stake)
+      - [Recover Stake And Amount](#recover-stake-and-amount)
+      - [Collect collateral of unrevealed tickets](#collect-collateral-of-unrevealed-tickets)
+      - [Reveal Secret](#reveal-secret)
+      - [Collect Prize](#collect-prize)
+      - [Full Refund](#full-refund)
+      - [Extra Refund](#extra-refund)
+      - [Collateral Refund](#collateral-refund)
+    - [Design and Implementation Constraints](#design-and-implementation-constraints)
+      - [Language Requirements](#language-requirements)
+      - [Security Considerations](#security-considerations)
+      - [Design Conventions or Programming Standards](#design-conventions-or-programming-standards)
+  - [User Documentation](#user-documentation)
+  - [Assumptions and Dependencies](#assumptions-and-dependencies)
+    - [Assumptions](#assumptions)
+    - [Dependencies](#dependencies)
+      - [Definitions, Acronyms and Abbreviations](#definitions-acronyms-and-abbreviations)
+- [Acronyms and Abbreviations](#acronyms-and-abbreviations)
+
+
+## Introduction
+
+## Purpose
+
+This document describes the functional and non-functional requirements and specifications for a decentralized application (DApp) focused on digital assets raffles, based on a commit and reveal scheme (CRS) as source of randomness for electing the winner.
+
+The application described in this document will be further referred as RAFFLEIZE C-A-R-D-A-N-A or the DApp.
+
+RAFFLEIZE C-A-R-D-A-N-A, is designed not only to fulfill the immediate functional requirements outlined in this document but also to achieve two broader objectives:
+
+1. **Educational Tool:** Serve as an open-source and extensively documented exemplar, providing a comprehensive learning resource for individuals and entities interested in building on the Cardano blockchain. The project aims to demystify the process of DApp development on Cardano, offering insights into best practices, design patterns, and the unique features of Cardano's smart contract platform.
+
+2. **Operational DApp on Mainnet:** Beyond its educational value, RAFFLEIZE C-A-R-D-A-N-A is intended to be a fully functioning DApp running on the Cardano mainnet, achieving the objectives outlined in the [Scope](#scope) section. It aims to provide a secure, transparent, and user-friendly platform for conducting digital asset raffles, leveraging the Cardano blockchain's capabilities to ensure fairness and trust in the raffle process.
+
+By fulfilling these purposes, it contributes to the Cardano ecosystem in multiple ways. It not only adds a practical application that users can engage with directly but also enriches the developer community's resources, fostering innovation and growth within the ecosystem.
+
+## Intended Audience and Reading Suggestions
+
+This document provides a clear blueprint of how the application should function and behave under various circumstances, and serves as a comprehensive guide detailing the functionalities, scenarios, and acceptance criteria of the application intended for:
+
+1. **Developers** (which may want to implement the specified functionalities using different technologies or frameworks)
+2. **Testers** (to create test cases and ensure the application meets the stipulated requirements)
+3. **Other stakeholders** individuals and entities interested in building on the Cardano blockchain looking for an inspiration source.
+
+## Scope
+
+Designed to capitalize on the digital assets trend, RAFFLEIZE C-A-R-D-A-N-A is tailored for facilitating creation, management of, and participation in online raffles.
+
+This application allows users to raffle their digital assets, providing a chance for other users (participants) to win these assets in exchange for purchasing a ticket. By leveraging the commit and reveal scheme it decentralizes trust, ensuring transparency and fairness in the winner selection process.
+
+### Objectives and Benefits
+
+- **Decentralized Trust**: The primary objective of RAFFLEIZE C-A-R-D-A-N-A is to eliminate the reliance on a central authority for trust. The commit and reveal scheme ensures that the process of picking a winner is transparent and verifiable, thus fostering trust among participants.
+
+- **Digital Asset Monetization**: Users with digital assets can create raffles, offering others the chance to win these assets. This provides a unique avenue for asset owners to monetize their holdings.
+
+- **Broadened Participation**: By allowing participants to buy tickets and potentially win digital assets, the platform democratizes access to these assets, which might be expensive or rare otherwise.
+
+- **Enhanced Engagement**: The thrill of participating in a raffle and the potential to win valuable assets drive user engagement, encouraging more users to join the ecosystem.
+
+### Differentiators
+
+Besides the above benefits, by leveraging dynamic NFTs (using [CIP-0068 Datum Metadata Standard](https://cips.cardano.org/cip/CIP-68/)) RAFFLEIZE C-A-R-D-A-N-A also provides:
+
+- **Enhanced Liquidity**: Tokenizing raffle ownership and tickets makes these assets more liquid. Owners can easily trade or sell their stakes or participation rights on various platforms, not limited to the original DApp. This increases the assets' marketability and potential value.
+
+- **Recursive Raffle Opportunities**: (Raffles of Raffles) Owners can create raffles for their raffle stakes or tickets, adding a recursive layer of engagement. This not only multiplies the opportunities for users to engage with the platform but also introduces a novel concept of raffle chains, where one can win a stake in another raffle, thereby increasing the excitement and engagement levels.
+
+- **Privacy Preservation**: Anonymity ensures that participants' and owners' identities are kept private, fostering a secure environment where users feel comfortable engaging in transactions. This privacy is particularly appealing to users who prioritize discretion in their online activities and financial dealings.
+
+- **Inclusive Participation**: By removing the need for identity verification for participation, the platform can attract a wider audience, including those who, for various reasons, prefer or need to remain anonymous. This inclusivity strengthens the platform's market position by broadening its user base.
+
+## References
+
+- https://github.com/cardano-foundation/CIPs/tree/master/CIP-0068
+- https://github.com/cardano-foundation/CIPs/tree/master/CIP-0067
+- https://github.com/cardano-foundation/CIPs/tree/master/CIP-0025
+
+## Description
+
+## Perspective
+
+The DApp aligns with the broader trend of decentralization and blockchain adoption and is designed to fill a niche in the rapidly evolving digital asset landscape.
+
+## Context and Origin
+
+While raffles have been a popular method of asset distribution and engagement for centuries, the digital age and rise of cryptocurrencies and non-fungible tokens (NFTs) have reshaped the potential of such events. RAFFLEIZE C-A-R-D-A-N-A is not merely a digital transformation of traditional raffles but a novel system that integrates the principles of decentralization.
+
+## Relation to Larger Systems
+
+- **Cardano Blockchain**: the current DApp, primarily relies on Cardano blockchain technology for it's core functionalities. The underlying blockchain provides the backbone of trust and decentralization and the underlying infrastructure that makes digital assets possible.
+- **IPFS**: Blockchain typically stores metadata that includes information about the digital asset, like an image, video, or piece of music. However, storing large files directly on the blockchain is impractical due to size limitations and high costs. IPFS offers a solution for decentralized storage. Instead of storing the actual data on blockchain, digital assets metadata often includes a URL or hash pointing to a file on IPFS, utilizing its content addressing system to ensure the integrity and permanence of the data.
+
+## System Overview and Interfaces
+
+The diagram below highlights the key logical components of the DApp and their interactions. Each component plays a specific role in the functionality of the DApp, particularly within the context of a blockchain network.
+
+![Component Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Component/ComponentDiagram-RaffleDApp-HighLevel.puml)
+
+The user directly interacts with the UI, which is the entry point of the DApp. The UI facilitates user interaction with the blockchain through the Wallet component, which securely authorizes transactions. The DApp service provider acts as a bridge, handling complex interactions with the blockchain and ensuring smooth operation of the application. The blockchain network itself is the backbone, providing a decentralized and secure platform for executing the raffle's smart contracts.
+
+Here's an elaborated description of each component:
+
+#### User Interface Component
+
+- **Role**: This component is the front-end of the DApp, where users interact with the application. It presents the user interface through which users can participate in raffles or organize their own.
+- **Functions**: It manages user inputs, displays information (like raffle details and results), and initiates actions (like entering the raffle).
+- **Interaction**: The UI communicates with the Browser Wallet to create transactions that will be sent to the blockchain.
+
+#### Wallet Component
+- **Role**: This is a third-party browser wallet that interacts with the DApp. It handles cryptographic functions related to the user's blockchain identity.
+- **Functions**: Its primary function is to sign transactions, which is crucial for actions that require user authorization, such as entering a raffle or claiming rewards.
+- **Interaction**: Receives transaction data from the UI, signs it with the user's private key, and then communicates it back to the UI or directly to the blockchain network.
+
+#### DApp Service Provider
+- **Role**: This backend component acts as the intermediary between the UI and the blockchain network.
+- **Functions**:
+  - Querying the Blockchain: It retrieves data from the blockchain, such as the status of the raffle, entries, and winners.
+  - Constructing Transactions: It prepares transactions based on user actions that are to be executed on the blockchain.
+- **Interaction**: It communicates with the blockchain network to fetch data or submit signed transactions.
+
+#### Blockchain Network 
+- **Role**: The underlying decentralized infrastructure that executes and records all operations related to the raffle.
+- **Functions**: Hosts the smart contracts which govern the raffle logic, ensuring trustless and transparent execution. It processes transactions, updates the state of the raffle, and ensures the integrity and security of the entire process.
+- **Interaction**: Interacts with the DApp service provider, receiving queries and transactions, and returning the results or confirmation of actions taken.
+
+## High Level Architecture
+
+There are three architectural versions envisaged for the DApp, each representing a different approach, varying by where the DApp static content is hosted, where transactions are constructed and how transactions are submitted to the blockchain.
+
+### Version 1: Centralized Hosting and Backend Transaction Handling
+- **Static Content Hosting**: The DApp's static content, like HTML, CSS, and JavaScript files, is hosted on a centralized web server.
+- **Transaction Construction and Submission**: Transactions are constructed and submitted through the DApp's backend. The process involves:
+  1. Users interacting with the UI, which calls an endpoint in the OffChain component.
+  2. The OffChain component queries the Cardano node and constructs the transaction.
+  3. The constructed transaction is sent to the user's browser wallet for signing.
+  4. Once signed, the transaction is sent back to the OffChain component, which submits it to the Cardano node for final processing on the blockchain.
+
+![Component Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Component/ComponentDiagram-RaffleDApp-version1.puml)
+
+### Version 2: Centralized Hosting with Partial Decentralized Transaction Handling
+- **Static Content Hosting**: Similar to Version 1, the static content is hosted on a centralized server.
+- **Transaction Construction**: The construction of transactions still happens in the DApp's backend.
+- **Transaction Submission**: The signed transactions are submitted through the user's browser wallet or a custom node configured in the wallet. This adds a layer of decentralization to the process. (Some wallets allow configuring a custom endpoint for submitting transactions, offering more flexibility and control to the user.)
+
+![Component Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Component/ComponentDiagram-RaffleDApp-version2.puml)
+
+### Version 3: Decentralized Hosting and Transaction Handling
+- **Static Content Hosting**: The DApp's static content is hosted on the IPFS network, offering a decentralized hosting solution.
+- **Transaction Construction and Submission**:
+    1. The UI queries data from a Blockchain Services Provider.
+    2. Transactions are constructed directly in the user's browser and sent to the browser wallet for signing.
+    3. The signed transactions are then submitted to the blockchain network through the wallet's backend or a custom node, emphasizing decentralized processing.
+
+![Component Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Component/ComponentDiagram-RaffleDApp-version3.puml)
+
+Each version offers different levels of decentralization and control:
+
+- **Version 1** focuses on a more traditional web application structure with centralized control over transaction processing and content hosting.
+- **Version 2** introduces an element of decentralization in transaction submission while keeping the content hosting and transaction construction centralized.
+- **Version 3** fully embraces decentralization by leveraging IPFS for hosting and allowing transactions to be constructed and submitted directly from the user's browser, reducing reliance on a centralized backend.
+
+## Functionality
+
+Below are summarized the major functions of the DApp, grouped based on the user classes:
+
+### Use-cases
+
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Usecase/UsecaseDiagram-RaffleDApp.puml)
+
+#### NonAuthenticated User
+- **Characteristics**: Represents users who have not connected a wallet. They have limited access to the DApp features compared to authenticated users.
+- **Interactions** 
+  - Can view active raffles.
+  - Can connect to a wallet, which is a prerequisite for further interactions within the DApp.
+
+#### Authenticated User
+- **Characteristics**: Users who have successfully connected to a wallet. They have enhanced access and functionalities compared to non-authenticated users. This role forms the basis for more specialized roles like Participant and Organizer.
+- **Interactions**:
+  - Can view active raffles.
+  - Can disconnect from the wallet.
+  - View his own assets.
+  - Create raffles.
+  - Buy tickets for any of the active raffles.
+
+##### Ticket Owner
+- **Characteristics**: The owner of a ticket NFT for a raffle.
+- **Interactions** 
+  - View raffles joined and manage participation.
+  - Redeem prize with winning ticket.
+  - Recover collateral of losing ticket.
+  - Get full refund of ticket price in case of underfunded raffle.
+  - Get full refund of ticket price + extra share of unrevealed tickets value, in case of unrevealed raffle.
+
+##### Organizer
+- **Characteristics**: The owner of a raffle NFT.
+- **Interactions** 
+  - Update raffle configurations.
+  - Cancel raffles.
+  - Collect the accumulated amount for successfully finalized raffles.
+  - Recover the raffle stake in case of unsuccessfully finalized raffles (expired/underfunded/unrevealed).
+  - Recover the raffle stake and the accumulated amount in the case none of the ticket participated in revealing phase.
+  - Collect the ticket collateral of an unrevealed tickets for the owned raffle.
+
+## Model
+
+![Class Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Class/ClassDiagram-Raffleize.puml)
+
+## States
+
+#### Ticket Token State Transitions
+
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-TicketOwner_Token.puml)
+
+#### Raffle Token State Transitions
+
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-RaffleOwner_Token.puml)
+
+#### Raffle State Transitions
+
+![Use-case Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/State/StateDiagram-Raffle_State_Token.puml)
+
+## Transactions
+
+*Legend*
+| Symbol        | Description          |
+| ------------- | -------------------- |
+| orange circle | UTxO                 |
+| grey circle   | Reference UTxO       |
+| 🎫👦🏻            | Raffle User NFT      |
+| 🎫🔗            | Raffle Reference NFT |
+| 🎟️👦🏻            | Ticket User NFT      |
+| 🎟️🔗            | Ticket Reference NFT |
+| 🔥             | Burning              |
+| 🔨             | Minting              |
+| 📝             | Datum                |
+| 🧾             | Spending Validator   |
+| 📜             | Minting Policy       |
+
+---
+#### Create Raffle
+---
+**Actors**: Authenticated User  
+**Summary Description**: This transaction allows anyone to create a raffle for some digital assets.  
+
+**Preconditions:**
+1. The raffle configuration must be valid.
+2. The organizer must own the necessary Ada amount to cover the raffle collateral and transaction fees.
+3. The organizer must own the raffle stake value 
+
+**Postconditions:**
+1. Raffle reference NFT is minted.
+2. Raffle user NFT is minted.
+3. The raffle stake value, raffle collateral and raffle reference NFT are locked to the raffle validator's address with valid datum. 
+4. The raffle user NFT is locked to the address indicated by the organizer when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/1.Mindmap-U-CreateRaffle-Transaction.puml)
+
+---
+#### Buy tickets to raffle
+---
+**Actors**: Authenticated User  
+**Summary Description**: This transaction allows anyone to buy a ticket to an active raffle.  
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The raffle stake value, raffle collateral, raffle reference NFT (and optional raffle accumulated amount) must be locked to the raffle's validator address with valid datum.
+3. The user must own the necessary Ada amount to cover the ticket price and ticket collateral and transaction fees.
+4. The deadline for buying tickets must not have passed. 
+
+**Postconditions:**
+1. The raffle stake value, raffle collateral, raffle reference NFT and the raffle accumulated amount (increased with the raffle ticket price) must be locked to the raffle's validator address with updated datum (with increased no. of tickets sold). 
+2. Ticket reference NFT is minted.
+2. Ticket user NFT is minted.
+4. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum.
+3. The ticket user NFT is locked to the address indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/2.Mindmap-U-BuyTicket-Transaction.puml)
+
+---
+#### Update raffle configuration
+---
+**Actors**: Raffle Owner    
+**Summary Description**: This transaction allows the raffle owner to update the raffle configuration.  
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. New raffle configuration is valid.
+3. The raffle stake value, raffle collateral, raffle reference NFT must be locked to the raffle's validator address with valid datum.
+4. The raffle state is in NEW:
+    - no tickets sold;
+    - deadline for buying tickets (commit deadline) must not have passed.
+5. The must own the necessary Ada amount to cover the transaction fees.  
+6. The user must own the raffle user NFT.
+
+**Postconditions:**
+1. Raffle stake value, raffle collateral and raffle reference NFT are locked to the raffle validator's address with valid datum. 
+2. The raffle user NFT is locked to the address indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/3.Mindmap-RO-UpdateRaffle-Transaction.puml)
+
+---
+#### Cancel
+---
+**Actors**: Raffle Owner    
+**Summary Description**: This transaction allows the raffle owner to cancel the raffle.  
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The raffle stake value, raffle collateral, raffle reference NFT must be locked to the raffle's validator address with valid datum.
+3. The raffle state is in NEW:
+    - no tickets sold;
+    - deadline for buying tickets (commit deadline) must not have passed.
+4. The user must own the necessary Ada amount to cover the transaction fees.
+5. The user must own the raffle user NFT.
+
+**Postconditions:**
+1. The raffle ref NFT is burned. 
+2. The raffle user NFT burned.
+3. The raffle stake value and raffle collateral value are locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/4.Mindmap-RO-CancelRaffle-Transaction.puml)
+
+---
+#### Collect Accumulated Amount
+---
+**Actors**: Raffle Owner    
+**Summary Description**: This transaction allows the raffle owner to collect the accumulated amount from a finalized raffle.
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The raffle collateral, raffle reference NFT the accumulated amount value (and optional the raffle stake) must be locked to the raffle's validator address with valid datum.
+3. The raffle was finalized successfully (all tickets sold where revealed).
+4. The user must own the necessary Ada amount to cover the transaction fees.
+5. The user must own the raffle user NFT.
+
+**Postconditions:**
+1. The raffle user NFT is burned;
+2. The raffle collateral and raffle reference NFT (and optional the raffle stake) are locked to the raffle validator's address with valid datum. 
+3. The accumulated value is locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/5.Mindmap-RO-CollectAccumulatedAmount.puml)
+
+---
+#### Recover Stake
+---
+**Actors**: Raffle Owner    
+**Summary Description**: Recover the raffle stake in case of unsuccessfully finalized raffles (expired/underfunded/unrevealed).
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The raffle collateral, raffle reference NFT the raffle stake (and optional the accumulated amount value) must be locked to the raffle's validator address with valid datum.
+3. The raffle must be either EXPIRED, UNDERFUNDED or UNREVEALED.
+4. The user must own the necessary Ada amount to cover the transaction fees.
+5. The user must own the raffle user NFT.
+
+**Postconditions:**
+1. The raffle user NFT is burned;
+2. The raffle collateral and raffle reference NFT (and optional the accumulated amount stake) are locked to the raffle validator's address with valid datum. 
+3. The raffle stake value is locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/6.Mindmap-RO-RecoverStake-Transaction.puml)
+
+#### Recover Stake And Amount
+---
+**Actors**: Raffle Owner    
+**Summary Description**: This transaction allows the raffle owner to recover the raffle stake and accumulated amount in the case none of the ticket owners revealed the ticket secret.
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amount value must be locked to the raffle's validator address with valid datum.
+3. The raffle must be UNREVEALED with 0 tickets revealed.
+4. The user must own the necessary Ada amount to cover the transaction fees.
+5. The user must own the raffle user NFT.
+
+**Postconditions:**
+1. The raffle user NFT is burned.
+2. The raffle collateral and raffle reference NFT are locked to the raffle validator's address with valid datum. 
+3. The raffle stake value and the accumulated amount value are locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/7.Mindmap-RO-RecoverStakeAndAmount-Transaction.puml)
+
+---
+#### Collect collateral of unrevealed tickets
+---
+**Actors**: Raffle Owner    
+**Summary Description**: This transaction allows the raffle owner to collect the collateral of an unrevealed ticket.
+
+**Preconditions:**
+1. The ticket validator script must be locked to a UTxO as reference script.
+2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amount value must be locked to the raffle's validator address with valid datum.
+3. The raffle must be UNREVEALED.
+4. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum..
+5. The ticket must be BURNABLE_BY_RAFFLE_OWNER (unrevealed ticket and for an unrevealed raffle)
+6. The user must own the necessary Ada amount to cover the transaction fees.
+7. The user must own the raffle user NFT.
+
+**Postconditions:**
+1. The raffle state UTxO remains unspent. 
+2. The ticket reference NFT is burned.
+3. The ticket collateral value and raffle user NFT are locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/12.Mindmap-RO-GetCollateraOfExpiredTicket.puml)
+
+---
+#### Reveal Secret
+---
+**Actors**: Ticket Owner    
+**Summary Description**: This transaction allows to the ticket owner to reveal the ticket secret matching the ticket secret hash. 
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+1. The ticket validator script must be locked to a UTxO as reference script.
+2. The raffle collateral, raffle reference NFT the raffle stake and the accumulated amount value must be locked to the raffle's validator address with valid datum.
+3. The raffle must be REVEALING:
+    - commit deadline passed;
+    - min no. of tickets sold;
+    - reveal deadline not passed;
+4. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum..
+5. The ticket must be REVEALABLE (unrevealed ticket and for a raffle in REVEALING state)
+6. The user must own the necessary Ada amount to cover the transaction fees.
+7. The user must own the ticket user NFT.
+
+**Postconditions:**
+1. The raffle stake value, raffle collateral raffle accumulated value and raffle reference NFT are locked to the raffle validator's address with valid updated datum (updated with the no of tickets revealed). 
+2. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid updated datum (updated with the secret).
+3. The ticket user NFT is locked to the address indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/8.Mindmap-TO-RevealSecret-Transaction.puml)
+
+---
+#### Collect Prize
+---
+**Actors**: Ticket Owner    
+**Summary Description**: This transaction allows to the winner ticket owner to collect the raffle prize.  
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The ticket validator script must be locked to a UTxO as reference script.
+3. The raffle collateral, raffle reference NFT the raffle stake value (and optional the raffle accumulated amount) must be locked to the raffle's validator address with valid datum.
+4. The raffle was finalized successfully (all tickets sold where revealed).
+5. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum..
+6. The ticket must be revealed and the ticket number must be equal with the raffle winner.
+7. The user must own the necessary Ada amount to cover the transaction fees.
+8. The user must own the ticket user NFT.
+
+**Postconditions:**
+1. The ticket reference NFT is burned.
+2. The ticket user NFT is burned.
+3. The raffle collateral and raffle reference NFT (and optional the raffle accumulated amount) are locked to the raffle validator's address with valid datum. 
+4. The raffle stake value and ticket collateral value are locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/9.Mindmap-TO-CollectPrize-Transaction.puml)
+
+---
+#### Full Refund 
+---
+**Actors**: Ticket Owner    
+**Summary Description**: This transaction allows the owner of a underfunded raffle ticket to get a full refund on ticket price and recover ticket collateral.  
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The ticket validator script must be locked to a UTxO as reference script.
+3. The raffle collateral, raffle reference NFT the raffle stake value and the raffle accumulated amount must be locked to the raffle's validator address with valid datum.
+4. The raffle must be in underfunded state.
+    - commit deadline passed and min no of tickets not reached;
+5. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum.
+6. The user must own the necessary Ada amount to cover the transaction fees.
+7. The user must own the ticket user NFT.
+
+**Postconditions:**
+1. The ticket reference NFT is burned.
+2. The ticket user NFT is burned.
+3. The raffle collateral, raffle reference NFT the raffle stake value and the raffle accumulated amount (- 1 ticket price value) must be locked to the raffle's validator address with valid updated datum (with no of refunded tickets).
+4. The ticket price value and ticket collateral value are locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/10.Mindmap-TO-FullRefund-Transaction.puml)
+
+---
+#### Extra Refund 
+---
+**Actors**: Ticket Owner    
+**Summary Description**: This transaction allows the owner of a revealed ticket in an unrevealed raffle to get a full refund on ticket price + his share of the value of the unrevealed tickets and recover ticket collateral.
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The ticket validator script must be locked to a UTxO as reference script.
+3. The raffle collateral, raffle reference NFT the raffle stake value and the raffle accumulated amount must be locked to the raffle's validator address with valid datum.
+4. The raffle must be in unrevealed state.
+    - commit deadline passed and min no of tickets reached;
+    - revealed deadline passed and not all tickets revealed;
+5. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum.
+6. The ticket must be revealed.
+7. The user must own the necessary Ada amount to cover the transaction fees.
+8. The user must own the ticket user NFT.
+
+**Postconditions:**
+1. The ticket reference NFT is burned.
+2. The ticket user NFT is burned.
+3. The raffle collateral, raffle reference NFT the raffle stake value and the raffle accumulated amount (- refunded value = ticket price value + share of unrevealed tickets price) must be locked to the raffle's validator address with valid updated datum (with no of refunded tickets).
+4. The refunded value and ticket collateral value are locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/11.Mindmap-TO-ExtraRefund-Transaction.puml)
+
+---
+#### Collateral Refund 
+---
+**Actors**: Ticket Owner    
+**Summary Description**: This transaction allows the owner of a revealed losing ticket to get back the collateral.
+
+**Preconditions:**
+1. The raffle validator script must be locked to a UTxO as reference script.
+2. The ticket validator script must be locked to a UTxO as reference script.
+3. The raffle collateral, raffle reference NFT (and optional the raffle stake value and/or the raffle accumulated amount) must be locked to the raffle's validator address with valid datum.
+4. The raffle was finalized successfully (all tickets sold where revealed).
+5. The ticket collateral, ticket reference NFT value must be locked to the ticket's validator address with valid datum..
+6. The ticket must be revealed and the ticket number must not be equal with the raffle winner (losing ticket).
+7. The user must own the necessary Ada amount to cover the transaction fees.
+8. The user must own the ticket user NFT.
+
+**Postconditions:**
+1. The raffle state UTxO is not spent.
+2. The ticket reference NFT is burned.
+3. The ticket user NFT is burned.
+4. The ticket collateral value is locked to address/es indicated when constructing the transaction.
+
+**Transaction:**
+![Mindmap Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mariusgeorgescu/raffleize/main/Documentation/Diagrams/Mindmaps/13.Mindmap-TO-CollateralRefund-Transaction.puml)
+
+### Design and Implementation Constraints
+
+#### Language Requirements
+
+**Smart Contract Language:**
+Use of PlutusTx for smart contracts. Consideration for alternative implementations in: Marlowe, Opshin, Aiken, Plutarch.   
+**Frontend and Backend Development:**
+Use functional programming languages for the DApp's frontend and backend (e.g., Haskell, Purescript).
+
+#### Security Considerations
+**Smart Contract Security:** Audited and secure smart contracts to prevent vulnerabilities and exploits.  
+**Testing:** Rigorous testing of the off-chain code to prevent vulnerabilities.
+
+#### Design Conventions or Programming Standards
+**Code Quality and Maintainability:**
+Adherence to industry-standard coding practices for readability, maintainability, and scalability.  
+**Documentation:**
+Comprehensive documentation for future maintenance and updates.  
+
+## User Documentation
+📚  
+List the user documentation components (such as user manuals, on-line help, and tutorials) that will be delivered along with the software. Identify any known user documentation delivery formats or standards.
+1. **Step-by-Step Guides:** Visual and textual guides for key functions and features.  
+2. **Video tutorials:** Instructional videos demonstrating how to use the DApp
+3. **Legal and Compliance Information:**
+   1. Terms of Service: Legal terms and conditions of using the DApp.
+   2. Privacy Policy: Information on data handling, user privacy, and security measures.
+
+## Assumptions and Dependencies
+
+The development and successful operation of the RAFFLEIZE C-A-R-D-A-N-A DApp are contingent upon several assumptions and dependencies. Understanding these factors is crucial as they could significantly impact the project's trajectory and its requirements.
+
+### Assumptions
+**Blockchain Stability and Accessibility:** The DApp assumes consistent uptime and stability of the Cardano blockchain network. Access to the blockchain is presumed uninterrupted, with minimal downtime.  
+**Smart Contract Reliability:** It is assumed that the smart contracts, will perform as intended without major bugs or vulnerabilities.  
+**Regulatory Compliance:** The assumption that current and future regulations regarding blockchain technology, cryptocurrencies, and online gambling or raffles will remain favorable or at least not become prohibitively restrictive.  
+**Technological Proficiency of Users:** A basic level of understanding and comfort with blockchain technology and digital wallets among the user base is assumed.  
+**Third-Party Wallet Integration:** Seamless integration and compatibility with popular third-party browser wallets are assumed for transaction signing and user authentication.  
+**Internet Connectivity:** Users are assumed to have stable and continuous access to the internet, essential for interacting with the blockchain and the DApp.
+
+### Dependencies
+**Cardano Blockchain Infrastructure:** for it's core functionality the smart contract execution.  
+**Browser wallets**: for user interactions with the blockchain, such as signing transactions and managing digital assets.  
+**Blockchain Service Providers:** for user interactions with the blockchain.  
+**Web Hosting Services:** For versions 1 and 2 of the DApp, dependency on centralized web hosting services. For version 3, reliance shifts to decentralized hosting solutions like IPFS.  
+
+#### Definitions, Acronyms and Abbreviations
+
+# Acronyms and Abbreviations
+
+| Acronym                 | Definition                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DApp                    | Decentralized Application                                                                                                                               |
+| RAFFLEIZE C-A-R-D-A-N-A | Commit-And-Reveal-Decentralized-Application-for-Native-Assets Raffles                                                                                   |
+| CRS                     | Commit and Reveal Scheme                                                                                                                                |
+| IPFS                    | InterPlanetary File System : is a protocol, hypermedia and file sharing peer-to-peer network for storing and sharing data in a distributed file system. |
+| NFT                     | Non-Fungible Token                                                                                                                                      |  |
+| UTxO                    | Unspent Transaction Output                                                                                                                              |
+| CIP                     | Cardano Improvement Proposal                                                                                                                            |

@@ -13,6 +13,7 @@ import RaffleizeDApp.CustomTypes.TicketTypes
 import RaffleizeDApp.OnChain.NFT (NFTAction)
 import RaffleizeDApp.OnChain.RaffleizeLogic
 import Prelude
+import Data.Swagger (ToParamSchema)
 
 -- | Input parameters to add for reference script.
 data AddWitAndSubmitParams = AddWitAndSubmitParams
@@ -96,6 +97,19 @@ instance ToSchema TicketInfo where
 
 instance ToSchema Interaction where
   declareNamedSchema _ = plain $ sketchSchema @Interaction $ Interaction (Just sampleAssetClass) (RaffleizeInteraction $ RaffleOwner Cancel) (UserAddresses [sampleAddr] sampleAddr (Just sampleGYTxOutRefCbor)) (Just sampleAddr)
+
+
+data RaffleSortBy = CommitDeadline | RevealDeadline | NextDeadline | State
+  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
+
+data TicketsSortBy = TicketNumber | TicketState | TicketRaffleId
+  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
+
+data SortOrder = Asc | Desc
+  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
+
+
+
 
 -------------------------------------------------------------------------------
 

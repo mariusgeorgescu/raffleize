@@ -21,14 +21,18 @@ import RaffleizeDApp.CustomTypes.RaffleTypes
   ( RaffleConfig,
     RaffleParam,
     RaffleStateData,
+    RaffleStateId,
   )
-import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData)
+import RaffleizeDApp.CustomTypes.TicketTypes (TicketStateData, TicketStateId)
 import RaffleizeDApp.CustomTypes.TransferTypes
   ( AddWitAndSubmitParams,
     Interaction,
     InteractionAction,
     RaffleInfo,
+    RaffleSortBy,
+    SortOrder,
     TicketInfo,
+    TicketsSortBy,
     UserAddresses,
   )
 import RaffleizeDApp.OnChain.NFT
@@ -39,6 +43,8 @@ myTypes =
   [ let p = (Proxy :: Proxy RaffleConfig) in equal p (mkSumType p),
     let p = (Proxy :: Proxy RaffleParam) in equal p (mkSumType p),
     let p = (Proxy :: Proxy RaffleStateData) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleStateId) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TicketStateId) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TicketStateData) in equal p (mkSumType p),
     let p = (Proxy :: Proxy UserAction) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TicketOwnerAction) in equal p (mkSumType p),
@@ -49,10 +55,13 @@ myTypes =
     let p = (Proxy :: Proxy TicketInfo) in equal p (mkSumType p),
     let p = (Proxy :: Proxy NFTAction) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TokenData) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleSortBy) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy SortOrder) in equal p (mkSumType p),
     mkSumType (Proxy :: Proxy InteractionAction),
     mkSumType (Proxy :: Proxy UserAddresses),
     mkSumType (Proxy :: Proxy Interaction),
-    mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
+    mkSumType (Proxy :: Proxy AddWitAndSubmitParams),
+    mkSumType (Proxy :: Proxy TicketsSortBy)
   ]
 
 main :: IO ()

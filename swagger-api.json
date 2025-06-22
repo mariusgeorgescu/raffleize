@@ -379,6 +379,45 @@
         "/raffles": {
             "get": {
                 "description": "Get all active raffles information",
+                "parameters": [
+                    {
+                        "collectionFormat": "multi",
+                        "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "state",
+                        "type": "array"
+                    },
+                    {
+                        "in": "query",
+                        "name": "isFinal",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "enum": [
+                            "CommitDeadline",
+                            "RevealDeadline",
+                            "NextDeadline",
+                            "State"
+                        ],
+                        "in": "query",
+                        "name": "sortBy",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "enum": [
+                            "Asc",
+                            "Desc"
+                        ],
+                        "in": "query",
+                        "name": "sortOrder",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
                 "produces": [
                     "application/json;charset=utf-8"
                 ],
@@ -568,6 +607,9 @@
                             },
                             "type": "array"
                         }
+                    },
+                    "400": {
+                        "description": "Invalid `sortOrder` or `sortBy` or `isFinal` or `state`"
                     }
                 },
                 "summary": "Get all raffles"
@@ -735,6 +777,43 @@
                             },
                             "type": "array"
                         }
+                    },
+                    {
+                        "collectionFormat": "multi",
+                        "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "state",
+                        "type": "array"
+                    },
+                    {
+                        "in": "query",
+                        "name": "isFinal",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "enum": [
+                            "CommitDeadline",
+                            "RevealDeadline",
+                            "NextDeadline",
+                            "State"
+                        ],
+                        "in": "query",
+                        "name": "sortBy",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "enum": [
+                            "Asc",
+                            "Desc"
+                        ],
+                        "in": "query",
+                        "name": "sortOrder",
+                        "required": false,
+                        "type": "string"
                     }
                 ],
                 "produces": [
@@ -928,7 +1007,7 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid `body`"
+                        "description": "Invalid `sortOrder` or `sortBy` or `isFinal` or `state` or `body`"
                     }
                 },
                 "summary": "Get users's raffles"
@@ -951,6 +1030,36 @@
                             },
                             "type": "array"
                         }
+                    },
+                    {
+                        "collectionFormat": "multi",
+                        "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "state",
+                        "type": "array"
+                    },
+                    {
+                        "enum": [
+                            "TicketNumber",
+                            "TicketState",
+                            "TicketRaffleId"
+                        ],
+                        "in": "query",
+                        "name": "sortBy",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "enum": [
+                            "Asc",
+                            "Desc"
+                        ],
+                        "in": "query",
+                        "name": "sortOrder",
+                        "required": false,
+                        "type": "string"
                     }
                 ],
                 "produces": [
@@ -1051,7 +1160,7 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid `body`"
+                        "description": "Invalid `sortOrder` or `sortBy` or `state` or `body`"
                     }
                 },
                 "summary": "Get user's tickets"
