@@ -32,6 +32,7 @@ import RaffleizeDApp.CustomTypes.TransferTypes
     RaffleSortBy,
     SortOrder,
     TicketInfo,
+    TicketsSortBy,
     UserAddresses,
   )
 import RaffleizeDApp.OnChain.NFT
@@ -59,7 +60,8 @@ myTypes =
     mkSumType (Proxy :: Proxy InteractionAction),
     mkSumType (Proxy :: Proxy UserAddresses),
     mkSumType (Proxy :: Proxy Interaction),
-    mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
+    mkSumType (Proxy :: Proxy AddWitAndSubmitParams),
+    mkSumType (Proxy :: Proxy TicketsSortBy)
   ]
 
 main :: IO ()

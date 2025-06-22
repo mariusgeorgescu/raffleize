@@ -102,6 +102,9 @@ instance ToSchema Interaction where
 data RaffleSortBy = CommitDeadline | RevealDeadline | NextDeadline | State
   deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
 
+data TicketsSortBy = TicketNumber | TicketState | TicketRaffleId
+  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
+
 data SortOrder = Asc | Desc
   deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
 

@@ -34,6 +34,7 @@ import Network.Wai
 import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.Servant.Options (provideOptions)
 import RaffleizeDApp.CustomTypes.RaffleTypes hiding (version)
+import RaffleizeDApp.CustomTypes.TicketTypes hiding (version)
 import RaffleizeDApp.CustomTypes.TransferTypes
 import RaffleizeDApp.TxBuilding.Context
 import RaffleizeDApp.TxBuilding.Lookups
@@ -95,6 +96,9 @@ type Lookups =
       :> Description "Checks addreesses for ticket user tokens and returns the corresponding tickets information"
       :> "user-tickets"
       :> ReqBody '[JSON] [GYAddress]
+      :> QueryParams "state" String
+      :> QueryParam "sortBy" TicketsSortBy
+      :> QueryParam "sortOrder" SortOrder
       :> Post '[JSON] [TicketInfo]
     :<|> Summary "Get ticket by id"
       :> Description "Get ticket information with ticket id (AssetClass)"
@@ -230,6 +234,24 @@ filterAndSortRaffles raffles states mIsFinal mSortBy mSortOrder =
 
    in sorted
 
+filterAndSortTickets :: [TicketInfo] -> [String] -> Maybe TicketsSortBy -> Maybe SortOrder -> [TicketInfo]
+filterAndSortTickets tickets states mSortBy mSortOrder =
+  let filteredWithStates = if null states then tickets else filter ((`elem` states) . tiStateLabel) tickets
+
+      sorted =
+        case mSortBy of
+          Just TicketNumber -> sortByAttr (tNumber . tiTsd)
+          Just TicketState -> sortByAttr tiStateLabel
+          Just TicketRaffleId -> sortByAttr (show . tRaffle . tiTsd)
+          _ -> filteredWithStates
+        where
+          sortByAttr f =
+            let cmp = compare `on` f
+                sorter = if mSortOrder == Just Desc then flip cmp else cmp
+             in Data.List.sortBy sorter filteredWithStates
+
+   in sorted
+
 handleGetRaffles :: ProviderCtx -> [String] -> Maybe Bool -> Maybe RaffleSortBy -> Maybe SortOrder -> IO [RaffleInfo]
 handleGetRaffles pCtx states mIsFinal mSortBy mSortOrder = do
   raffles <- runQuery pCtx lookupActiveRaffles
@@ -253,8 +275,10 @@ handleGetTicketById pCtx gyTicketId = do
   liftIO $ putStrLn $ "Lookup for ticket: " <> show gyTicketId
   runQuery pCtx $ lookupTicketInfoByRefAC (assetClassToPlutus gyTicketId)
 
-handleGeTicketsByAddresses :: ProviderCtx -> [GYAddress] -> IO [TicketInfo]
-handleGeTicketsByAddresses pCtx addr = runQuery pCtx (lookupTicketsOfAddresses addr)
+handleGeTicketsByAddresses :: ProviderCtx -> [GYAddress] -> [String] -> Maybe TicketsSortBy -> Maybe SortOrder -> IO [TicketInfo]
+handleGeTicketsByAddresses pCtx addrs states mSortBy mSortOrder = do
+  tickets <- runQuery pCtx (lookupTicketsOfAddresses addrs)
+  return $ filterAndSortTickets tickets states mSortBy mSortOrder
 
 handleInteraction :: RaffleizeOffchainContext -> Interaction -> IO String
 handleInteraction roc i = do
@@ -293,6 +317,13 @@ instance FromHttpApiData RaffleSortBy where
   parseQueryParam "NextDeadline" = Right NextDeadline
   parseQueryParam "State" = Right State
   parseQueryParam _ = Left "Invalid sort order"
+
+instance FromHttpApiData TicketsSortBy where
+  parseQueryParam :: Text -> Either Text TicketsSortBy
+  parseQueryParam "TicketNumber" = Right TicketNumber
+  parseQueryParam "TicketState" = Right TicketState
+  parseQueryParam "TicketRaffleId" = Right TicketRaffleId
+  parseQueryParam _ = Left "Invalid ticket sort order"
 
 instance FromHttpApiData SortOrder where
   parseQueryParam :: Text -> Either Text SortOrder
