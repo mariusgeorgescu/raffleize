@@ -29,6 +29,8 @@ import RaffleizeDApp.CustomTypes.TransferTypes
     Interaction,
     InteractionAction,
     RaffleInfo,
+    RaffleSortBy,
+    SortOrder,
     TicketInfo,
     UserAddresses,
   )
@@ -52,6 +54,8 @@ myTypes =
     let p = (Proxy :: Proxy TicketInfo) in equal p (mkSumType p),
     let p = (Proxy :: Proxy NFTAction) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TokenData) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy RaffleSortBy) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy SortOrder) in equal p (mkSumType p),
     mkSumType (Proxy :: Proxy InteractionAction),
     mkSumType (Proxy :: Proxy UserAddresses),
     mkSumType (Proxy :: Proxy Interaction),

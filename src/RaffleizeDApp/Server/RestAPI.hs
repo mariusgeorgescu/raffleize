@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module RestAPI where
@@ -15,7 +14,6 @@ import Data.Function (on)
 import Data.List (isSuffixOf, sortBy)
 import Data.List qualified
 import Data.Swagger (HasInfo (info), HasLicense (license), Swagger (..), ToSchema, description, sketchSchema, title, version)
-import Data.Swagger.Internal.ParamSchema (ToParamSchema)
 import Data.Swagger.Internal.Schema (ToSchema (declareNamedSchema), plain)
 import Data.Text qualified
 import Data.Text.Encoding qualified
@@ -57,26 +55,6 @@ newtype User = User
   { user :: Data.Text.Text
   }
   deriving (Eq, Show)
-
-data RaffleSortBy = CommitDeadline | RevealDeadline | NextDeadline | State
-  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
-
-data SortOrder = Asc | Desc
-  deriving (Eq, Show, Generic, ToJSON, FromJSON, ToSchema, ToParamSchema)
-
-instance FromHttpApiData RaffleSortBy where
-  parseQueryParam :: Text -> Either Text RaffleSortBy
-  parseQueryParam "CommitDeadline" = Right CommitDeadline
-  parseQueryParam "RevealDeadline" = Right RevealDeadline
-  parseQueryParam "NextDeadline" = Right NextDeadline
-  parseQueryParam "State" = Right State
-  parseQueryParam _ = Left "Invalid sort order"
-
-instance FromHttpApiData SortOrder where
-  parseQueryParam :: Text -> Either Text SortOrder
-  parseQueryParam "Asc" = Right Asc
-  parseQueryParam "Desc" = Right Desc
-  parseQueryParam _ = Left "Invalid sort order"
 
 type Transactions =
   Summary "Build Raffleize Transaction"
@@ -220,7 +198,7 @@ handleGetRaffles pCtx states mIsFinal mSortBy mSortOrder = do
   raffles <- runQuery pCtx lookupActiveRaffles
   let filteredWithFinal = case mIsFinal of
         (Just isFinal) ->
-          let filterFunc = if isFinal then (`isSuffixOf` "FINAL") else not . (`isSuffixOf` "FINAL")
+          let filterFunc = if isFinal then ("FINAL" `isSuffixOf`) else not . ("FINAL" `isSuffixOf`)
            in filter (filterFunc . riStateLabel) raffles
         Nothing -> raffles
       filteredWithStates = if null states then filteredWithFinal else filter ((`elem` states) . riStateLabel) filteredWithFinal
@@ -297,6 +275,20 @@ instance ToServerEvent Int where
 
 instance ToSchema (ConduitT () () IO ()) where
   declareNamedSchema _ = plain $ sketchSchema @() ()
+
+instance FromHttpApiData RaffleSortBy where
+  parseQueryParam :: Text -> Either Text RaffleSortBy
+  parseQueryParam "CommitDeadline" = Right CommitDeadline
+  parseQueryParam "RevealDeadline" = Right RevealDeadline
+  parseQueryParam "NextDeadline" = Right NextDeadline
+  parseQueryParam "State" = Right State
+  parseQueryParam _ = Left "Invalid sort order"
+
+instance FromHttpApiData SortOrder where
+  parseQueryParam :: Text -> Either Text SortOrder
+  parseQueryParam "Asc" = Right Asc
+  parseQueryParam "Desc" = Right Desc
+  parseQueryParam _ = Left "Invalid sort order"
 
 -- | 'BasicAuthCheck' holds the handler we'll use to verify a username and password.
 authCheck :: Text -> Text -> BasicAuthCheck User

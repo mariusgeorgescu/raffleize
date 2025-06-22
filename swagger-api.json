@@ -390,10 +390,17 @@
                         "type": "array"
                     },
                     {
+                        "in": "query",
+                        "name": "isFinal",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
                         "enum": [
                             "CommitDeadline",
                             "RevealDeadline",
-                            "NextDeadline"
+                            "NextDeadline",
+                            "State"
                         ],
                         "in": "query",
                         "name": "sortBy",
@@ -602,7 +609,7 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid `sortOrder` or `sortBy` or `state`"
+                        "description": "Invalid `sortOrder` or `sortBy` or `isFinal` or `state`"
                     }
                 },
                 "summary": "Get all raffles"
