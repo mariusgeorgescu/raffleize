@@ -1,36 +1,39 @@
-<br> RAFFLEIZE C-A-R-D-A-N-A  
-<br> (Commit-And-Reveal-Decentralized-Application-for-Native-Assets)
+# <br> RAFFLEIZE C-A-R-D-A-N-A  
+#### <br> (Commit-And-Reveal-Decentralized-Application-for-Native-Assets)
 Prepared by Marius Georgescu  
 
+![Print screen from the terminal user interface](img/raffleizeimage.png)
 
 
 
-- [🚀 Quick Start](#-quick-start)
-  - [Prerequisites](#prerequisites)
-  - [1. Clone and Setup](#1-clone-and-setup)
-  - [2. Configure Atlas](#2-configure-atlas)
-  - [3. Configure Operation Key](#3-configure-operation-key)
-  - [3. Deploy validators](#3-deploy-validators)
-  - [3. Build and Run](#3-build-and-run)
-  - [4. Access API](#4-access-api)
-- [Overview](#overview)
-  - [Key Benefits](#key-benefits)
-  - [Features](#features)
-- [Architecture](#architecture)
-- [Documentation](#documentation)
-- [API Documentation](#api-documentation)
-  - [Key Endpoints](#key-endpoints)
-- [Development](#development)
-  - [Project Structure](#project-structure)
-  - [PureScript Code Generation](#purescript-code-generation)
-  - [Development Tools](#development-tools)
-  - [Key Files](#key-files)
-  - [Testing](#testing)
-- [Contributing](#contributing)
-  - [Code Quality](#code-quality)
-- [License](#license)
-- [Support](#support)
-- [Acknowledgments](#acknowledgments)
+- [ RAFFLEIZE C-A-R-D-A-N-A](#-raffleize-c-a-r-d-a-n-a)
+      - [ (Commit-And-Reveal-Decentralized-Application-for-Native-Assets)](#-commit-and-reveal-decentralized-application-for-native-assets)
+  - [🚀 Quick Start](#-quick-start)
+    - [Prerequisites](#prerequisites)
+    - [1. Clone and Setup](#1-clone-and-setup)
+    - [2. Configure Atlas](#2-configure-atlas)
+    - [3. Configure Operation Key](#3-configure-operation-key)
+    - [3. Deploy validators](#3-deploy-validators)
+    - [3. Build and Run](#3-build-and-run)
+    - [4. Access API](#4-access-api)
+  - [Overview](#overview)
+    - [Key Benefits](#key-benefits)
+    - [Features](#features)
+  - [Architecture](#architecture)
+  - [Documentation](#documentation)
+  - [API Documentation](#api-documentation)
+    - [Key Endpoints](#key-endpoints)
+  - [Development](#development)
+    - [Project Structure](#project-structure)
+    - [PureScript Code Generation](#purescript-code-generation)
+    - [Development Tools](#development-tools)
+    - [Key Files](#key-files)
+    - [Testing](#testing)
+  - [Contributing](#contributing)
+    - [Code Quality](#code-quality)
+  - [License](#license)
+  - [Support](#support)
+  - [Acknowledgments](#acknowledgments)
 
 
 ## 🚀 Quick Start
@@ -92,7 +95,7 @@ cabal run tui
 
 * After deployment a file named **raffleize_validators_config.json** which contains the validators reference UTxO and the admin key.
 
-![Print screen from the terminal user interface](TUIimage.png)
+![Print screen from the terminal user interface](img/TUIimage.png)
 
 
 ### 3. Build and Run
@@ -115,7 +118,7 @@ cabal run  tui
 - API Documentation: http://localhost:8082/swagger-ui
 - Default credentials: `cardano` / `lovelace`
 
-For detailed installation instructions, see [Section 4: Installation](#installation).
+For detailed installation instructions, see [🚀 Quick Start](#-quick-start).
 
 
 
