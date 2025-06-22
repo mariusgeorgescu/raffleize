@@ -86,6 +86,10 @@ type Lookups =
       :> Description "Checks addreesses for raffle user tokens and returns the corresponding raffles information"
       :> "user-raffles"
       :> ReqBody '[JSON] [GYAddress]
+      :> QueryParams "state" String
+      :> QueryParam "isFinal" Bool
+      :> QueryParam "sortBy" RaffleSortBy
+      :> QueryParam "sortOrder" SortOrder
       :> Post '[JSON] [RaffleInfo]
     :<|> Summary "Get user's tickets"
       :> Description "Checks addreesses for ticket user tokens and returns the corresponding tickets information"
@@ -193,9 +197,8 @@ restAPIapp usr pass ctx =
 -------------
 -------------
 
-handleGetRaffles :: ProviderCtx -> [String] -> Maybe Bool -> Maybe RaffleSortBy -> Maybe SortOrder -> IO [RaffleInfo]
-handleGetRaffles pCtx states mIsFinal mSortBy mSortOrder = do
-  raffles <- runQuery pCtx lookupActiveRaffles
+filterAndSortRaffles :: [RaffleInfo] -> [String] -> Maybe Bool -> Maybe RaffleSortBy -> Maybe SortOrder -> [RaffleInfo]
+filterAndSortRaffles raffles states mIsFinal mSortBy mSortOrder =
   let filteredWithFinal = case mIsFinal of
         (Just isFinal) ->
           let filterFunc = if isFinal then ("FINAL" `isSuffixOf`) else not . ("FINAL" `isSuffixOf`)
@@ -225,15 +228,22 @@ handleGetRaffles pCtx states mIsFinal mSortBy mSortOrder = do
                   "REVEALING" -> revealDeadline
                   _ -> veryFarPosixDate
 
-  return sorted
+   in sorted
+
+handleGetRaffles :: ProviderCtx -> [String] -> Maybe Bool -> Maybe RaffleSortBy -> Maybe SortOrder -> IO [RaffleInfo]
+handleGetRaffles pCtx states mIsFinal mSortBy mSortOrder = do
+  raffles <- runQuery pCtx lookupActiveRaffles
+  return $ filterAndSortRaffles raffles states mIsFinal mSortBy mSortOrder
 
 handleGetRaffleById :: ProviderCtx -> GYAssetClass -> IO (Maybe RaffleInfo)
 handleGetRaffleById pCtx gyRaffleId = do
   liftIO $ putStrLn $ "Lookup for raffle: " <> show gyRaffleId
   runQuery pCtx $ lookupRaffleInfoByRefAC (assetClassToPlutus gyRaffleId)
 
-handleGetRafflesByAddresses :: ProviderCtx -> [GYAddress] -> IO [RaffleInfo]
-handleGetRafflesByAddresses pCtx addrs = runQuery pCtx (lookupRafflesOfAddresses addrs)
+handleGetRafflesByAddresses :: ProviderCtx -> [GYAddress] -> [String] -> Maybe Bool -> Maybe RaffleSortBy -> Maybe SortOrder -> IO [RaffleInfo]
+handleGetRafflesByAddresses pCtx addrs states mIsFinal mSortBy mSortOrder = do
+  raffles <- runQuery pCtx (lookupRafflesOfAddresses addrs)
+  return $ filterAndSortRaffles raffles states mIsFinal mSortBy mSortOrder
 
 -- handleGetOneRaffle :: ProviderCtx -> IO RaffleInfo
 -- handleGetOneRaffle pCtx = head <$> handleGetRaffles pCtx
