@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 
 ### STAGE 1: Build ###
-FROM --platform=$TARGETPLATFORM benz0li/ghc-musl:9.6.6 AS builder
+FROM benz0li/ghc-musl:9.6.6 AS builder
 
 ARG TARGETARCH
 
@@ -117,7 +117,7 @@ RUN cabal install server --enable-executable-static --overwrite-policy=always --
 
 ### STAGE 2: Runtime ###
 
-FROM --platform=$TARGETPLATFORM alpine:3.20 AS runtime
+FROM alpine:3.20 AS runtime
 
 # Install common dependencies
 RUN apk add  bash curl ca-certificates git pkgconfig build-base \
