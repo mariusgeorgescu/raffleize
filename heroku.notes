@@ -1,0 +1,20 @@
+
+#build
+
+docker buildx build \
+  --platform linux/amd64  --provenance=false \
+  -t mariusgeorgescu/raffleize:amd64heroku \
+  . --push
+
+
+#tag
+
+docker tag mariusgeorgescu/raffleize:amd64heroku registry.heroku.com/raffleize-backend/web  
+
+#push
+
+docker push registry.heroku.com/raffleize-backend/web
+
+#release
+heroku container:release web -a raffleize-backend
+

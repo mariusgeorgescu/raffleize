@@ -201,4 +201,4 @@ WORKDIR /app
 COPY --from=builder /raffleize/server /app/server
 COPY ./config  /app/config
 
-
+ENTRYPOINT [ "/app/server" ]
