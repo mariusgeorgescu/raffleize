@@ -56,12 +56,12 @@ myTypes =
     let p = (Proxy :: Proxy NFTAction) in equal p (mkSumType p),
     let p = (Proxy :: Proxy TokenData) in equal p (mkSumType p),
     let p = (Proxy :: Proxy RaffleSortBy) in equal p (mkSumType p),
+    let p = (Proxy :: Proxy TicketsSortBy) in equal p (mkSumType p),
     let p = (Proxy :: Proxy SortOrder) in equal p (mkSumType p),
     mkSumType (Proxy :: Proxy InteractionAction),
     mkSumType (Proxy :: Proxy UserAddresses),
     mkSumType (Proxy :: Proxy Interaction),
-    mkSumType (Proxy :: Proxy AddWitAndSubmitParams),
-    mkSumType (Proxy :: Proxy TicketsSortBy)
+    mkSumType (Proxy :: Proxy AddWitAndSubmitParams)
   ]
 
 main :: IO ()

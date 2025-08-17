@@ -32,27 +32,29 @@ ticketName = "RAFFLEIZE: TICKET OWNER NFT"
 --- Configuration FilePaths  ---
 
 raffleizeLogoPath :: FilePath
-raffleizeLogoPath = "raffleize.logo"
+raffleizeLogoPath = "config/raffleize.logo"
 
 atlasCoreConfig :: FilePath
-atlasCoreConfig = "atlas_config.json"
+atlasCoreConfig = "config/atlas_config.json"
 
 raffleizeValidatorsConfig :: FilePath
-raffleizeValidatorsConfig = "raffleize_validators_config.json"
+raffleizeValidatorsConfig = "config/raffleize_validators_config.json"
 
 operationPrivFilePath :: FilePath
-operationPrivFilePath = "operation.prv"
+operationPrivFilePath = "config/operation.prv"
+
+
 
 -- Exports
 
 raffleizeValidatorFile :: FilePath
-raffleizeValidatorFile = "raffleizeValidator.plutus"
+raffleizeValidatorFile = "exports/raffleizeValidator.plutus"
 
 ticketValidatorFile :: FilePath
-ticketValidatorFile = "ticketValidator.plutus"
+ticketValidatorFile = "exports/ticketValidator.plutus"
 
 mintingPolicyFile :: FilePath
-mintingPolicyFile = "raffleizeMintingPolicy.plutus"
+mintingPolicyFile = "exports/raffleizeMintingPolicy.plutus"
 
 --- Links
 

@@ -53,7 +53,11 @@ result-*
 
 #Raffleize
 
-atlas_config.*
+config 
+db
+
+
+
 
 *.skey
 *.prv
